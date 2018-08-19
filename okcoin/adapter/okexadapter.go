@@ -19,7 +19,7 @@ type OKExQuoter struct {
 	callback quoter.QuoterCallback
 }
 
-func NewOKExQuoter() quoter.Quoter {
+func newOKExQuoter() quoter.Quoter {
 	return &OKExQuoter{
 		okex: okcoin.NewOKEx(http.DefaultClient, "", ""),
 		tickMap: make(map[string]*entity.TickItem),

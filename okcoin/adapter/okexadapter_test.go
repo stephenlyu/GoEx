@@ -15,7 +15,7 @@ func (this _callback) OnTickItem(tick *entity.TickItem) {
 }
 
 func TestOKExQuoter_Subscribe(t *testing.T) {
-	q := NewOKExQuoter()
+	q := NewOKQutoterFatory().CreateQuoter(nil)
 	q.SetCallback(&_callback{})
 	q.Subscribe(entity.ParseSecurityUnsafe("EOSQFUT.OKEX"))
 
