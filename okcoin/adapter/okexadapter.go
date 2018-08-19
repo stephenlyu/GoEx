@@ -28,7 +28,7 @@ func newOKExQuoter() quoter.Quoter {
 }
 
 func (this *OKExQuoter) Subscribe(security *entity.Security) {
-	this.tickMap[security.String()] = &entity.TickItem{}
+	this.tickMap[security.String()] = &entity.TickItem{Code: security.String()}
 
 	pair, contractType := FromSecurity(security)
 	this.okex.GetDepthWithWs(pair, contractType, 20, this.onDepth)
