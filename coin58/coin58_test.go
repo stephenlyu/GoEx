@@ -3,7 +3,7 @@ package coin58
 import (
 	"testing"
 	"net/http"
-	"github.com/nntaoli-project/GoEx"
+	"github.com/stephenlyu/GoEx"
 	"time"
 )
 

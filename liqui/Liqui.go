@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/stephenlyu/GoEx"
 	"strings"
 )
 

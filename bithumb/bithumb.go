@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/stephenlyu/GoEx"
 	"log"
 	"net/http"
 	"net/url"

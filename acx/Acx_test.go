@@ -1,7 +1,7 @@
 package acx
 
 import (
-	"github.com/nntaoli-project/GoEx"
+	"github.com/stephenlyu/GoEx"
 	"net/http"
 	"testing"
 )

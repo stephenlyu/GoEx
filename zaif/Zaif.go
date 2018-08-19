@@ -2,7 +2,7 @@ package zaif
 
 import (
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/stephenlyu/GoEx"
 	"log"
 	"net/http"
 	"sort"

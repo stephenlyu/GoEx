@@ -3,7 +3,7 @@ package aex
 import (
 	"errors"
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/stephenlyu/GoEx"
 	//"log"
 	"net/http"
 	"time"

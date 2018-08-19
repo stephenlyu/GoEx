@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/nntaoli-project/GoEx"
+	"github.com/stephenlyu/GoEx"
 )
 
 const (

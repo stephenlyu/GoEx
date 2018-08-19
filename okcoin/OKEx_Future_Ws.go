@@ -3,7 +3,7 @@ package okcoin
 import (
 	"encoding/json"
 	"fmt"
-	. "github.com/nntaoli-project/GoEx"
+	. "github.com/stephenlyu/GoEx"
 	"log"
 	"strings"
 	"time"
