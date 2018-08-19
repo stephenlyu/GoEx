@@ -190,3 +190,7 @@ func (okFuture *OKEx) getContractFromChannel(channel string) string {
 	}
 	return ""
 }
+
+func (okFuture *OKEx) CloseWs() {
+	okFuture.ws.CloseWs()
+}
