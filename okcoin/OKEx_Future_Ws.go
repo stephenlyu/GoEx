@@ -49,7 +49,7 @@ func (okFuture *OKEx) createWsConn() {
 				pair := okFuture.getPairFromChannel(channel)
 				contractType := okFuture.getContractFromChannel(channel)
 
-				if strings.HasSuffix(channel, "_ticker") {
+				if strings.Contains(channel, "_ticker") {
 					ticker := okFuture.parseTicker(tickmap)
 					ticker.Pair = pair
 					ticker.ContractType = contractType
@@ -65,9 +65,12 @@ func (okFuture *OKEx) createWsConn() {
 	}
 }
 
-func (okFuture *OKEx) GetDepthWithWs(pair CurrencyPair, contractType string, handle func(*Depth)) error {
+func (okFuture *OKEx) GetDepthWithWs(pair CurrencyPair, contractType string, n int, handle func(*Depth)) error {
+	if n == 0 {
+		n = 5
+	}
 	okFuture.createWsConn()
-	channel := fmt.Sprintf("ok_sub_futureusd_%s_depth_%s_5", strings.ToLower(pair.CurrencyA.Symbol), contractType)
+	channel := fmt.Sprintf("ok_sub_futureusd_%s_depth_%s_%d", strings.ToLower(pair.CurrencyA.Symbol), contractType, n)
 	okFuture.wsDepthHandleMap[channel] = handle
 	return okFuture.ws.Subscribe(map[string]string{
 		"event":   "addChannel",
@@ -99,6 +102,10 @@ func (okFuture *OKEx) parseDepth(tickmap map[string]interface{}) *Depth {
 	bids := tickmap["bids"].([]interface{})
 
 	var depth Depth
+
+	timestamp := int64(ToUint64(tickmap["timestamp"]))
+	depth.UTime = time.Unix(timestamp / 1000, timestamp % 1000 * int64(time.Millisecond))
+
 	for _, v := range asks {
 		var dr DepthRecord
 		for i, vv := range v.([]interface{}) {
