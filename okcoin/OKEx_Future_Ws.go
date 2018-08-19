@@ -18,6 +18,7 @@ func (okFuture *OKEx) createWsConn() {
 		if okFuture.ws == nil {
 			okFuture.wsTickerHandleMap = make(map[string]func(*Ticker))
 			okFuture.wsDepthHandleMap = make(map[string]func(*Depth))
+			okFuture.wsTradeHandleMap = make(map[string]func(CurrencyPair, string, []Trade))
 
 			okFuture.ws = NewWsConn("wss://real.okex.com:10440/websocket/okexapi")
 			okFuture.ws.Heartbeat(func() interface{} { return map[string]string{"event": "ping"} }, 30*time.Second)
@@ -45,20 +46,27 @@ func (okFuture *OKEx) createWsConn() {
 					return
 				}
 
-				tickmap := datamap["data"].(map[string]interface{})
 				pair := okFuture.getPairFromChannel(channel)
 				contractType := okFuture.getContractFromChannel(channel)
 
-				if strings.Contains(channel, "_ticker") {
-					ticker := okFuture.parseTicker(tickmap)
-					ticker.Pair = pair
-					ticker.ContractType = contractType
-					okFuture.wsTickerHandleMap[channel](ticker)
-				} else if strings.Contains(channel, "depth_") {
-					dep := okFuture.parseDepth(tickmap)
-					dep.Pair = pair
-					dep.ContractType = contractType
-					okFuture.wsDepthHandleMap[channel](dep)
+				if strings.Contains(channel, "_trade") {
+					data := datamap["data"].([]interface{})
+					trades := okFuture.parseTrade(data)
+					okFuture.wsTradeHandleMap[channel](pair, contractType, trades)
+				} else {
+					tickmap := datamap["data"].(map[string]interface{})
+
+					if strings.Contains(channel, "_ticker") {
+						ticker := okFuture.parseTicker(tickmap)
+						ticker.Pair = pair
+						ticker.ContractType = contractType
+						okFuture.wsTickerHandleMap[channel](ticker)
+					} else if strings.Contains(channel, "depth_") {
+						dep := okFuture.parseDepth(tickmap)
+						dep.Pair = pair
+						dep.ContractType = contractType
+						okFuture.wsDepthHandleMap[channel](dep)
+					}
 				}
 			})
 		}
@@ -86,6 +94,15 @@ func (okFuture *OKEx) GetTickerWithWs(pair CurrencyPair, contractType string, ha
 		"channel": channel})
 }
 
+func (okFuture *OKEx) GetTradeWithWs(pair CurrencyPair, contractType string, handle func(CurrencyPair, string, []Trade)) error {
+	okFuture.createWsConn()
+	channel := fmt.Sprintf("ok_sub_futureusd_%s_trade_%s", strings.ToLower(pair.CurrencyA.Symbol), contractType)
+	okFuture.wsTradeHandleMap[channel] = handle
+	return okFuture.ws.Subscribe(map[string]string{
+		"event":   "addChannel",
+		"channel": channel})
+}
+
 func (okFuture *OKEx) parseTicker(tickmap map[string]interface{}) *Ticker {
 	return &Ticker{
 		Last: ToFloat64(tickmap["last"]),
@@ -95,6 +112,26 @@ func (okFuture *OKEx) parseTicker(tickmap map[string]interface{}) *Ticker {
 		Sell: ToFloat64(tickmap["sell"]),
 		Buy:  ToFloat64(tickmap["buy"]),
 		Date: ToUint64(tickmap["timestamp"])}
+}
+
+func (okFuture *OKEx) parseTrade(data []interface{}) []Trade {
+	ret := make([]Trade, len(data))
+	for i := range data {
+		r := data[i].([]interface{})
+		tid := ToUint64(r[0])
+		price := ToFloat64(r[1])
+		amount := ToFloat64(r[2])
+		t := r[3].(string)
+		_type := r[4].(string)
+		ret[i] = Trade{
+			Tid: int64(tid),
+			Price: price,
+			Amount: amount,
+			Time: t,
+			Type: _type,
+		}
+	}
+	return ret
 }
 
 func (okFuture *OKEx) parseDepth(tickmap map[string]interface{}) *Depth {

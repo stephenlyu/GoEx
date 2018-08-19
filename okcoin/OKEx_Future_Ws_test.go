@@ -25,3 +25,11 @@ func TestOKEx_GetTickerWithWs(t *testing.T) {
 	time.Sleep(1 * time.Minute)
 	okexFuture.ws.CloseWs()
 }
+
+func TestOKEx_GetTradeWithWs(t *testing.T) {
+	okexFuture.GetTradeWithWs(goex.BTC_USD, goex.QUARTER_CONTRACT, func(pair goex.CurrencyPair, contractType string, trades []goex.Trade) {
+		log.Print(trades)
+	})
+	time.Sleep(1 * time.Minute)
+	okexFuture.ws.CloseWs()
+}

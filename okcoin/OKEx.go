@@ -39,6 +39,7 @@ type OKEx struct {
 	createWsLock      sync.Mutex
 	wsTickerHandleMap map[string]func(*Ticker)
 	wsDepthHandleMap  map[string]func(*Depth)
+	wsTradeHandleMap map[string]func(CurrencyPair, string, []Trade)
 }
 
 func NewOKEx(client *http.Client, api_key, secret_key string) *OKEx {

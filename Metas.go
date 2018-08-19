@@ -25,6 +25,7 @@ type Trade struct {
 	Amount float64 `json:"amount,string"`
 	Price  float64 `json:"price,string"`
 	Date   int64   `json:"date_ms"`
+	Time   string
 }
 
 type SubAccount struct {
