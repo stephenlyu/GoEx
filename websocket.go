@@ -15,6 +15,8 @@ type WsConn struct {
 	close                    chan int
 	isClose                  bool
 	subs                     []interface{}
+
+	errorCh 				chan error
 }
 
 const (
@@ -33,30 +35,48 @@ func NewWsConn(wsurl string) *WsConn {
 	if err != nil {
 		panic(err)
 	}
-	return &WsConn{Conn: wsConn, url: wsurl, actived: time.Now(), checkConnectIntervalTime: 30 * time.Second, close: make(chan int, 1)}
+	return &WsConn{Conn: wsConn, url: wsurl, actived: time.Now(), checkConnectIntervalTime: 30 * time.Second, close: make(chan int, 1), errorCh: make(chan error)}
 }
 
 func (ws *WsConn) ReConnect() {
+
+	doReconnect := func() {
+		ws.Close()
+		log.Println("start reconnect websocket:", ws.url)
+		wsConn, _, err := websocket.DefaultDialer.Dial(ws.url, nil)
+		if err != nil {
+			log.Println("reconnect fail ???")
+		} else {
+			ws.Conn = wsConn
+			ws.actived = time.Now()
+			//re subscribe
+			for _, sub := range ws.subs {
+				log.Println("subscribe:", sub)
+				ws.WriteJSON(sub)
+			}
+		}
+	}
+
+	var errTimes int
 
 	timer := time.NewTimer(ws.checkConnectIntervalTime)
 	go func() {
 		for {
 			select {
 			case <-timer.C:
-				if time.Now().Sub(ws.actived) >= 2*ws.checkConnectIntervalTime {
-					ws.Close()
-					log.Println("start reconnect websocket:", ws.url)
-					wsConn, _, err := websocket.DefaultDialer.Dial(ws.url, nil)
-					if err != nil {
-						log.Println("reconnect fail ???")
-					} else {
-						ws.Conn = wsConn
-						ws.actived = time.Now()
-						//re subscribe
-						for _, sub := range ws.subs {
-							log.Println("subscribe:", sub)
-							ws.WriteJSON(sub)
-						}
+				if time.Now().Sub(ws.actived) >= ws.checkConnectIntervalTime + 5 * time.Second {
+					doReconnect()
+					errTimes = 0
+				}
+				timer.Reset(ws.checkConnectIntervalTime)
+			case err := <- ws.errorCh:
+				if err == nil {
+					errTimes = 0
+				} else {
+					errTimes++
+					if errTimes > 10 {
+						doReconnect()
+						errTimes = 0
 					}
 				}
 				timer.Reset(ws.checkConnectIntervalTime)
@@ -71,7 +91,7 @@ func (ws *WsConn) ReConnect() {
 
 func (ws *WsConn) Heartbeat(heartbeat func() interface{}, interval time.Duration) {
 	ws.heartbeatIntervalTime = interval
-	ws.checkConnectIntervalTime = 2 * ws.heartbeatIntervalTime
+	ws.checkConnectIntervalTime = ws.heartbeatIntervalTime
 
 	timer := time.NewTimer(interval)
 	go func() {
@@ -79,6 +99,7 @@ func (ws *WsConn) Heartbeat(heartbeat func() interface{}, interval time.Duration
 			select {
 			case <-timer.C:
 				err := ws.WriteJSON(heartbeat())
+				ws.errorCh <- err
 				if err != nil {
 					log.Println("heartbeat error , ", err)
 					time.Sleep(time.Second)
@@ -106,6 +127,7 @@ func (ws *WsConn) ReceiveMessage(handle func(msg []byte)) {
 	go func() {
 		for {
 			t, msg, err := ws.ReadMessage()
+			ws.errorCh <- err
 			if err != nil {
 				log.Println(err)
 				if ws.isClose {
