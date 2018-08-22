@@ -74,6 +74,7 @@ func (this *OKExQuoter) onDepth(depth *goex.Depth) {
 	thisTick.Low = 0
 	thisTick.Amount = 0
 	thisTick.Volume = 0
+	thisTick.Side = entity.TICK_SIDE_UNKNOWN
 }
 
 func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, trades []goex.Trade) {
@@ -90,7 +91,7 @@ func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, tra
 	security := ToSecurity(pair, contractType)
 	thisTick := this.tickMap[security.String()]
 
-	high, low, amount, volume := thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume
+	high, low, amount, volume, side := thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side
 	var price float64
 
 	for i := range trades {
@@ -116,8 +117,16 @@ func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, tra
 			}
 		}
 
+		if t.Type == "bid" {
+			side = entity.TICK_SIDE_BUY
+		} else if t.Type == "ask" {
+			side = entity.TICK_SIDE_SELL
+		} else {
+			side = entity.TICK_SIDE_UNKNOWN
+		}
+
 		price = t.Price
 	}
 
-	thisTick.Price, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume = price, high, low, amount, volume
+	thisTick.Price, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side = price, high, low, amount, volume, side
 }

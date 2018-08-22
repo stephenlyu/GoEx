@@ -11,7 +11,7 @@ type _callback struct {
 }
 
 func (this _callback) OnTickItem(tick *entity.TickItem) {
-	logrus.Infof("Tick: %+v", tick)
+	logrus.Infof("Tick: timestamp: %d price: %.04f side: %d", tick.Timestamp, tick.Price, tick.Side)
 }
 
 func TestOKExQuoter_Subscribe(t *testing.T) {
