@@ -52,6 +52,7 @@ type Ticker struct {
 	Low          float64      `json:"low"`
 	Vol          float64      `json:"vol"`
 	Date         uint64       `json:"date"` // 单位:秒(second)
+	ContractId   int64        `json:"omitempty"`
 }
 
 type DepthRecord struct {
