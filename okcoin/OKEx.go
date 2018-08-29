@@ -341,7 +341,7 @@ func (ok *OKEx) PlaceFutureOrder(currencyPair CurrencyPair, contractType, price,
 	return fmt.Sprintf("%.0f", respMap["order_id"].(float64)), nil
 }
 
-func (ok *OKEx) FutureCancelOrder(currencyPair CurrencyPair, contractType, orderId string) (bool, error) {
+func (ok *OKEx) FutureCancelOrder(currencyPair CurrencyPair, contractType, orderId string) (string, error) {
 	postData := url.Values{}
 	postData.Set("symbol", strings.ToLower(currencyPair.ToSymbol("_")))
 	postData.Set("order_id", orderId)
@@ -353,20 +353,23 @@ func (ok *OKEx) FutureCancelOrder(currencyPair CurrencyPair, contractType, order
 
 	body, err := HttpPostForm(ok.client, cancelUrl, postData)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
 	respMap := make(map[string]interface{})
 	err = json.Unmarshal(body, &respMap)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
 	if respMap["result"] != nil && !respMap["result"].(bool) {
-		return false, errors.New(string(body))
+		if respMap["error_code"] != nil {
+			return fmt.Sprintf("%d", int64(respMap["error_code"].(float64))), errors.New(string(body))
+		}
+		return "", errors.New(string(body))
 	}
 
-	return true, nil
+	return "", nil
 }
 
 func (ok *OKEx) GetFuturePosition(currencyPair CurrencyPair, contractType string) ([]FuturePosition, error) {
