@@ -137,7 +137,7 @@ func (ok *OKEx) GetFutureTicker(currencyPair CurrencyPair, contractType string) 
 	ticker.High = tickerMap["high"].(float64)
 	ticker.Low = tickerMap["low"].(float64)
 	ticker.Vol = tickerMap["vol"].(float64)
-	ticker.ContractId = tickerMap["contract_id"].(int64)
+	ticker.ContractId = int64(tickerMap["contract_id"].(float64))
 
 	//fmt.Println(bodyMap)
 	return ticker, nil
