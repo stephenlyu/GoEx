@@ -16,3 +16,9 @@ func TestOKEx_GetFutureDepth(t *testing.T) {
 	assert.Nil(t, err)
 	t.Log(dep)
 }
+
+func TestOKEx_GetFutureIndex(t *testing.T) {
+	ret, err := okex.GetFutureIndex(BTC_USD)
+	assert.Nil(t, err)
+	t.Log(ret)
+}

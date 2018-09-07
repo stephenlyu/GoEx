@@ -241,8 +241,17 @@ func (ok *OKEx) GetFutureIndex(currencyPair CurrencyPair) (float64, error) {
 		return 0, err
 	}
 
-	//println(string(body))
-	return bodyMap["future_index"].(float64), nil
+	v, yes := bodyMap["future_index"]
+	if !yes {
+		println(string(body))
+		return 0, errors.New("No future_index field")
+	}
+
+	ret, yes := v.(float64)
+	if !yes {
+		return 0, errors.New("Bad future_index")
+	}
+	return ret, nil
 }
 
 type futureUserInfoResponse struct {
