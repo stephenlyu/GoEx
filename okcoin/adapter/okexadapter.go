@@ -8,6 +8,7 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"time"
 	"math"
+	"fmt"
 )
 
 type OKExQuoter struct {
@@ -70,11 +71,14 @@ func (this *OKExQuoter) onDepth(depth *goex.Depth) {
 		this.callback.OnTickItem(&tick)
 	}
 
+	thisTick.Open = 0
 	thisTick.High = 0
 	thisTick.Low = 0
 	thisTick.Amount = 0
 	thisTick.Volume = 0
 	thisTick.Side = entity.TICK_SIDE_UNKNOWN
+	thisTick.BuyVolume = 0
+	thisTick.SellVolume = 0
 }
 
 func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, trades []goex.Trade) {
@@ -91,7 +95,7 @@ func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, tra
 	security := ToSecurity(pair, contractType)
 	thisTick := this.tickMap[security.String()]
 
-	high, low, amount, volume, side := thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side
+	open, high, low, amount, volume, side, buyVolume, sellVolume := thisTick.Open, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side, thisTick.BuyVolume, thisTick.SellVolume
 	var price float64
 
 	for i := range trades {
@@ -108,6 +112,10 @@ func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, tra
 			low = math.Min(low, t.Price)
 		}
 
+		if open == 0 {
+			open = t.Price
+		}
+
 		volume += t.Amount
 		if t.Price != 0 {
 			if pair.CurrencyA.Symbol == "BTC" {
@@ -119,14 +127,17 @@ func (this *OKExQuoter) onTrade(pair goex.CurrencyPair, contractType string, tra
 
 		if t.Type == "bid" {
 			side = entity.TICK_SIDE_BUY
+			buyVolume += t.Amount
 		} else if t.Type == "ask" {
 			side = entity.TICK_SIDE_SELL
+			sellVolume += t.Amount
 		} else {
 			side = entity.TICK_SIDE_UNKNOWN
+			fmt.Println("unknown", t.Type)
 		}
 
 		price = t.Price
 	}
 
-	thisTick.Price, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side = price, high, low, amount, volume, side
+	thisTick.Open, thisTick.Price, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side, thisTick.BuyVolume, thisTick.SellVolume = open, price, high, low, amount, volume, side, buyVolume, sellVolume
 }
