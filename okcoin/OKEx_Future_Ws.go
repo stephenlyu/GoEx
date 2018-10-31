@@ -7,7 +7,17 @@ import (
 	"log"
 	"strings"
 	"time"
+	"compress/flate"
+	"io/ioutil"
+	"bytes"
 )
+
+func GzipDecode(in []byte) ([]byte, error) {
+	reader := flate.NewReader(bytes.NewReader(in))
+	defer reader.Close()
+
+	return ioutil.ReadAll(reader)
+}
 
 func (okFuture *OKEx) createWsConn() {
 	if okFuture.ws == nil {
@@ -20,10 +30,13 @@ func (okFuture *OKEx) createWsConn() {
 			okFuture.wsDepthHandleMap = make(map[string]func(*Depth))
 			okFuture.wsTradeHandleMap = make(map[string]func(CurrencyPair, string, []Trade))
 
-			okFuture.ws = NewWsConn("wss://real.okex.com:10440/websocket/okexapi")
+			okFuture.ws = NewWsConn("wss://real.okex.com:10440/websocket/okexapi?compress=true")
 			okFuture.ws.Heartbeat(func() interface{} { return map[string]string{"event": "ping"} }, 30*time.Second)
 			okFuture.ws.ReConnect()
-			okFuture.ws.ReceiveMessage(func(msg []byte) {
+			okFuture.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
+				if isBin {
+					msg, _ = GzipDecode(msg)
+				}
 				if string(msg) == "{\"event\":\"pong\"}" {
 					okFuture.ws.UpdateActivedTime()
 					return

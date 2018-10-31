@@ -152,6 +152,37 @@ func (ws *WsConn) ReceiveMessage(handle func(msg []byte)) {
 	}()
 }
 
+func (ws *WsConn) ReceiveMessageEx(handle func(isBin bool, msg []byte)) {
+	go func() {
+		for {
+			t, msg, err := ws.ReadMessage()
+			ws.errorCh <- err
+			if err != nil {
+				log.Println(err)
+				if ws.isClose {
+					log.Println("exiting receive message goroutine.")
+					break
+				}
+				time.Sleep(time.Second)
+				continue
+			}
+			switch t {
+			case websocket.TextMessage:
+				handle(false, msg)
+			case websocket.BinaryMessage:
+				handle(true, msg)
+			case websocket.PongMessage:
+				ws.actived = time.Now()
+			case websocket.CloseMessage:
+				ws.CloseWs()
+				return
+			default:
+				log.Println("error websocket message type , content is :\n", string(msg))
+			}
+		}
+	}()
+}
+
 func (ws *WsConn) UpdateActivedTime() {
 	ws.actived = time.Now()
 }
