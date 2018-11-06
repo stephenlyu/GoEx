@@ -10,13 +10,15 @@ import (
 	"github.com/stephenlyu/GoEx/bitmex"
 )
 
+const DEPTH_INTERVAL = 1000
+
 type BitmexQuoter struct {
 	api *bitmex.BitMexWs
 
 	tickMap map[string]*entity.TickItem
 	firstTrade bool
 
-	prevDepth map[string]*goex.Depth
+	lastTimestamps map[string]int64
 
 	callback quoter.QuoterCallback
 }
@@ -26,7 +28,7 @@ func newBitmexQuoter() quoter.Quoter {
 		api: bitmex.NewBitMexWs("", ""),
 		tickMap: make(map[string]*entity.TickItem),
 		firstTrade: true,
-		prevDepth: make(map[string]*goex.Depth),
+		lastTimestamps: make(map[string]int64),
 	}
 }
 
@@ -46,48 +48,16 @@ func (this *BitmexQuoter) Destroy() {
 	this.api.CloseWs()
 }
 
-func (this *BitmexQuoter) depthEquals(d1, d2 *goex.Depth) bool {
-	if d1 == nil || d2 == nil {
-		return false
-	}
-
-	if d1.Pair != d2.Pair {
-		return false
-	}
-
-	if len(d1.AskList) != len(d2.AskList) || len(d1.BidList) != len(d2.BidList) {
-		return false
-	}
-
-	for i := range d1.AskList {
-		if math.Abs(d1.AskList[i].Price - d2.AskList[i].Price) > 0.01 {
-			return false
-		}
-		if d1.AskList[i].Amount != d2.AskList[i].Amount {
-			return false
-		}
-	}
-
-	for i := range d1.BidList {
-		if math.Abs(d1.BidList[i].Price - d2.BidList[i].Price) > 0.01 {
-			return false
-		}
-		if d1.BidList[i].Amount != d2.BidList[i].Amount {
-			return false
-		}
-	}
-	return true
-}
-
 func (this *BitmexQuoter) onDepth(depth *goex.Depth) {
-	prevDepth, _ := this.prevDepth[depth.Pair.String()]
-	if this.depthEquals(prevDepth, depth) {
+	lastTs, _ := this.lastTimestamps[depth.Pair.String()]
+	ts := depth.UTime.UnixNano() / 1000000
+
+	security := ToSecurity(depth.Pair)
+	thisTick := this.tickMap[security.String()]
+	if thisTick.Volume == 0 && ts - lastTs < DEPTH_INTERVAL {
 		return
 	}
 
-	security := ToSecurity(depth.Pair)
-
-	thisTick := this.tickMap[security.String()]
 	thisTick.Timestamp = uint64(depth.UTime.UnixNano() / int64(time.Millisecond))
 
 	thisTick.AskVolumes = make([]float64, len(depth.AskList))
@@ -120,7 +90,7 @@ func (this *BitmexQuoter) onDepth(depth *goex.Depth) {
 	thisTick.BuyVolume = 0
 	thisTick.SellVolume = 0
 
-	this.prevDepth[depth.Pair.String()] = depth
+	this.lastTimestamps[depth.Pair.String()] = ts
 }
 
 func (this *BitmexQuoter) onTrade(pair goex.CurrencyPair, trades []goex.Trade) {
