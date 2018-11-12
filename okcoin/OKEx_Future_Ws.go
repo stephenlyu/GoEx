@@ -148,8 +148,16 @@ func (okFuture *OKEx) parseTrade(data []interface{}) []Trade {
 }
 
 func (okFuture *OKEx) parseDepth(tickmap map[string]interface{}) *Depth {
-	asks := tickmap["asks"].([]interface{})
-	bids := tickmap["bids"].([]interface{})
+	asks, ok := tickmap["asks"].([]interface{})
+	if !ok {
+		log.Printf("OKEx.parseDepth bad data %+v", tickmap)
+		return nil
+	}
+	bids, ok := tickmap["bids"].([]interface{})
+	if !ok {
+		log.Printf("OKEx.parseDepth bad data %+v", tickmap)
+		return nil
+	}
 
 	var depth Depth
 
