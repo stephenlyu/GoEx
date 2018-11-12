@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-const UTC_FORMAT = "2006-01-02T15:04:05.999Z"
-
 type BitMexWs struct {
 	apiKey,
 	apiSecretKey string
@@ -19,6 +17,9 @@ type BitMexWs struct {
 	createWsLock      sync.Mutex
 	wsDepthHandleMap  map[string]func(*Depth)
 	wsTradeHandleMap map[string]func(CurrencyPair, []Trade)
+	orderHandle func([]FutureOrder)
+	fillHandle func([]FutureFill)
+	marginHandle func([]Margin)
 }
 
 func NewBitMexWs(apiKey, apiSecretyKey string) *BitMexWs {
@@ -79,8 +80,20 @@ func (bitmexWs *BitMexWs) createWsConn() {
 						bitmexWs.wsDepthHandleMap[topic](depth)
 					}
 				case "order":
+					orders := bitmexWs.parseOrder(msg)
+					if len(orders) > 0 && bitmexWs.orderHandle != nil {
+						bitmexWs.orderHandle(orders)
+					}
 				case "execution":
+					fills := bitmexWs.parseExecution(msg)
+					if len(fills) > 0 && bitmexWs.fillHandle != nil {
+						bitmexWs.fillHandle(fills)
+					}
 				case "margin":
+					margins := bitmexWs.parseMargin(msg)
+					if len(margins) > 0 && bitmexWs.marginHandle != nil {
+						bitmexWs.marginHandle(margins)
+					}
 				case "position":
 				}
 			})
@@ -112,6 +125,7 @@ func (bitmexWs *BitMexWs) parseTrade(msg []byte) (string, []Trade) {
 			Type: strings.ToLower(r.Side),
 			Amount: r.Size,
 			Price: r.Price,
+			Date: ts,
 		}
 	}
 
@@ -151,6 +165,58 @@ func (bitmexWs *BitMexWs) parseDepth(msg []byte) *Depth {
 	return ret
 }
 
+func (bitmexWs *BitMexWs) parseMargin(msg []byte) []Margin {
+	var data struct {
+		Data []Margin
+	}
+	err := json.Unmarshal(msg, &data)
+	if err != nil {
+		return nil
+	}
+
+	return data.Data
+}
+
+func (bitmexWs *BitMexWs) parseOrder(msg []byte) []FutureOrder {
+	var data struct {
+		Data []BitmexOrder
+	}
+	err := json.Unmarshal(msg, &data)
+	if err != nil {
+		return nil
+	}
+
+	var ret []FutureOrder
+	for i := range data.Data {
+		if data.Data[i].Status == "" {
+			continue
+		}
+		ret = append(ret, *data.Data[i].ToFutureOrder())
+	}
+
+	return ret
+}
+
+func (bitmexWs *BitMexWs) parseExecution(msg []byte) []FutureFill {
+	var data struct {
+		Data []Execution
+	}
+	err := json.Unmarshal(msg, &data)
+	if err != nil {
+		return nil
+	}
+
+	var ret []FutureFill
+	for i := range data.Data {
+		if data.Data[i].TrdMatchId == "00000000-0000-0000-0000-000000000000" {
+			continue
+		}
+		ret = append(ret, *data.Data[i].ToFill())
+	}
+
+	return ret
+}
+
 func (bitmexWs *BitMexWs) GetDepthWithWs(pair CurrencyPair, handle func(*Depth)) error {
 	bitmexWs.createWsConn()
 	topic := fmt.Sprintf("orderBook10:%s", pair.ToSymbol(""))
@@ -169,27 +235,41 @@ func (bitmexWs *BitMexWs) GetTradeWithWs(pair CurrencyPair, handle func(Currency
 		"args": []string{topic}})
 }
 
+func (bitmexWs *BitMexWs) Authenticate() error {
+	bitmexWs.createWsConn()
+	expires := time.Now().Unix() + 30
+	return bitmexWs.ws.Subscribe(map[string]interface{}{
+		"op":   "authKeyExpires",
+		"args": []interface{}{bitmexWs.apiKey, expires, BuildWsSignature(bitmexWs.apiSecretKey, "/realtime", expires)}})
+}
+
+func (bitmexWs *BitMexWs) GetMarginWithWs(handle func([]Margin)) error {
+	bitmexWs.createWsConn()
+	topic := "margin"
+	bitmexWs.marginHandle = handle
+	return bitmexWs.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []string{topic}})
+}
+
+func (bitmexWs *BitMexWs) GetOrderWithWs(handle func([]FutureOrder)) error {
+	bitmexWs.createWsConn()
+	topic := "order"
+	bitmexWs.orderHandle = handle
+	return bitmexWs.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []string{topic}})
+}
+
+func (bitmexWs *BitMexWs) GetFillWithWs(handle func([]FutureFill)) error {
+	bitmexWs.createWsConn()
+	topic := "execution"
+	bitmexWs.fillHandle = handle
+	return bitmexWs.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []string{topic}})
+}
+
 func (bitmexWs *BitMexWs) CloseWs() {
 	bitmexWs.ws.CloseWs()
-}
-
-func ParseTimestamp(ts string) (error, int64) {
-	t, err := time.Parse(UTC_FORMAT, ts)
-	if err != nil {
-		return err, 0
-	}
-	return nil, t.UnixNano() / int64(time.Millisecond)
-}
-
-func FormatTimestamp(ts int64) string {
-	t := time.Unix(ts / 1000, ts % 1000 * int64(time.Millisecond)).In(time.UTC)
-	return t.Format(UTC_FORMAT)
-}
-
-func ParseSymbol(symbol string) CurrencyPair {
-	if symbol != "XBTUSD" {
-		log.Fatalf("symbol %s not supported", symbol)
-	}
-
-	return CurrencyPair{XBT, USD}
 }

@@ -123,10 +123,13 @@ type FutureOrder struct {
 	AvgPrice     float64
 	DealAmount   float64
 	OrderID      int64
+	OrderID2  	 string
+	ClientOrderID string
 	OrderTime    int64
 	Status       TradeStatus
 	Currency     CurrencyPair
 	OType        int     //1：开多 2：开空 3：平多 4： 平空
+	Side      	 TradeSide
 	LeverRate    int     //倍数
 	Fee          float64 //手续费
 	ContractName string
@@ -149,4 +152,29 @@ type FuturePosition struct {
 	ContractType   string
 	ContractId     int64
 	ForceLiquPrice float64 //预估爆仓价
+}
+
+type Margin struct {
+	Account int64 			`json:"account"`
+	Currency string 		`json:"currency"`
+	RealizedPnl int64 		`json:"realisedPnl"`
+	UnrealizedPnl int64 	`json:"unrealisedPnl"`
+	WalletBalance int64 	`json:"walletBalance"`
+	MarginBalance int64 	`json:"marginBalance"`
+	AvailableMargin int64 	`json:"availableMargin"`
+	WithdrawableMargin int64 `json:"withdrawableMargin"`
+}
+
+type FutureFill struct {
+	FillId string
+	OrderId string
+	ClientOrderId string
+	Symbol CurrencyPair
+	Side TradeSide
+	LastQty int64
+	LastPrice float64
+	Price float64
+	AvgPrice float64
+	Commission int64
+	TransactionTime int64
 }
