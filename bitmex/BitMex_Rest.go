@@ -21,6 +21,7 @@ const (
 	POSITION_GET_URL = "/position"
 	TRADE_HISTORY_URL = "/execution/tradeHistory"
 	ORDER_URL = "/order"
+	ORDER_ALL_URL = "/order/all"
 )
 
 type BitMexRest struct {
@@ -162,7 +163,7 @@ func (bitmex *BitMexRest) GetMargin() (error, *goex.Margin) {
 	return nil, &margin
 }
 
-func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, interface{}) {
+func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, []goex.FuturePosition) {
 	filter := map[string]string {
 		"symbol": symbol,
 	}
@@ -172,14 +173,32 @@ func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, interfac
 	query := bitmex.map2Query(params)
 	query = url.Escape(query)
 	header := bitmex.buildSigHeader("GET", POSITION_GET_URL + "?" + query, "")
-	var position interface{}
+	var positions []struct {
+		CurrentQty float64		`json:"currentQty"`
+		AveragePrice float64	`json:"avgCostPrice"`
+	}
 
-	err := goex.HttpGet4(bitmex.client, BASE_URL+POSITION_GET_URL+"?"+query, header, &position)
+	err := goex.HttpGet4(bitmex.client, BASE_URL+POSITION_GET_URL+"?"+query, header, &positions)
 	if err != nil {
 		return err, nil
 	}
 
-	return nil, position
+	pair := ParseSymbol(symbol)
+
+	var ret []goex.FuturePosition = make([]goex.FuturePosition, len(positions))
+
+	for i, p := range positions {
+		ret[i].Symbol = pair
+		if p.CurrentQty < 0 {
+			ret[i].SellAmount = -p.CurrentQty
+			ret[i].SellPriceAvg = p.AveragePrice
+		} else if p.CurrentQty > 0 {
+			ret[i].BuyAmount = p.CurrentQty
+			ret[i].BuyPriceAvg = p.AveragePrice
+		}
+	}
+
+	return nil, ret
 }
 
 func (bitmex *BitMexRest) PlaceOrder(symbol string, side goex.TradeSide, price float64, orderQty int, clientOrderId string) (error, *goex.FutureOrder) {
@@ -247,6 +266,31 @@ func (bitmex *BitMexRest) CancelOrder(orderId string, clientOrderId string) (err
 	}
 
 	return err, orders[0].ToFutureOrder()
+}
+
+func (bitmex *BitMexRest) CancelAll() (error, []goex.FutureOrder) {
+	params := map[string]string {
+	}
+	data := bitmex.map2Query(params)
+	header := bitmex.buildSigHeader("DELETE", ORDER_ALL_URL, data)
+	data = url.Escape(data)
+	bytes, err := goex.NewHttpRequest(bitmex.client, "DELETE", BASE_URL + ORDER_ALL_URL, data, header)
+	if err != nil {
+		return err, nil
+	}
+
+	var orders []BitmexOrder
+	err = json.Unmarshal(bytes, &orders)
+	if err != nil {
+		return err, nil
+	}
+
+	ret := make([]goex.FutureOrder, len(orders))
+	for i := range orders {
+		ret[i] = *orders[i].ToFutureOrder()
+	}
+
+	return err, ret
 }
 
 func (bitmex *BitMexRest) ListOrders(symbol string, openOnly bool, startTime, endTime string, count int) (error, []goex.FutureOrder) {

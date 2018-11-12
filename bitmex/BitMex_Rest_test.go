@@ -34,6 +34,11 @@ func chk(err error) {
 	}
 }
 
+func Output(v interface{}) {
+	bytes, _ := json.MarshalIndent(v, "", "  ")
+	fmt.Println(string(bytes))
+}
+
 func TestBitMexRest_GetTrade(t *testing.T) {
 	bitmex := NewBitMexRest("", "")
 	err, ret := bitmex.GetTrade("XBTUSD")
@@ -59,7 +64,7 @@ func TestBitMexRest_GetPosition(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
 	err, ret := bitmex.GetPosition("XBTUSD", 10)
 	chk(err)
-	fmt.Printf("%+v\n", ret)
+	Output(ret)
 }
 
 func TestBitMexRest_ListOrders(t *testing.T) {
@@ -78,7 +83,7 @@ func TestBitMexRest_ListExecutions(t *testing.T) {
 
 func TestBitMexRest_PlaceOrder(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.PlaceOrder("XBTUSD", goex.SELL_MARKET, 0, 10, "")
+	err, ret := bitmex.PlaceOrder("XBTUSD", goex.SELL, 6600, 10, "")
 	chk(err)
 	fmt.Printf("%+v\n", ret)
 }
@@ -88,4 +93,11 @@ func TestBitMexRest_CancelOrder(t *testing.T) {
 	err, ret := bitmex.CancelOrder("b625db43-c6b4-b70c-3bac-564d1626721f", "")
 	chk(err)
 	fmt.Printf("%+v\n", ret)
+}
+
+func TestBitMexRest_CancelAll(t *testing.T) {
+	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
+	err, ret := bitmex.CancelAll()
+	chk(err)
+	Output(ret)
 }
