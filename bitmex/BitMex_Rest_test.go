@@ -57,7 +57,7 @@ func TestBitMexRest_GetMargin(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
 	err, ret := bitmex.GetAccount()
 	chk(err)
-	Output(ret)
+	fmt.Println(ret)
 }
 
 func TestBitMexRest_GetPosition(t *testing.T) {
