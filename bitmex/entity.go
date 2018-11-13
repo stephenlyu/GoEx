@@ -114,6 +114,32 @@ func (e *Execution) ToFill() *goex.FutureFill {
 	return f
 }
 
+type BitmexPosition struct {
+	Symbol string 			`json:"symbol"`
+	CurrentQty float64		`json:"currentQty"`
+	AveragePrice float64	`json:"avgCostPrice"`
+	RealisedPnl float64 	`json:"realisedPnl"`
+	UnrealisedPnl float64 	`json:"unrealisedPnl"`
+}
+
+func (p *BitmexPosition) ToFuturePosition() *goex.FuturePosition {
+	ret := new(goex.FuturePosition)
+	pair := ParseSymbol(p.Symbol)
+	ret.Symbol = pair
+	if p.CurrentQty < 0 {
+		ret.SellAmount = -p.CurrentQty
+		ret.SellPriceAvg = p.AveragePrice
+		ret.SellProfitUnReal = p.UnrealisedPnl
+		ret.SellProfitReal = p.RealisedPnl
+	} else if p.CurrentQty > 0 {
+		ret.BuyAmount = p.CurrentQty
+		ret.BuyPriceAvg = p.AveragePrice
+		ret.BuyProfitUnReal = p.UnrealisedPnl
+		ret.BuyProfitReal = p.RealisedPnl
+	}
+	return ret
+}
+
 func ParseTimestamp(ts string) (error, int64) {
 	t, err := time.Parse(UTC_FORMAT, ts)
 	if err != nil {

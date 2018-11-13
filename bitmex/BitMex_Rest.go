@@ -173,29 +173,17 @@ func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, []goex.F
 	query := bitmex.map2Query(params)
 	query = url.Escape(query)
 	header := bitmex.buildSigHeader("GET", POSITION_GET_URL + "?" + query, "")
-	var positions []struct {
-		CurrentQty float64		`json:"currentQty"`
-		AveragePrice float64	`json:"avgCostPrice"`
-	}
+	var positions []BitmexPosition
 
 	err := goex.HttpGet4(bitmex.client, BASE_URL+POSITION_GET_URL+"?"+query, header, &positions)
 	if err != nil {
 		return err, nil
 	}
 
-	pair := ParseSymbol(symbol)
-
 	var ret []goex.FuturePosition = make([]goex.FuturePosition, len(positions))
 
 	for i, p := range positions {
-		ret[i].Symbol = pair
-		if p.CurrentQty < 0 {
-			ret[i].SellAmount = -p.CurrentQty
-			ret[i].SellPriceAvg = p.AveragePrice
-		} else if p.CurrentQty > 0 {
-			ret[i].BuyAmount = p.CurrentQty
-			ret[i].BuyPriceAvg = p.AveragePrice
-		}
+		ret[i] = *p.ToFuturePosition()
 	}
 
 	return nil, ret

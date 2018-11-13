@@ -141,6 +141,7 @@ type FuturePosition struct {
 	BuyPriceAvg    float64
 	BuyPriceCost   float64
 	BuyProfitReal  float64
+	BuyProfitUnReal float64
 	CreateDate     int64
 	LeverRate      int
 	SellAmount     float64
@@ -148,6 +149,7 @@ type FuturePosition struct {
 	SellPriceAvg   float64
 	SellPriceCost  float64
 	SellProfitReal float64
+	SellProfitUnReal float64
 	Symbol         CurrencyPair //btc_usd:比特币,ltc_usd:莱特币
 	ContractType   string
 	ContractId     int64

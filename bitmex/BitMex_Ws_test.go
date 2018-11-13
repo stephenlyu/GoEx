@@ -30,16 +30,20 @@ func TestBitMexWs_GetOrderWithWs(t *testing.T) {
 	err := bitmexWs.Authenticate()
 	chk(err)
 
-	bitmexWs.GetOrderWithWs(func(orders []goex.FutureOrder) {
-		log.Printf("%+v", orders)
-	})
+	//bitmexWs.GetOrderWithWs(func(orders []goex.FutureOrder) {
+	//	log.Printf("%+v", orders)
+	//})
+	//
+	//bitmexWs.GetMarginWithWs(func(margins []goex.Margin) {
+	//	log.Printf("%+v", margins)
+	//})
+	//
+	//bitmexWs.GetFillWithWs(func(fills []goex.FutureFill) {
+	//	log.Printf("%+v", fills)
+	//})
 
-	bitmexWs.GetMarginWithWs(func(margins []goex.Margin) {
-		log.Printf("%+v", margins)
-	})
-
-	bitmexWs.GetFillWithWs(func(fills []goex.FutureFill) {
-		log.Printf("%+v", fills)
+	bitmexWs.GetPositionWithWs(func(positions []goex.FuturePosition) {
+		log.Printf("%+v", positions)
 	})
 
 	time.Sleep(1000 * time.Minute)

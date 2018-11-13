@@ -57,7 +57,7 @@ func TestBitMexRest_GetMargin(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
 	err, ret := bitmex.GetMargin()
 	chk(err)
-	fmt.Printf("%+v", ret)
+	Output(ret)
 }
 
 func TestBitMexRest_GetPosition(t *testing.T) {
@@ -83,7 +83,7 @@ func TestBitMexRest_ListExecutions(t *testing.T) {
 
 func TestBitMexRest_PlaceOrder(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.PlaceOrder("XBTUSD", goex.SELL, 6600, 10, "")
+	err, ret := bitmex.PlaceOrder("XBTUSD", goex.SELL_MARKET, 0, 10, "")
 	chk(err)
 	fmt.Printf("%+v\n", ret)
 }

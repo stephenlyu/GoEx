@@ -20,6 +20,7 @@ type BitMexWs struct {
 	orderHandle func([]FutureOrder)
 	fillHandle func([]FutureFill)
 	marginHandle func([]Margin)
+	positionHandle func([]FuturePosition)
 }
 
 func NewBitMexWs(apiKey, apiSecretyKey string) *BitMexWs {
@@ -95,6 +96,10 @@ func (bitmexWs *BitMexWs) createWsConn() {
 						bitmexWs.marginHandle(margins)
 					}
 				case "position":
+					positions := bitmexWs.parsePosition(msg)
+					if len(positions) > 0 && bitmexWs.positionHandle != nil {
+						bitmexWs.positionHandle(positions)
+					}
 				}
 			})
 		}
@@ -197,6 +202,24 @@ func (bitmexWs *BitMexWs) parseOrder(msg []byte) []FutureOrder {
 	return ret
 }
 
+func (bitmexWs *BitMexWs) parsePosition(msg []byte) []FuturePosition {
+	fmt.Println(string(msg))
+	var data struct {
+		Data []BitmexPosition
+	}
+	err := json.Unmarshal(msg, &data)
+	if err != nil {
+		return nil
+	}
+
+	var ret []FuturePosition
+	for i := range data.Data {
+		ret = append(ret, *data.Data[i].ToFuturePosition())
+	}
+
+	return ret
+}
+
 func (bitmexWs *BitMexWs) parseExecution(msg []byte) []FutureFill {
 	var data struct {
 		Data []Execution
@@ -265,6 +288,15 @@ func (bitmexWs *BitMexWs) GetFillWithWs(handle func([]FutureFill)) error {
 	bitmexWs.createWsConn()
 	topic := "execution"
 	bitmexWs.fillHandle = handle
+	return bitmexWs.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []string{topic}})
+}
+
+func (bitmexWs *BitMexWs) GetPositionWithWs(handle func([]FuturePosition)) error {
+	bitmexWs.createWsConn()
+	topic := "position"
+	bitmexWs.positionHandle = handle
 	return bitmexWs.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []string{topic}})
