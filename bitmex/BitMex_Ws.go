@@ -21,6 +21,7 @@ type BitMexWs struct {
 	fillHandle       func([]FutureFill)
 	accountHandle    func(*FutureAccount)
 	positionHandle   func([]FuturePosition)
+	errorHandle      func(error)
 }
 
 func NewBitMexWs(apiKey, apiSecretyKey string) *BitMexWs {
@@ -38,6 +39,7 @@ func (bitmexWs *BitMexWs) createWsConn() {
 			bitmexWs.wsTradeHandleMap = make(map[string]func(CurrencyPair, []Trade))
 
 			bitmexWs.ws = NewWsConn("wss://www.bitmex.com/realtime")
+			bitmexWs.ws.SetErrorHandler(bitmexWs.errorHandle)
 			bitmexWs.ws.Heartbeat(func() interface{} { return "ping"}, 5*time.Second)
 			bitmexWs.ws.ReConnect()
 			bitmexWs.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
@@ -304,6 +306,10 @@ func (bitmexWs *BitMexWs) GetPositionWithWs(handle func([]FuturePosition)) error
 	return bitmexWs.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []string{topic}})
+}
+
+func (bitmexWs *BitMexWs) SetErrorHandler(handle func(error)) {
+	bitmexWs.errorHandle = handle
 }
 
 func (bitmexWs *BitMexWs) CloseWs() {

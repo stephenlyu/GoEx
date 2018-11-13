@@ -17,6 +17,7 @@ type WsConn struct {
 	subs                     []interface{}
 
 	errorCh 				chan error
+	errorHandler 			func(error)
 }
 
 const (
@@ -73,6 +74,9 @@ func (ws *WsConn) ReConnect() {
 				if err == nil {
 					errTimes = 0
 				} else {
+					if  ws.errorHandler != nil {
+						ws.errorHandler(err)
+					}
 					errTimes++
 					if errTimes > 10 {
 						doReconnect()
@@ -199,4 +203,8 @@ func (ws *WsConn) CloseWs() {
 	}
 
 	ws.isClose = true
+}
+
+func (ws *WsConn) SetErrorHandler(handler func (error)) {
+	ws.errorHandler = handler
 }
