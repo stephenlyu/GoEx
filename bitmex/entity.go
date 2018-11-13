@@ -153,7 +153,9 @@ type Margin struct {
 }
 
 func (m *Margin) ToFutureAccount() *goex.FutureAccount {
-	m.Currency = strings.ToUpper(m.Currency)
+	if m.Currency == "XBt" {
+		m.Currency = "BTC"
+	}
 	currency := goex.Currency{m.Currency, ""}
 	return &goex.FutureAccount{
 		FutureSubAccounts: map[goex.Currency]goex.FutureSubAccount {
