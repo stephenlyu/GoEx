@@ -26,6 +26,7 @@ type BitmexOrder struct {
 	Side string 			`json:"side"`
 	OrderQty int64 			`json:"orderQty"`
 	Price float64 			`json:"price"`
+	AvgPrice float64 		`json:"avgPx"`
 	Currency string 		`json:"currency"`
 	OrderType string 		`json:"ordType"`
 	TimeInForce string 		`json:"timeInForce"`
@@ -40,6 +41,7 @@ func (order *BitmexOrder) ToFutureOrder() *goex.FutureOrder {
 	ret := new(goex.FutureOrder)
 
 	ret.Price = order.Price
+	ret.AvgPrice = order.AvgPrice
 	ret.Amount = float64(order.OrderQty)
 	ret.DealAmount = float64(order.CumQty)
 	ret.OrderID2 = order.OrderId

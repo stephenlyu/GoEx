@@ -71,14 +71,14 @@ func TestBitMexRest_ListOrders(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
 	err, ret := bitmex.ListOrders(goex.NewCurrencyPair(goex.XBT, goex.USD), false, "", "", 50)
 	chk(err)
-	fmt.Printf("%+v\n", ret)
+	Output(ret)
 }
 
 func TestBitMexRest_ListExecutions(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
 	err, ret := bitmex.ListFills(goex.NewCurrencyPair(goex.XBT, goex.USD), "", "", 50)
 	chk(err)
-	fmt.Printf("%+v\n", ret)
+	Output(ret)
 }
 
 func TestBitMexRest_PlaceOrder(t *testing.T) {
