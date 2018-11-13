@@ -22,6 +22,7 @@ const (
 	TRADE_HISTORY_URL = "/execution/tradeHistory"
 	ORDER_URL = "/order"
 	ORDER_ALL_URL = "/order/all"
+	INSTRUMENT_INDICES_URL = "/instrument/indices"
 )
 
 type BitMexRest struct {
@@ -71,7 +72,8 @@ func (bitmex *BitMexRest) buildSigHeader(method string, path string, data string
 	}
 }
 
-func (bitmex *BitMexRest) GetTrade(symbol string) (error, []goex.Trade) {
+func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair) (error, []goex.Trade) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	filter := map[string]string {
 		"symbol": symbol,
 	}
@@ -112,7 +114,8 @@ func (bitmex *BitMexRest) GetTrade(symbol string) (error, []goex.Trade) {
 	return nil, ret
 }
 
-func (bitmex *BitMexRest) GetOrderBook(symbol string) (error, *goex.Depth) {
+func (bitmex *BitMexRest) GetOrderBook(pair goex.CurrencyPair) (error, *goex.Depth) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	params := map[string]string{"symbol": symbol, "depth": "10"}
 
 	var data []struct {
@@ -147,23 +150,24 @@ func (bitmex *BitMexRest) GetOrderBook(symbol string) (error, *goex.Depth) {
 	return nil, &depth
 }
 
-func (bitmex *BitMexRest) GetMargin() (error, *goex.Margin) {
+func (bitmex *BitMexRest) GetAccount() (error, *goex.FutureAccount) {
 	params := map[string]string{"currency":"XBt"}
 	query := bitmex.map2Query(params)
 	query = url.Escape(query)
 	header := bitmex.buildSigHeader("GET", MARGIN_URL + "?" + query, "")
 
-	var margin goex.Margin
+	var margin Margin
 
 	err := goex.HttpGet4(bitmex.client, BASE_URL+MARGIN_URL+"?"+query, header, &margin)
 	if err != nil {
 		return err, nil
 	}
 
-	return nil, &margin
+	return nil, margin.ToFutureAccount()
 }
 
-func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, []goex.FuturePosition) {
+func (bitmex *BitMexRest) GetPosition(pair goex.CurrencyPair, count int) (error, []goex.FuturePosition) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	filter := map[string]string {
 		"symbol": symbol,
 	}
@@ -189,7 +193,8 @@ func (bitmex *BitMexRest) GetPosition(symbol string, count int) (error, []goex.F
 	return nil, ret
 }
 
-func (bitmex *BitMexRest) PlaceOrder(symbol string, side goex.TradeSide, price float64, orderQty int, clientOrderId string) (error, *goex.FutureOrder) {
+func (bitmex *BitMexRest) PlaceOrder(pair goex.CurrencyPair, side goex.TradeSide, price float64, orderQty int, clientOrderId string) (error, *goex.FutureOrder) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	var _side, ordType string
 	switch side {
 	case goex.SELL:
@@ -281,7 +286,8 @@ func (bitmex *BitMexRest) CancelAll() (error, []goex.FutureOrder) {
 	return err, ret
 }
 
-func (bitmex *BitMexRest) ListOrders(symbol string, openOnly bool, startTime, endTime string, count int) (error, []goex.FutureOrder) {
+func (bitmex *BitMexRest) ListOrders(pair goex.CurrencyPair, openOnly bool, startTime, endTime string, count int) (error, []goex.FutureOrder) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	params := map[string]string{
 		"symbol": symbol,
 	}
@@ -313,7 +319,8 @@ func (bitmex *BitMexRest) ListOrders(symbol string, openOnly bool, startTime, en
 	return err, ret
 }
 
-func (bitmex *BitMexRest) ListFills(symbol string, startTime, endTime string, count int) (error, []goex.FutureFill) {
+func (bitmex *BitMexRest) ListFills(pair goex.CurrencyPair, startTime, endTime string, count int) (error, []goex.FutureFill) {
+	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	params := map[string]string{
 		"symbol": symbol,
 	}

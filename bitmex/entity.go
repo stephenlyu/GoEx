@@ -15,6 +15,7 @@ const (
 	ORDER_STATUS_REJECTED = "rejected"
 	ORDER_STATUS_EXPIRED = "expired"
 )
+const SATOSHI = 0.00000001
 
 const UTC_FORMAT = "2006-01-02T15:04:05.999Z"
 
@@ -138,6 +139,35 @@ func (p *BitmexPosition) ToFuturePosition() *goex.FuturePosition {
 		ret.BuyProfitReal = p.RealisedPnl
 	}
 	return ret
+}
+
+type Margin struct {
+	Account int64 			`json:"account"`
+	Currency string 		`json:"currency"`
+	RealizedPnl int64 		`json:"realisedPnl"`
+	UnrealizedPnl int64 	`json:"unrealisedPnl"`
+	WalletBalance int64 	`json:"walletBalance"`
+	MarginBalance int64 	`json:"marginBalance"`
+	AvailableMargin int64 	`json:"availableMargin"`
+	WithdrawableMargin int64 `json:"withdrawableMargin"`
+}
+
+func (m *Margin) ToFutureAccount() *goex.FutureAccount {
+	if m.Currency == "XBt" {
+		m.Currency = "BTC"
+	}
+	currency := goex.Currency{m.Currency, ""}
+	return &goex.FutureAccount{
+		FutureSubAccounts: map[goex.Currency]goex.FutureSubAccount {
+			currency: goex.FutureSubAccount{
+				Currency: currency,
+				AccountRights: float64(m.MarginBalance) * SATOSHI,
+				KeepDeposit: float64(m.AvailableMargin) * SATOSHI,
+				ProfitReal: float64(m.RealizedPnl) * SATOSHI,
+				ProfitUnreal: float64(m.UnrealizedPnl) * SATOSHI,
+			},
+		},
+	}
 }
 
 func ParseTimestamp(ts string) (error, int64) {

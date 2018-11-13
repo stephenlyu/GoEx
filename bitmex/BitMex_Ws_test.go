@@ -34,17 +34,17 @@ func TestBitMexWs_GetOrderWithWs(t *testing.T) {
 	//	log.Printf("%+v", orders)
 	//})
 	//
-	//bitmexWs.GetMarginWithWs(func(margins []goex.Margin) {
-	//	log.Printf("%+v", margins)
-	//})
+	bitmexWs.GetAccountWithWs(func(account *goex.FutureAccount) {
+		log.Printf("%+v", account)
+	})
 	//
 	//bitmexWs.GetFillWithWs(func(fills []goex.FutureFill) {
 	//	log.Printf("%+v", fills)
 	//})
 
-	bitmexWs.GetPositionWithWs(func(positions []goex.FuturePosition) {
-		log.Printf("%+v", positions)
-	})
+	//bitmexWs.GetPositionWithWs(func(positions []goex.FuturePosition) {
+	//	log.Printf("%+v", positions)
+	//})
 
 	time.Sleep(1000 * time.Minute)
 	bitmexWs.ws.CloseWs()

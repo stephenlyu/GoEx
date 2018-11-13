@@ -156,17 +156,6 @@ type FuturePosition struct {
 	ForceLiquPrice float64 //预估爆仓价
 }
 
-type Margin struct {
-	Account int64 			`json:"account"`
-	Currency string 		`json:"currency"`
-	RealizedPnl int64 		`json:"realisedPnl"`
-	UnrealizedPnl int64 	`json:"unrealisedPnl"`
-	WalletBalance int64 	`json:"walletBalance"`
-	MarginBalance int64 	`json:"marginBalance"`
-	AvailableMargin int64 	`json:"availableMargin"`
-	WithdrawableMargin int64 `json:"withdrawableMargin"`
-}
-
 type FutureFill struct {
 	FillId string
 	OrderId string

@@ -12,15 +12,15 @@ import (
 
 type BitMexWs struct {
 	apiKey,
-	apiSecretKey string
-	ws                *WsConn
-	createWsLock      sync.Mutex
-	wsDepthHandleMap  map[string]func(*Depth)
+	apiSecretKey     string
+	ws               *WsConn
+	createWsLock     sync.Mutex
+	wsDepthHandleMap map[string]func(*Depth)
 	wsTradeHandleMap map[string]func(CurrencyPair, []Trade)
-	orderHandle func([]FutureOrder)
-	fillHandle func([]FutureFill)
-	marginHandle func([]Margin)
-	positionHandle func([]FuturePosition)
+	orderHandle      func([]FutureOrder)
+	fillHandle       func([]FutureFill)
+	accountHandle    func(*FutureAccount)
+	positionHandle   func([]FuturePosition)
 }
 
 func NewBitMexWs(apiKey, apiSecretyKey string) *BitMexWs {
@@ -91,9 +91,9 @@ func (bitmexWs *BitMexWs) createWsConn() {
 						bitmexWs.fillHandle(fills)
 					}
 				case "margin":
-					margins := bitmexWs.parseMargin(msg)
-					if len(margins) > 0 && bitmexWs.marginHandle != nil {
-						bitmexWs.marginHandle(margins)
+					account := bitmexWs.parseMargin(msg)
+					if account != nil && bitmexWs.accountHandle != nil {
+						bitmexWs.accountHandle(account)
 					}
 				case "position":
 					positions := bitmexWs.parsePosition(msg)
@@ -170,7 +170,7 @@ func (bitmexWs *BitMexWs) parseDepth(msg []byte) *Depth {
 	return ret
 }
 
-func (bitmexWs *BitMexWs) parseMargin(msg []byte) []Margin {
+func (bitmexWs *BitMexWs) parseMargin(msg []byte) *FutureAccount {
 	var data struct {
 		Data []Margin
 	}
@@ -179,7 +179,11 @@ func (bitmexWs *BitMexWs) parseMargin(msg []byte) []Margin {
 		return nil
 	}
 
-	return data.Data
+	if len(data.Data) == 0 {
+		return nil
+	}
+
+	return data.Data[len(data.Data) - 1].ToFutureAccount()
 }
 
 func (bitmexWs *BitMexWs) parseOrder(msg []byte) []FutureOrder {
@@ -266,10 +270,10 @@ func (bitmexWs *BitMexWs) Authenticate() error {
 		"args": []interface{}{bitmexWs.apiKey, expires, BuildWsSignature(bitmexWs.apiSecretKey, "/realtime", expires)}})
 }
 
-func (bitmexWs *BitMexWs) GetMarginWithWs(handle func([]Margin)) error {
+func (bitmexWs *BitMexWs) GetAccountWithWs(handle func(*FutureAccount)) error {
 	bitmexWs.createWsConn()
 	topic := "margin"
-	bitmexWs.marginHandle = handle
+	bitmexWs.accountHandle = handle
 	return bitmexWs.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []string{topic}})

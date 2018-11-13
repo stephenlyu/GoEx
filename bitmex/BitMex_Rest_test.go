@@ -41,49 +41,49 @@ func Output(v interface{}) {
 
 func TestBitMexRest_GetTrade(t *testing.T) {
 	bitmex := NewBitMexRest("", "")
-	err, ret := bitmex.GetTrade("XBTUSD")
+	err, ret := bitmex.GetTrade(goex.NewCurrencyPair(goex.XBT, goex.USD))
 	chk(err)
 	fmt.Printf("%+v", ret)
 }
 
 func TestBitMexRest_GetOrderBook(t *testing.T) {
 	bitmex := NewBitMexRest("", "")
-	err, ret := bitmex.GetOrderBook("XBTUSD")
+	err, ret := bitmex.GetOrderBook(goex.NewCurrencyPair(goex.XBT, goex.USD))
 	chk(err)
 	fmt.Printf("%+v", ret)
 }
 
 func TestBitMexRest_GetMargin(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.GetMargin()
+	err, ret := bitmex.GetAccount()
 	chk(err)
 	Output(ret)
 }
 
 func TestBitMexRest_GetPosition(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.GetPosition("XBTUSD", 10)
+	err, ret := bitmex.GetPosition(goex.NewCurrencyPair(goex.XBT, goex.USD), 10)
 	chk(err)
 	Output(ret)
 }
 
 func TestBitMexRest_ListOrders(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.ListOrders("XBTUSD", false, "", "", 50)
+	err, ret := bitmex.ListOrders(goex.NewCurrencyPair(goex.XBT, goex.USD), false, "", "", 50)
 	chk(err)
 	fmt.Printf("%+v\n", ret)
 }
 
 func TestBitMexRest_ListExecutions(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.ListFills("XBTUSD", "", "", 50)
+	err, ret := bitmex.ListFills(goex.NewCurrencyPair(goex.XBT, goex.USD), "", "", 50)
 	chk(err)
 	fmt.Printf("%+v\n", ret)
 }
 
 func TestBitMexRest_PlaceOrder(t *testing.T) {
 	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
-	err, ret := bitmex.PlaceOrder("XBTUSD", goex.SELL_MARKET, 0, 10, "")
+	err, ret := bitmex.PlaceOrder(goex.NewCurrencyPair(goex.XBT, goex.USD), goex.SELL_MARKET, 0, 10, "")
 	chk(err)
 	fmt.Printf("%+v\n", ret)
 }
