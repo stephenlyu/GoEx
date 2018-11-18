@@ -128,6 +128,9 @@ type BitmexPosition struct {
 func (p *BitmexPosition) ToFuturePosition() *goex.FuturePosition {
 	ret := new(goex.FuturePosition)
 	pair := ParseSymbol(p.Symbol)
+	if pair.CurrencyA == goex.XBT {
+		pair.CurrencyA = goex.BTC
+	}
 	ret.Symbol = pair
 	if p.CurrentQty < 0 {
 		ret.SellAmount = -p.CurrentQty
