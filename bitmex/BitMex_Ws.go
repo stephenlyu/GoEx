@@ -173,6 +173,7 @@ func (bitmexWs *BitMexWs) parseDepth(msg []byte) *Depth {
 }
 
 func (bitmexWs *BitMexWs) parseMargin(msg []byte) *FutureAccount {
+	log.Println("BitMexWs.parseMargin", string(msg))
 	var data struct {
 		Data []Margin
 	}
