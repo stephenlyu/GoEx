@@ -39,6 +39,15 @@ func (c Currency) String() string {
 	return c.Symbol
 }
 
+func (c *Currency) UnmarshalJSON(data []byte) (err error) {
+	c.Symbol = string(data)
+	return
+}
+
+func (c *Currency) MarshalJSON() ([]byte, error) {
+	return []byte(c.Symbol), nil
+}
+
 // A->B(A兑换为B)
 type CurrencyPair struct {
 	CurrencyA Currency
