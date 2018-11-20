@@ -155,6 +155,7 @@ type Margin struct {
 	MarginBalance int64 	`json:"marginBalance"`
 	AvailableMargin int64 	`json:"availableMargin"`
 	WithdrawableMargin int64 `json:"withdrawableMargin"`
+	Amount int64 			`json:"amount"`
 }
 
 func (m *Margin) ToFutureAccount() *goex.FutureAccount {
@@ -162,12 +163,22 @@ func (m *Margin) ToFutureAccount() *goex.FutureAccount {
 		m.Currency = "BTC"
 	}
 	currency := goex.Currency{m.Currency, ""}
+
+	rights := float64(m.MarginBalance)
+	keepDeposit := float64(m.MarginBalance)
+	amount := float64(m.Amount)
+
+	if rights == 0 && keepDeposit == 0 && amount > 0 {
+		rights = amount
+		keepDeposit = amount
+	}
+
 	return &goex.FutureAccount{
 		FutureSubAccounts: map[goex.Currency]goex.FutureSubAccount {
 			currency: goex.FutureSubAccount{
 				Currency: currency,
-				AccountRights: float64(m.MarginBalance) * SATOSHI,
-				KeepDeposit: float64(m.AvailableMargin) * SATOSHI,
+				AccountRights: rights * SATOSHI,
+				KeepDeposit: keepDeposit * SATOSHI,
 				ProfitReal: float64(m.RealizedPnl) * SATOSHI,
 				ProfitUnreal: float64(m.UnrealizedPnl) * SATOSHI,
 			},
