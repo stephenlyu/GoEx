@@ -530,6 +530,27 @@ func (ok *OKEx) GetUnfinishFutureOrders(currencyPair CurrencyPair, contractType 
 	return ok.parseOrders(body, currencyPair)
 }
 
+func (ok *OKEx) GetFinishedFutureOrders(currencyPair CurrencyPair, contractType string, page int) ([]FutureOrder, error) {
+	postData := url.Values{}
+	postData.Set("order_id", "-1")
+	postData.Set("contract_type", contractType)
+	postData.Set("symbol", strings.ToLower(currencyPair.ToSymbol("_")))
+	postData.Set("status", "2")
+	postData.Set("current_page", strconv.Itoa(page))
+	postData.Set("page_length", "50")
+
+	ok.buildPostForm(&postData)
+
+	body, err := HttpPostForm(ok.client, FUTURE_API_BASE_URL+FUTURE_ORDER_INFO_URI, postData)
+	if err != nil {
+		return nil, err
+	}
+
+	//println(string(body))
+
+	return ok.parseOrders(body, currencyPair)
+}
+
 func (ok *OKEx) GetFee() (float64, error) {
 	return 0.03, nil //期货固定0.03%手续费
 }
