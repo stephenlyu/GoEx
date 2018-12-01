@@ -60,7 +60,9 @@ func HttpGet2(client *http.Client, reqUrl string, headers map[string]string) (ma
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	headers["Content-Type"] = "application/x-www-form-urlencoded"
+	if _, ok := headers["Content-Type"]; !ok {
+		headers["Content-Type"] = "application/x-www-form-urlencoded"
+	}
 	respData, err := NewHttpRequest(client, "GET", reqUrl, "", headers)
 	if err != nil {
 		return nil, err
@@ -79,7 +81,9 @@ func HttpGet3(client *http.Client, reqUrl string, headers map[string]string) ([]
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	headers["Content-Type"] = "application/x-www-form-urlencoded"
+	if _, ok := headers["Content-Type"]; !ok {
+		headers["Content-Type"] = "application/x-www-form-urlencoded"
+	}
 	respData, err := NewHttpRequest(client, "GET", reqUrl, "", headers)
 	if err != nil {
 		return nil, err
@@ -98,12 +102,14 @@ func HttpGet4(client *http.Client, reqUrl string, headers map[string]string, res
 	if headers == nil {
 		headers = map[string]string{}
 	}
-	headers["Content-Type"] = "application/x-www-form-urlencoded"
+	if _, ok := headers["Content-Type"]; !ok {
+		headers["Content-Type"] = "application/x-www-form-urlencoded"
+	}
 	respData, err := NewHttpRequest(client, "GET", reqUrl, "", headers)
 	if err != nil {
+		print(err.Error())
 		return err
 	}
-
 	err = json.Unmarshal(respData, result)
 	if err != nil {
 		log.Printf("HttpGet4 - json.Unmarshal failed : %v, resp %s", err, string(respData))
@@ -138,6 +144,14 @@ func HttpPostForm4(client *http.Client, reqUrl string, postData map[string]strin
 	headers["Content-Type"] = "application/json"
 	data, _ := json.Marshal(postData)
 	return NewHttpRequest(client, "POST", reqUrl, string(data), headers)
+}
+
+func HttpPostJson(client *http.Client, reqUrl string, body string, headers map[string]string) ([]byte, error) {
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	headers["Content-Type"] = "application/json"
+	return NewHttpRequest(client, "POST", reqUrl, body, headers)
 }
 
 func HttpDeleteForm(client *http.Client, reqUrl string, postData url.Values, headers map[string]string) ([]byte, error) {
