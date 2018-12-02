@@ -48,7 +48,7 @@ type V3Position struct {
 	LiquidationPrice string `json:"liquidation_price"`
 	LongAvailQty string 	`json:"long_avail_qty"`
 	LongAvgCost string 		`json:"long_avg_cost"`
-	LongQty string 			`json:"LongQty"`
+	LongQty string 			`json:"long_qty"`
 	LongSettlementPrice string `json:"long_settlement_price"`
 	MarginMode string 		`json:"margin_mode"`
 	RealisedPnl string 		`json:"realised_pnl"`
