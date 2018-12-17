@@ -72,7 +72,7 @@ func (bitmex *BitMexRest) buildSigHeader(method string, path string, data string
 	}
 }
 
-func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair) (error, []goex.Trade) {
+func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair, reverse bool) (error, []goex.Trade) {
 	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	filter := map[string]string {
 		"symbol": symbol,
@@ -81,6 +81,7 @@ func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair) (error, []goex.Trade)
 	params := map[string]string {
 		"filter": string(bytes),
 		"count": "1",
+		"reverse": strconv.FormatBool(reverse),
 	}
 
 	var data []struct {

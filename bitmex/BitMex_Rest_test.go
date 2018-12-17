@@ -41,7 +41,7 @@ func Output(v interface{}) {
 
 func TestBitMexRest_GetTrade(t *testing.T) {
 	bitmex := NewBitMexRest("", "")
-	err, ret := bitmex.GetTrade(goex.NewCurrencyPair(goex.XBT, goex.USD))
+	err, ret := bitmex.GetTrade(goex.NewCurrencyPair(goex.XBT, goex.USD), true)
 	chk(err)
 	fmt.Printf("%+v", ret)
 }
