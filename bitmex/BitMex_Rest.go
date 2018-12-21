@@ -72,6 +72,19 @@ func (bitmex *BitMexRest) buildSigHeader(method string, path string, data string
 	}
 }
 
+func (BitMexRest *BitMexRest) handleRespHeader(header http.Header) {
+	//"x-ratelimit-limit": 300
+	//"x-ratelimit-remaining": 297
+	//"x-ratelimit-reset": 1489791662
+	if header == nil {
+		return
+	}
+	fmt.Printf("x-ratelimit-limit: %s x-ratelimit-remaining: %s x-ratelimit-reset: %s\n",
+		header.Get("x-ratelimit-limit"),
+		header.Get("x-ratelimit-remaining"),
+		header.Get("x-ratelimit-reset"))
+}
+
 func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair, reverse bool) (error, []goex.Trade) {
 	symbol := fmt.Sprintf("%s%s", pair.CurrencyA, pair.CurrencyB)
 	filter := map[string]string {
@@ -94,7 +107,10 @@ func (bitmex *BitMexRest) GetTrade(pair goex.CurrencyPair, reverse bool) (error,
 
 	query := bitmex.map2Query(params)
 	query = url.Escape(query)
-	err := goex.HttpGet4(bitmex.client, BASE_URL+TRADE_URL+"?"+ query, map[string]string{}, &data)
+	header := bitmex.buildSigHeader("GET", TRADE_URL + "?" + query, "")
+	header = map[string]string{}
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+TRADE_URL+"?"+ query, header, &data)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -129,7 +145,8 @@ func (bitmex *BitMexRest) GetOrderBook(pair goex.CurrencyPair) (error, *goex.Dep
 
 	query := bitmex.map2Query(params)
 	query = url.Escape(query)
-	err := goex.HttpGet4(bitmex.client, BASE_URL+ORDERBOOK_URL+"?"+ query, map[string]string{}, &data)
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+ORDERBOOK_URL+"?"+ query, map[string]string{}, &data)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -159,7 +176,8 @@ func (bitmex *BitMexRest) GetAccount() (error, *goex.FutureAccount) {
 
 	var margin Margin
 
-	err := goex.HttpGet4(bitmex.client, BASE_URL+MARGIN_URL+"?"+query, header, &margin)
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+MARGIN_URL+"?"+query, header, &margin)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -180,7 +198,8 @@ func (bitmex *BitMexRest) GetPosition(pair goex.CurrencyPair, count int) (error,
 	header := bitmex.buildSigHeader("GET", POSITION_GET_URL + "?" + query, "")
 	var positions []BitmexPosition
 
-	err := goex.HttpGet4(bitmex.client, BASE_URL+POSITION_GET_URL+"?"+query, header, &positions)
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+POSITION_GET_URL+"?"+query, header, &positions)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -222,7 +241,8 @@ func (bitmex *BitMexRest) PlaceOrder(pair goex.CurrencyPair, side goex.TradeSide
 	data = url.Escape(data)
 	header := bitmex.buildSigHeader("POST", ORDER_URL, data)
 
-	bytes, err := goex.HttpPostForm3(bitmex.client, BASE_URL+ORDER_URL, data, header)
+	bytes, respHeader, err := goex.NewHttpRequestEx(bitmex.client, "POST", BASE_URL+ORDER_URL, data, header)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -248,7 +268,8 @@ func (bitmex *BitMexRest) CancelOrder(orderId string, clientOrderId string) (err
 	data := bitmex.map2Query(params)
 	header := bitmex.buildSigHeader("DELETE", ORDER_URL, data)
 	data = url.Escape(data)
-	bytes, err := goex.NewHttpRequest(bitmex.client, "DELETE", BASE_URL + ORDER_URL, data, header)
+	bytes, respHeader, err := goex.NewHttpRequestEx(bitmex.client, "DELETE", BASE_URL + ORDER_URL, data, header)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -268,7 +289,8 @@ func (bitmex *BitMexRest) CancelAll() (error, []goex.FutureOrder) {
 	data := bitmex.map2Query(params)
 	header := bitmex.buildSigHeader("DELETE", ORDER_ALL_URL, data)
 	data = url.Escape(data)
-	bytes, err := goex.NewHttpRequest(bitmex.client, "DELETE", BASE_URL + ORDER_ALL_URL, data, header)
+	bytes, respHeader, err := goex.NewHttpRequestEx(bitmex.client, "DELETE", BASE_URL + ORDER_ALL_URL, data, header)
+	bitmex.handleRespHeader(respHeader)
 	if err != nil {
 		return err, nil
 	}
@@ -310,7 +332,8 @@ func (bitmex *BitMexRest) ListOrders(pair goex.CurrencyPair, openOnly bool, star
 
 	var orders []BitmexOrder
 
-	err := goex.HttpGet4(bitmex.client, BASE_URL+ORDER_URL+"?"+query, header, &orders)
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+ORDER_URL+"?"+query, header, &orders)
+	bitmex.handleRespHeader(respHeader)
 
 	ret := make([]goex.FutureOrder, len(orders))
 	for i := range orders {
@@ -340,7 +363,8 @@ func (bitmex *BitMexRest) ListFills(pair goex.CurrencyPair, startTime, endTime s
 
 	var executions []Execution
 
-	err := goex.HttpGet4(bitmex.client, BASE_URL+TRADE_HISTORY_URL+"?"+query, header, &executions)
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+TRADE_HISTORY_URL+"?"+query, header, &executions)
+	bitmex.handleRespHeader(respHeader)
 
 	ret := make([]goex.FutureFill, len(executions))
 	for i := range executions {
