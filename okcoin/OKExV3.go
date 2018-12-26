@@ -478,3 +478,43 @@ func (ok *OKExV3) GetInstrumentOrder(instrumentId string, orderId string) (*Futu
 	}
 	return resp.ToFutureOrder(), nil
 }
+
+type FutureLedger struct {
+	Amount string			`json:"amount"`
+	Balance string			`json:"balance"`
+	Currency string			`json:"currency"`
+	Details struct {
+		InstrumentId string `json:"instrument_id"`
+		OrderId int64 		`json:"order_id"`
+			}				`json:"details"`
+	LedgerId string 		`json:"ledger_id"`
+	Timestamp string		`json:"timestamp"`
+	Type string				`json:"type"`
+}
+
+func (ok *OKExV3) GetLedger(currency Currency, from, to, limit string) ([]FutureLedger, error) {
+	reqUrl := fmt.Sprintf("/api/futures/v3/accounts/%s/ledger", strings.ToLower(currency.Symbol))
+	var params []string
+	if from != "" {
+		params = append(params, "from=" + from)
+	}
+	if to != "" {
+		params = append(params, "to=" + to)
+	}
+	if limit != "" {
+		params = append(params, "limit=" + limit)
+	}
+	if len(params) > 0 {
+		reqUrl += "?" + strings.Join(params, "&")
+	}
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []FutureLedger
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
