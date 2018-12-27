@@ -22,6 +22,7 @@ const (
 	TRADE_HISTORY_URL = "/execution/tradeHistory"
 	ORDER_URL = "/order"
 	ORDER_ALL_URL = "/order/all"
+	WALLET_HISTORY_URL = "/user/walletHistory"
 	INSTRUMENT_INDICES_URL = "/instrument/indices"
 )
 
@@ -372,4 +373,37 @@ func (bitmex *BitMexRest) ListFills(pair goex.CurrencyPair, startTime, endTime s
 	}
 
 	return err, ret
+}
+
+type WalletTransaction struct {
+	Account int64 		`json:"account"`
+	Address string 		`json:"address"`
+	Amount int64 		`json:"amount"`
+	Currency string 	`json:"currency"`
+	Fee float64 		`json:"fee"`
+	MarginBalance int64 `json:"marginBalance"`
+	Text string 		`json:"text"`
+	Timestamp string 	`json:"timestamp"`
+	TransactId string 	`json:"transactID"`
+	TransactStatus string `json:"transactStatus"`
+	TransactTime string `json:"transactTime"`
+	TransactType string `json:"transactType"`
+	Tx string 			`json:"tx"`
+	WalletBalance int64 `json:"walletBalance"`
+}
+
+func (bitmex *BitMexRest) GetWalletHistory(start, count int) (error, []WalletTransaction) {
+	params := map[string]string{"currency":"XBt", "count": strconv.Itoa(count), "start": strconv.Itoa(start)}
+	query := bitmex.map2Query(params)
+	query = url.Escape(query)
+	header := bitmex.buildSigHeader("GET", WALLET_HISTORY_URL + "?" + query, "")
+	var history []WalletTransaction
+
+	err, respHeader := goex.HttpGet5(bitmex.client, BASE_URL+WALLET_HISTORY_URL+"?"+query, header, &history)
+	bitmex.handleRespHeader(respHeader)
+	if err != nil {
+		return err, nil
+	}
+
+	return nil, history
 }

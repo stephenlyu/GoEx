@@ -101,3 +101,10 @@ func TestBitMexRest_CancelAll(t *testing.T) {
 	chk(err)
 	Output(ret)
 }
+
+func TestBitMexRest_GetWalletHistory(t *testing.T) {
+	bitmex := NewBitMexRest(API_KEY, SECRET_KEY)
+	err, ret := bitmex.GetWalletHistory(0, 100)
+	chk(err)
+	Output(ret)
+}
