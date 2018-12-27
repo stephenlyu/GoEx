@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"github.com/stephenlyu/GoEx"
 )
 
 var (
@@ -97,4 +98,10 @@ func TestOKExV3_GetInstrumentOrder(t *testing.T) {
 	order, err := okexV3.GetInstrumentOrder("EOS-USD-181228", "1922187005039616")
 	assert.Nil(t, err)
 	output(order)
+}
+
+func TestOKExV3_GetLedger(t *testing.T) {
+	resp, err := okexV3.GetLedger(goex.EOS, "", "", "")
+	assert.Nil(t, err)
+	output(resp)
 }
