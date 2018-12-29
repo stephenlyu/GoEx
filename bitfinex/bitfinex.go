@@ -275,8 +275,19 @@ func (bfx *Bitfinex) GetUnfinishOrders(currencyPair CurrencyPair) ([]Order, erro
 	return orders, nil
 }
 
-func (bfx *Bitfinex) GetOrderHistorys(currencyPair CurrencyPair, currentPage, pageSize int) ([]Order, error) {
-	panic("not implement")
+func (bfx *Bitfinex) GetOrderHistory(pageSize int) ([]Order, error) {
+	var ordersmap []interface{}
+	err := bfx.doAuthenticatedRequest("POST", "orders/hist", map[string]interface{}{"limit": pageSize}, &ordersmap)
+	if err != nil {
+		return nil, err
+	}
+
+	var orders []Order
+	for _, v := range ordersmap {
+		ordermap := v.(map[string]interface{})
+		orders = append(orders, *bfx.toOrder(ordermap))
+	}
+	return orders, nil
 }
 
 func (bfx *Bitfinex) doAuthenticatedRequest(method, path string, payload map[string]interface{}, ret interface{}) error {
