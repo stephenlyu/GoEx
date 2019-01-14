@@ -53,7 +53,7 @@ func (ploWs *PloWs) createWsConn() {
 				return map[string]interface{}{"ping": t.UnixNano() / 1000000}
 				}, 30*time.Second)
 			ploWs.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
-				println(string(msg))
+				//println(string(msg))
 				var resp struct {
 					Success bool
 					Subscribe string
@@ -230,7 +230,7 @@ func (ploWs *PloWs) parseBalance(msg []byte) *FutureAccount {
 
 func (ploWs *PloWs) parseOrder(msg []byte) []PloOrder {
 	var data struct {
-		Data []PloOrder
+		Data []_PloOrder
 	}
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
@@ -238,19 +238,29 @@ func (ploWs *PloWs) parseOrder(msg []byte) []PloOrder {
 		return nil
 	}
 
-	return data.Data
+	ret := make([]PloOrder, len(data.Data))
+	for i := range data.Data {
+		ret[i] = data.Data[i].ToPloOrder()
+	}
+
+	return ret
 }
 
 func (ploWs *PloWs) parsePosition(msg []byte) []PloPosition {
 	var data struct {
-		Data []PloPosition
+		Data []_PloPosition
 	}
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
 		return nil
 	}
 
-	return data.Data
+	ret := make([]PloPosition, len(data.Data))
+	for i := range data.Data {
+		ret[i] = data.Data[i].ToPloPosition()
+	}
+
+	return ret
 }
 
 func (ploWs *PloWs) GetDepthWithWs(pair CurrencyPair, handle func(*Depth)) error {

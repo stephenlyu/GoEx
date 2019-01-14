@@ -108,7 +108,7 @@ func TestPloRest_QueryOrders(t *testing.T) {
 
 func TestPloRest_QueryPositions(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.QueryPositions(goex.EOS_USD, 1)
+	err, ret := api.QueryPositions(goex.EOS_USD, 2)
 	chk(err)
 
 	Output(ret)

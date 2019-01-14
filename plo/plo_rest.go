@@ -283,7 +283,7 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 	return nil, errors
 }
 
-type PloOrder struct {
+type _PloOrder struct {
 	AccountId string 		`json:"accountId"`
 	OwnerType int 			`json:"ownerType"`
 	Symbol string 			`json:"symbol"`
@@ -300,6 +300,58 @@ type PloOrder struct {
 	PosMargin string 		`json:"posMargin"`
 	OpenFee string 			`json:"openFee"`
 	CloseFee string 		`json:"closeFee"`
+	PosId string 			`json:"posId"`
+	OrderId string 			`json:"orderId"`
+}
+
+func (o *_PloOrder) ToPloOrder() PloOrder {
+	posAction, _ := strconv.Atoi(o.PosAction)
+	price, _ := strconv.ParseFloat(o.Price, 64)
+	currentQty, _ := strconv.ParseFloat(o.CurrentQty, 64)
+	totalQty, _ := strconv.ParseFloat(o.TotalQty, 64)
+	posMargin, _ := strconv.ParseFloat(o.PosMargin, 64)
+	openFee, _ := strconv.ParseFloat(o.OpenFee, 64)
+	closeFee, _ := strconv.ParseFloat(o.CloseFee, 64)
+
+	return PloOrder{
+		AccountId: o.AccountId,
+		OwnerType: o.OwnerType,
+		Symbol: o.Symbol,
+		Type: o.Type,
+		Side: o.Type,
+		ClientId: o.ClientId,
+		Price: price,
+		PosAction: posAction,
+		AutoCancel: o.AutoCancel,
+		CurrentQty: currentQty,
+		TotalQty: totalQty,
+		Status: o.Status,
+		Timestamp: o.Timestamp,
+		PosMargin: posMargin,
+		OpenFee: openFee,
+		CloseFee: closeFee,
+		PosId: o.PosId,
+		OrderId: o.OrderId,
+	}
+}
+
+type PloOrder struct {
+	AccountId string 		`json:"accountId"`
+	OwnerType int 			`json:"ownerType"`
+	Symbol string 			`json:"symbol"`
+	Type string 			`json:"type"`
+	Side string 			`json:"side"`
+	ClientId string 		`json:"clientId"`
+	Price float64 			`json:"price"`
+	PosAction int 			`json:"posAction"`
+	AutoCancel int 			`json:"autoCancel"`
+	CurrentQty float64 		`json:"currentQty"`
+	TotalQty float64 		`json:"totalQty"`
+	Status int 				`json:"status"`			// 订单状态(0取消，1未成交，2部分成交，3完全成交)
+	Timestamp int64 		`json:"timestamp"`
+	PosMargin float64 		`json:"posMargin"`
+	OpenFee float64 			`json:"openFee"`
+	CloseFee float64 		`json:"closeFee"`
 	PosId string 			`json:"posId"`
 	OrderId string 			`json:"orderId"`
 }
@@ -324,7 +376,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 	}
 
 	var resp struct {
-		Data []PloOrder    `json:"data"`
+		Data []_PloOrder    `json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -337,7 +389,12 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	return nil, resp.Data
+	ret := make([]PloOrder, len(resp.Data))
+	for i := range resp.Data {
+		ret[i] = resp.Data[i].ToPloOrder()
+	}
+
+	return nil, ret
 }
 
 func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []PloOrder) {
@@ -360,7 +417,7 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 	}
 
 	var resp struct {
-		Data []PloOrder    `json:"data"`
+		Data []_PloOrder    `json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -373,10 +430,15 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	return nil, resp.Data
+	ret := make([]PloOrder, len(resp.Data))
+	for i := range resp.Data {
+		ret[i] = resp.Data[i].ToPloOrder()
+	}
+
+	return nil, ret
 }
 
-type PloPosition struct {
+type _PloPosition struct {
 	PosId string 			`json:"posId"`
 	Symbol string 			`json:"symbol"`
 	AccountId string 		`json:"accountId"`
@@ -405,6 +467,70 @@ type PloPosition struct {
 	CloseTime int64 		`json:"closeTime"`
 }
 
+func (p *_PloPosition) ToPloPosition() PloPosition {
+	toFloat := func (s string) float64 {
+		v, _ := strconv.ParseFloat(s, 64)
+		return v
+	}
+
+	return PloPosition{
+		PosId: p.PosId,
+		Symbol: p.Symbol,
+		AccountId: p.AccountId,
+		OwnerType: p.OwnerType,
+		Type: p.Type,
+		OpenPrice: toFloat(p.OpenPrice),
+		ClosePrice: toFloat(p.ClosePrice),
+		AlarmPrice: toFloat(p.AlarmPrice),
+		LiquidationPrice: toFloat(p.LiquidationPrice),
+		BankruptcyPrice: toFloat(p.BankruptcyPrice),
+		TotalQty: toFloat(p.TotalQty),
+		CurrentQty: toFloat(p.CurrentQty),
+		AvailableQty: toFloat(p.AvailableQty),
+		Margin: toFloat(p.MaintMargin),
+		Leverage: p.Leverage,
+		RealisedPNL: toFloat(p.RealisedPNL),
+		Status: p.Status,
+		StopLossPrice: toFloat(p.StopLossPrice),
+		StopWinPrice: toFloat(p.StopWinPrice),
+		MaintMargin: toFloat(p.MaintMargin),
+		TakerFee: toFloat(p.TakerFee),
+		MakerFee: toFloat(p.MakerFee),
+		Fund: toFloat(p.Fund),
+		CreateTime: p.CreateTime,
+		OpenTime: p.OpenTime,
+		CloseTime: p.CloseTime,
+	}
+}
+
+type PloPosition struct {
+	PosId string 			`json:"posId"`
+	Symbol string 			`json:"symbol"`
+	AccountId string 		`json:"accountId"`
+	OwnerType int 			`json:"ownerType"`
+	Type string 			`json:"type"`
+	OpenPrice float64 		`json:"openPrice"`
+	ClosePrice float64 		`json:"closePrice"`
+	AlarmPrice float64 		`json:"alarmPrice"`
+	LiquidationPrice float64 `json:"liquidationPrice"`
+	BankruptcyPrice float64 `json:"bankruptcyPrice"`
+	TotalQty float64 		`json:"totalQty"`
+	CurrentQty float64 		`json:"currentQty"`
+	AvailableQty float64 	`json:"availableQty"`
+	Margin float64 			`json:"margin"`
+	Leverage int 			`json:"leverage"`
+	RealisedPNL float64 	`json:"realisedPNL"`
+	Status int 				`json:"status"`				// 0开仓单，1平仓单，2强平，3自动减仓4自动减仓对手方
+	StopLossPrice float64 	`json:"stopLossPrice"`
+	StopWinPrice float64 	`json:"stopWinPrice"`
+	MaintMargin float64 	`json:"maintMargin"`
+	TakerFee float64 		`json:"takerFee"`
+	MakerFee float64 		`json:"makerFee"`
+	Fund float64 			`json:"fund"`
+	CreateTime int64 		`json:"createTime"`
+	OpenTime int64 			`json:"openTime"`
+	CloseTime int64 		`json:"closeTime"`
+}
 
 func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, []PloPosition) {
 	params := map[string]interface{} {
@@ -426,7 +552,7 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 	fmt.Println(string(bytes))
 
 	var resp struct {
-		Data []PloPosition 	`json:"data"`
+		Data []_PloPosition 	`json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -439,7 +565,12 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	return nil, resp.Data
+	ret := make([]PloPosition, len(resp.Data))
+	for i := range resp.Data {
+		ret[i] = resp.Data[i].ToPloPosition()
+	}
+
+	return nil, ret
 }
 
 func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, count int) (error, interface{}) {
