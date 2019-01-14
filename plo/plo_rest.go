@@ -244,11 +244,12 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 		}
 	}
 
-	bytes, _ := json.Marshal(map[string]interface{}{"data": data})
+	bytes, _ := json.Marshal(data)
 	ts := util.Tick()
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
+	println(message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+CANCEL_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -364,11 +365,13 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 		}
 	}
 
-	bytes, _ := json.Marshal(map[string]interface{}{"data": data})
+	bytes, _ := json.Marshal(data)
 	ts := util.Tick()
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
+
+	println(message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+BATCH_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {

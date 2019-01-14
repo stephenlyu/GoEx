@@ -92,7 +92,15 @@ func TestPloRest_PlaceOrders(t *testing.T) {
 
 func TestPloRest_BatchOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.BatchOrders([]string{"CBBAA813-1140-422D-FB6A-0B359943D3E3"})
+	err, ret := api.BatchOrders([]string{"9E24C4AE-2D64-F479-55D3-8244295642F7"})
+	chk(err)
+
+	Output(ret)
+}
+
+func TestPloRest_CancelOrders(t *testing.T) {
+	api := NewPloRest(API_KEY, SECRET_KEY)
+	err, ret := api.CancelOrders([]string{"9E24C4AE-2D64-F479-55D3-8244295642F7"})
 	chk(err)
 
 	Output(ret)
@@ -100,7 +108,7 @@ func TestPloRest_BatchOrders(t *testing.T) {
 
 func TestPloRest_QueryOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.QueryOrders(goex.EOS_USD, 2)
+	err, ret := api.QueryOrders(goex.EOS_USD, 1)
 	chk(err)
 
 	Output(ret)
