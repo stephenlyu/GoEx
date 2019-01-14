@@ -6,6 +6,7 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"io/ioutil"
 	"encoding/json"
+	"github.com/stephenlyu/tds/util"
 )
 
 type Key struct {
@@ -72,12 +73,13 @@ func TestPloRest_PlaceOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
 	reqOrders := []OrderReq {
 		{
+			ClientId: fmt.Sprintf("%d", util.NanoTick()),
 			PosAction: 0,
 			Side: "sell",
 			Symbol: "EOSUSD",
 			TotalQty: 1,
 			Type: "limit",
-			Price: 2.7,
+			Price: 4,
 			Leverage: 10,
 		},
 	}
@@ -107,6 +109,14 @@ func TestPloRest_QueryOrders(t *testing.T) {
 func TestPloRest_QueryPositions(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
 	err, ret := api.QueryPositions(goex.EOS_USD, 1)
+	chk(err)
+
+	Output(ret)
+}
+
+func TestPloRest_QueryPosRanking(t *testing.T) {
+	api := NewPloRest(API_KEY, SECRET_KEY)
+	err, ret := api.QueryPosRanking(goex.EOS_USD, "long", 2)
 	chk(err)
 
 	Output(ret)

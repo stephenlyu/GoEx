@@ -23,6 +23,7 @@ const (
 	BATCH_ORDER_URL = "/hapi/BatchOperation/batchOrderCondquery"
 	ORDERS_URL = "/hapi/BatchOperation/orders"
 	POSITIONS_URL = "/hapi/BatchOperation/positions"
+	POS_RANK_URL = "/hapi/BatchOperation/posRanking"
 )
 
 type PloRest struct {
@@ -102,6 +103,28 @@ func (this *PloRest) GetConfigList() (error, interface{}) {
 	return nil, data
 }
 
+type PloBalance struct {
+	AccountId string 		`json:"accountId"`
+	Address string 			`json:"address"`
+	Balance string 			`json:"balance"`
+	Currency string 		`json:"currency"`
+	OrderMargin string 		`json:"orderMargin"`
+	PositionMargin string 	`json:"positionMargin"`
+}
+
+func (r PloBalance) ToFutureSubAccount() goex.FutureSubAccount {
+	currency := goex.Currency{Symbol: r.Currency}
+	balance, _ := strconv.ParseFloat(r.Balance, 64)
+	orderMargin, _ := strconv.ParseFloat(r.OrderMargin, 64)
+	positionMargin, _ := strconv.ParseFloat(r.PositionMargin, 64)
+
+	return goex.FutureSubAccount{
+		Currency: currency,
+		AccountRights: balance,
+		KeepDeposit: orderMargin + positionMargin,
+	}
+}
+
 func (this *PloRest) GetBalances() (error, *goex.FutureAccount) {
 	ts := util.Tick()
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, "")
@@ -114,14 +137,7 @@ func (this *PloRest) GetBalances() (error, *goex.FutureAccount) {
 	}
 
 	var resp struct {
-		Data []struct {
-			AccountId string 		`json:"accountId"`
-			Address string 			`json:"address"`
-			Balance string 			`json:"balance"`
-			Currency string 		`json:"currency"`
-			OrderMargin string 		`json:"orderMargin"`
-			PositionMargin string 	`json:"positionMargin"`
-		}	`json:"data"`
+		Data []PloBalance	`json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -138,18 +154,16 @@ func (this *PloRest) GetBalances() (error, *goex.FutureAccount) {
 	ret.FutureSubAccounts = make(map[goex.Currency]goex.FutureSubAccount)
 
 	for _, r := range resp.Data {
-		currency := goex.Currency{Symbol: r.Currency}
-		balance, _ := strconv.ParseFloat(r.Balance, 64)
-		ret.FutureSubAccounts[currency] = goex.FutureSubAccount{
-			Currency: currency,
-			AccountRights: balance,
-		}
+		sa := r.ToFutureSubAccount()
+		ret.FutureSubAccounts[sa.Currency] = sa
 	}
 	return nil, ret
 }
 
 type OrderReq struct {
 	PosAction int 			`json:"posAction"`
+	AutoCancel int 			`json:"autoCancel"`
+	ClientId string 		`json:"clientId"`
 	Side string 			`json:"side"`
 	Symbol string 			`json:"symbol"`
 	TotalQty int64 			`json:"totalQty"`
@@ -269,7 +283,7 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 	return nil, errors
 }
 
-type Order struct {
+type PloOrder struct {
 	AccountId string 		`json:"accountId"`
 	OwnerType int 			`json:"ownerType"`
 	Symbol string 			`json:"symbol"`
@@ -278,9 +292,10 @@ type Order struct {
 	ClientId string 		`json:"clientId"`
 	Price string 			`json:"price"`
 	PosAction string 		`json:"posAction"`
+	AutoCancel int 			`json:"autoCancel"`
 	CurrentQty string 		`json:"currentQty"`
 	TotalQty string 		`json:"totalQty"`
-	Status int 				`json:"status"`
+	Status int 				`json:"status"`			// 订单状态(0取消，1未成交，2部分成交，3完全成交)
 	Timestamp int64 		`json:"timestamp"`
 	PosMargin string 		`json:"posMargin"`
 	OpenFee string 			`json:"openFee"`
@@ -289,7 +304,7 @@ type Order struct {
 	OrderId string 			`json:"orderId"`
 }
 
-func (this *PloRest) BatchOrders(orderIds []string) (error, []Order) {
+func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 	data := make([]map[string]string, len(orderIds))
 	for i, orderId := range orderIds {
 		data[i] = map[string]string {
@@ -309,7 +324,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []Order) {
 	}
 
 	var resp struct {
-		Data []Order 	`json:"data"`
+		Data []PloOrder    `json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -325,7 +340,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []Order) {
 	return nil, resp.Data
 }
 
-func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []Order) {
+func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []PloOrder) {
 	params := map[string]interface{} {
 		"symbol": pair.ToSymbol(""),
 		"status": status,
@@ -345,7 +360,7 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []O
 	}
 
 	var resp struct {
-		Data []Order 	`json:"data"`
+		Data []PloOrder    `json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -361,7 +376,37 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []O
 	return nil, resp.Data
 }
 
-func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, interface{}) {
+type PloPosition struct {
+	PosId string 			`json:"posId"`
+	Symbol string 			`json:"symbol"`
+	AccountId string 		`json:"accountId"`
+	OwnerType int 			`json:"ownerType"`
+	Type string 			`json:"type"`
+	OpenPrice string 		`json:"openPrice"`
+	ClosePrice string 		`json:"closePrice"`
+	AlarmPrice string 		`json:"alarmPrice"`
+	LiquidationPrice string `json:"liquidationPrice"`
+	BankruptcyPrice string 	`json:"bankruptcyPrice"`
+	TotalQty string 		`json:"totalQty"`
+	CurrentQty string 		`json:"currentQty"`
+	AvailableQty string 	`json:"availableQty"`
+	Margin string 			`json:"margin"`
+	Leverage int 			`json:"leverage"`
+	RealisedPNL string 		`json:"realisedPNL"`
+	Status int 				`json:"status"`				// 0开仓单，1平仓单，2强平，3自动减仓4自动减仓对手方
+	StopLossPrice string 	`json:"stopLossPrice"`
+	StopWinPrice string 	`json:"stopWinPrice"`
+	MaintMargin string 		`json:"maintMargin"`
+	TakerFee string 		`json:"takerFee"`
+	MakerFee string 		`json:"makerFee"`
+	Fund string 			`json:"fund"`
+	CreateTime int64 		`json:"createTime"`
+	OpenTime int64 			`json:"openTime"`
+	CloseTime int64 		`json:"closeTime"`
+}
+
+
+func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, []PloPosition) {
 	params := map[string]interface{} {
 		"symbol": pair.ToSymbol(""),
 		"status": status,
@@ -374,6 +419,43 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 	message += "&sign=" + signature
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+POSITIONS_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+	if err != nil {
+		return err, nil
+	}
+
+	fmt.Println(string(bytes))
+
+	var resp struct {
+		Data []PloPosition 	`json:"data"`
+		Error int 	`json:"err"`
+		Msg string 	`json:"msg"`
+	}
+	err = json.Unmarshal(bytes, &resp)
+	if err != nil {
+		return err, nil
+	}
+
+	if resp.Error != 0 {
+		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	}
+
+	return nil, resp.Data
+}
+
+func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, count int) (error, interface{}) {
+	params := map[string]interface{} {
+		"symbol": pair.ToSymbol(""),
+		"type": posType,
+		"count": count,
+	}
+
+	bytes, _ := json.Marshal(params)
+	ts := util.Tick()
+	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
+
+	message += "&sign=" + signature
+
+	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+POS_RANK_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
 		return err, nil
 	}

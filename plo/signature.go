@@ -10,3 +10,9 @@ func BuildSignature(apiKey, secret string, ts uint64, data string) (string, stri
 	ret, _ := goex.GetParamHmacSHA256Sign(secret, message)
 	return message, ret
 }
+
+func BuildWsSignature(apiKey, secret string, ts uint64) string {
+	message := fmt.Sprintf("accessKey=%s&ts=%d", apiKey, ts)
+	ret, _ := goex.GetParamHmacSHA256Sign(secret, message)
+	return ret
+}
