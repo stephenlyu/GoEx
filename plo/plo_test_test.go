@@ -90,9 +90,36 @@ func TestPloRest_PlaceOrders(t *testing.T) {
 	Output(ret)
 }
 
+func TestPloRest_SelfTrade(t *testing.T) {
+	api := NewPloRest(API_KEY, SECRET_KEY)
+	reqOrders := []OrderReq {
+		{
+			PosAction: 0,
+			Side: "sell",
+			Symbol: "EOSUSD",
+			TotalQty: 1,
+			Type: "limit",
+			Price: 2.5172,
+			Leverage: 10,
+		},
+		{
+			PosAction: 0,
+			Side: "buy",
+			Symbol: "EOSUSD",
+			TotalQty: 1,
+			Type: "limit",
+			Price: 2.5172,
+			Leverage: 10,
+		},
+	}
+
+	err := api.SelfTrade(reqOrders)
+	chk(err)
+}
+
 func TestPloRest_BatchOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.BatchOrders([]string{"9E24C4AE-2D64-F479-55D3-8244295642F7"})
+	err, ret := api.BatchOrders([]string{"58923A6E-A98F-3B6B-A153-CC988DC1A66D"})
 	chk(err)
 
 	Output(ret)

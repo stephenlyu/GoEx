@@ -19,6 +19,7 @@ const (
 	CONFIG_LIST_URL = "/hapi/Config/ConfList"
 	BALANCES_URL = "/hapi/BatchOperation/balances"
 	PLACE_ORDER_URL = "/hapi/BatchOperation/batchPosExec"
+	SELF_TRADE_URL = "/hapi/BatchOperation/selfTrade"
 	CANCEL_ORDER_URL = "/hapi/BatchOperation/batchOrderCancel"
 	BATCH_ORDER_URL = "/hapi/BatchOperation/batchOrderCondquery"
 	ORDERS_URL = "/hapi/BatchOperation/orders"
@@ -93,14 +94,48 @@ func (this *PloRest) GetOrderBook(pair goex.CurrencyPair) (error, interface{}) {
 	return nil, data
 }
 
-func (this *PloRest) GetConfigList() (error, interface{}) {
-	var data interface{}
+type PloConfig struct {
+	Currency struct {
+		Decimals 	int			`json:"decimals"`
+		Symbol 		string		`json:"symbol"`
+	}							`json:"currency"`
+	IndexDecimalDigits int		`json:"indexDecimalDigits"`
+	IndexSymbol string			`json:"indexSymbol"`
+	LastPrice float64			`json:"lastPrice"`
+	MaintMargin string 			`json:"maintMargin"`
+	MakerFee string 			`json:"makerFee"`
+	MaxLeverage string 			`json:"maxLeverage"`
+	MaxOrderQty int 			`json:"maxOrderQty"`
+	MaxPositionQty int 			`json:"maxPositionQty"`
+	PriceDecimalDigits int		`json:"priceDecimalDigits"`
+	QuoteCurrency struct {
+	 	Decimals 	int			`json:"decimals"`
+	 	Symbol 		string		`json:"symbol"`
+	}							`json:"quoteCurrency"`
+	RiseOrFall int				`json:"riseOrFall"`
+	Sort int					`json:"sort"`
+	Symbol string 				`json:"symbol"`
+	TakerFee string 			`json:"takerFee"`
+	Type string 				`json:"type"`
+	UnitValue string 			`json:"unitValue"`
+}
+
+func (this *PloRest) GetConfigList() (error, []PloConfig) {
+	var data struct {
+		Error string		`json:"err"`
+		Msg string 			`json:"msg"`
+		Data []PloConfig	`json:"data"`
+	}
 	err := goex.HttpGet4(this.client, BASE_URL+CONFIG_LIST_URL, map[string]string{}, &data)
 	if err != nil {
 		return err, nil
 	}
 
-	return nil, data
+	if data.Error != "0" {
+		return fmt.Errorf("error: %s", data.Error), nil
+	}
+
+	return nil, data.Data
 }
 
 type PloBalance struct {
@@ -209,8 +244,6 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 		return err, nil
 	}
 
-	fmt.Println(string(bytes))
-
 	var resp struct {
 		Data []OrderResp	`json:"data"`
 		Error int 	`json:"err"`
@@ -234,6 +267,36 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 	}
 
 	return nil, resp.Data
+}
+
+func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
+	ts := util.Tick()
+	bytes, _ := json.Marshal(reqOrders)
+	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
+
+	message += "&sign=" + signature
+
+	println(message)
+
+	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+SELF_TRADE_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+	if err != nil {
+		return err
+	}
+
+	var resp struct {
+		Error int 	`json:"err"`
+		Msg string 	`json:"msg"`
+	}
+	err = json.Unmarshal(bytes, &resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != 0 {
+		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg)
+	}
+
+	return nil
 }
 
 func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
