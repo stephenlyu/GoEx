@@ -41,7 +41,7 @@ func TestPloWs_GetDepthWithWs(t *testing.T) {
 
 	<- ch
 
-	ploWs.GetDepthWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, func(depth *goex.Depth) {
+	ploWs.GetDepthWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, func(depth *goex.DepthDecimal) {
 		log.Printf("%+v\n", depth)
 	})
 	time.Sleep(10 * time.Minute)
@@ -63,7 +63,7 @@ func TestPloWs_GetTradeWithWs(t *testing.T) {
 
 	<- ch
 
-	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, false, func(pair goex.CurrencyPair, isIndex bool, trades []goex.Trade) {
+	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, true, func(pair goex.CurrencyPair, isIndex bool, trades []goex.TradeDecimal) {
 		log.Println(pair, isIndex, trades)
 	})
 	time.Sleep(10 * time.Minute)
@@ -86,15 +86,15 @@ func TestPloWs_GetOrderWithWs(t *testing.T) {
 	<- ch
 
 	ploWs.GetOrderWithWs(func(orders []PloOrder) {
-		log.Printf("%+v", orders)
+		log.Printf("order: %+v", orders)
 	})
 
 	ploWs.GetAccountWithWs(func(account *goex.FutureAccount) {
-		log.Printf("%+v", account)
+		log.Printf("account: %+v", account)
 	})
 
 	ploWs.GetPositionWithWs(func(positions []PloPosition) {
-		log.Printf("%+v", positions)
+		log.Printf("position: %+v", positions)
 	})
 
 	time.Sleep(1000 * time.Minute)

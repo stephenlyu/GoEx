@@ -3,6 +3,7 @@ package goex
 import (
 	"net/http"
 	"time"
+	"github.com/shopspring/decimal"
 )
 
 type Order struct {
@@ -24,6 +25,15 @@ type Trade struct {
 	Type   string  `json:"type"`
 	Amount float64 `json:"amount,string"`
 	Price  float64 `json:"price,string"`
+	Date   int64   `json:"date_ms"`
+	Time   string
+}
+
+type TradeDecimal struct {
+	Tid    int64   `json:"tid"`
+	Type   string  `json:"type"`
+	Amount decimal.Decimal `json:"amount,string"`
+	Price  decimal.Decimal `json:"price,string"`
 	Date   int64   `json:"date_ms"`
 	Time   string
 }
@@ -80,6 +90,33 @@ type Depth struct {
 	UTime        time.Time
 	AskList,
 	BidList DepthRecords
+}
+
+type DepthRecordDecimal struct {
+	Price,
+	Amount decimal.Decimal
+}
+
+type DepthRecordsDecimal []DepthRecordDecimal
+
+func (dr DepthRecordsDecimal) Len() int {
+	return len(dr)
+}
+
+func (dr DepthRecordsDecimal) Swap(i, j int) {
+	dr[i], dr[j] = dr[j], dr[i]
+}
+
+func (dr DepthRecordsDecimal) Less(i, j int) bool {
+	return dr[i].Price.LessThan(dr[j].Price)
+}
+
+type DepthDecimal struct {
+	ContractType string //for future
+	Pair         CurrencyPair
+	UTime        time.Time
+	AskList,
+	BidList DepthRecordsDecimal
 }
 
 type APIConfig struct {

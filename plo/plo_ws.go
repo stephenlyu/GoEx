@@ -9,8 +9,8 @@ import (
 	"log"
 	"github.com/stephenlyu/tds/util"
 	"strings"
-	"strconv"
 	"sort"
+	"github.com/shopspring/decimal"
 )
 
 type PloWs struct {
@@ -21,8 +21,8 @@ type PloWs struct {
 
 	depthManagers	 map[string]*DepthManager
 
-	wsDepthHandleMap map[string]func(*Depth)
-	wsTradeHandleMap map[string]func(CurrencyPair, bool, []Trade)
+	wsDepthHandleMap map[string]func(*DepthDecimal)
+	wsTradeHandleMap map[string]func(CurrencyPair, bool, []TradeDecimal)
 	authHandle 		 func()
 	orderHandle      func([]PloOrder)
 	accountHandle    func(*FutureAccount)
@@ -42,8 +42,8 @@ func (ploWs *PloWs) createWsConn() {
 
 		if ploWs.ws == nil {
 			ploWs.depthManagers = make(map[string]*DepthManager)
-			ploWs.wsDepthHandleMap = make(map[string]func(*Depth))
-			ploWs.wsTradeHandleMap = make(map[string]func(CurrencyPair, bool, []Trade))
+			ploWs.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
+			ploWs.wsTradeHandleMap = make(map[string]func(CurrencyPair, bool, []TradeDecimal))
 
 			ploWs.ws = NewWsConn("wss://test-api.plo.one/ws")
 			ploWs.ws.SetErrorHandler(ploWs.errorHandle)
@@ -125,14 +125,14 @@ func (ploWs *PloWs) createWsConn() {
 	}
 }
 
-func (ploWs *PloWs) parseTrade(msg []byte) (string, []Trade) {
+func (ploWs *PloWs) parseTrade(msg []byte) (string, []TradeDecimal) {
 	var data struct {
 		Data []struct {
 			 Timestamp int64
 			 Side string
 			 Symbol string
-			 Size interface{}
-			 Price string
+			 Size decimal.Decimal
+			 Price decimal.Decimal
 			 }
 	}
 	json.Unmarshal(msg, &data)
@@ -141,24 +141,13 @@ func (ploWs *PloWs) parseTrade(msg []byte) (string, []Trade) {
 		return "", nil
 	}
 
-	ret := make([]Trade, len(data.Data))
+	ret := make([]TradeDecimal, len(data.Data))
 	for i, r := range data.Data {
-		price, _ := strconv.ParseFloat(r.Price, 64)
-		var size float64
-		if r.Size != nil {
-			if strings.HasPrefix(r.Symbol, ".") {
-				size = r.Size.(float64)
-			} else {
-				sSize := r.Size.(string)
-				size, _ = strconv.ParseFloat(sSize, 64)
-			}
-
-		}
-		ret[i] = Trade{
+		ret[i] = TradeDecimal{
 			Tid: r.Timestamp,
 			Type: strings.ToLower(r.Side),
-			Amount: size,
-			Price: price,
+			Amount: r.Size,
+			Price: r.Price,
 			Date: r.Timestamp,
 		}
 
@@ -170,11 +159,11 @@ func (ploWs *PloWs) parseTrade(msg []byte) (string, []Trade) {
 type DepthItem struct {
 	Symbol string
 	Side string
-	Price string
-	Size string
+	Price decimal.Decimal
+	Size decimal.Decimal
 }
 
-func (ploWs *PloWs) parseDepth(msg []byte) *Depth {
+func (ploWs *PloWs) parseDepth(msg []byte) *DepthDecimal {
 	var data struct {
 		Action string
 		Data []DepthItem
@@ -198,7 +187,7 @@ func (ploWs *PloWs) parseDepth(msg []byte) *Depth {
 
 	asks, bids := depthManager.Update(data.Action, data.Data)
 
-	return &Depth{
+	return &DepthDecimal{
 		Pair: pair,
 		AskList: asks,
 		BidList: bids,
@@ -230,7 +219,7 @@ func (ploWs *PloWs) parseBalance(msg []byte) *FutureAccount {
 
 func (ploWs *PloWs) parseOrder(msg []byte) []PloOrder {
 	var data struct {
-		Data []_PloOrder
+		Data []PloOrder
 	}
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
@@ -238,32 +227,22 @@ func (ploWs *PloWs) parseOrder(msg []byte) []PloOrder {
 		return nil
 	}
 
-	ret := make([]PloOrder, len(data.Data))
-	for i := range data.Data {
-		ret[i] = data.Data[i].ToPloOrder()
-	}
-
-	return ret
+	return data.Data
 }
 
 func (ploWs *PloWs) parsePosition(msg []byte) []PloPosition {
 	var data struct {
-		Data []_PloPosition
+		Data []PloPosition
 	}
 	err := json.Unmarshal(msg, &data)
 	if err != nil {
 		return nil
 	}
 
-	ret := make([]PloPosition, len(data.Data))
-	for i := range data.Data {
-		ret[i] = data.Data[i].ToPloPosition()
-	}
-
-	return ret
+	return data.Data
 }
 
-func (ploWs *PloWs) GetDepthWithWs(pair CurrencyPair, handle func(*Depth)) error {
+func (ploWs *PloWs) GetDepthWithWs(pair CurrencyPair, handle func(*DepthDecimal)) error {
 	ploWs.createWsConn()
 	symbol := pair.ToSymbol("")
 	topic := fmt.Sprintf("orderBookL2:%s", symbol)
@@ -274,7 +253,7 @@ func (ploWs *PloWs) GetDepthWithWs(pair CurrencyPair, handle func(*Depth)) error
 		"args": []string{topic}})
 }
 
-func (ploWs *PloWs) GetTradeWithWs(pair CurrencyPair, isIndex bool, handle func(CurrencyPair, bool, []Trade)) error {
+func (ploWs *PloWs) GetTradeWithWs(pair CurrencyPair, isIndex bool, handle func(CurrencyPair, bool, []TradeDecimal)) error {
 	ploWs.createWsConn()
 	var topic string
 	if isIndex {
@@ -337,64 +316,61 @@ func (ploWs *PloWs) CloseWs() {
 }
 
 type DepthManager struct {
-	buyMap map[string]float64
-	sellMap map[string]float64
+	buyMap map[string]DepthItem
+	sellMap map[string]DepthItem
 }
 
 func NewDepthManager() *DepthManager {
 	return &DepthManager{
-		buyMap: make(map[string]float64),
-		sellMap: make(map[string]float64),
+		buyMap: make(map[string]DepthItem),
+		sellMap: make(map[string]DepthItem),
 	}
 }
 
-func (this *DepthManager) Update(action string, items []DepthItem) (DepthRecords, DepthRecords) {
+func (this *DepthManager) Update(action string, items []DepthItem) (DepthRecordsDecimal, DepthRecordsDecimal) {
 	if action == "partial" {
-		this.buyMap = make(map[string]float64)
-		this.sellMap = make(map[string]float64)
+		this.buyMap = make(map[string]DepthItem)
+		this.sellMap = make(map[string]DepthItem)
 	}
 
 	if action == "delete" {
 		for i := range items {
 			item := &items[i]
 			if item.Side == "buy" {
-				delete(this.buyMap, item.Price)
+				delete(this.buyMap, item.Price.String())
 			} else {
-				delete(this.sellMap, item.Price)
+				delete(this.sellMap, item.Price.String())
 			}
 		}
 	} else {
 		for i := range items {
 			item := &items[i]
-			size, _ := strconv.ParseFloat(item.Size, 64)
 			if item.Side == "buy" {
-				this.buyMap[item.Price] = size
+				this.buyMap[item.Price.String()] = *item
 			} else {
-				this.sellMap[item.Price] = size
+				this.sellMap[item.Price.String()] = *item
 			}
 		}
 	}
 
-	bids := make(DepthRecords, len(this.buyMap))
+	bids := make(DepthRecordsDecimal, len(this.buyMap))
 	i := 0
-	for price, size := range this.buyMap {
-		p, _ := strconv.ParseFloat(price, 64)
-		bids[i] = DepthRecord{Price: p, Amount: size}
+	for _, item := range this.buyMap {
+		bids[i] = DepthRecordDecimal{Price: item.Price, Amount: item.Size}
 		i++
 	}
 	sort.SliceStable(bids, func(i,j int) bool {
-		return bids[i].Price > bids[j].Price
+		return bids[i].Price.GreaterThan(bids[j].Price)
 	})
 
-	asks := make(DepthRecords, len(this.sellMap))
+	asks := make(DepthRecordsDecimal, len(this.sellMap))
 	i = 0
-	for price, size := range this.sellMap {
-		p, _ := strconv.ParseFloat(price, 64)
-		asks[i] = DepthRecord{Price: p, Amount: size}
+	for _, item := range this.sellMap {
+		asks[i] = DepthRecordDecimal{Price: item.Price, Amount: item.Size}
 		i++
 	}
 	sort.SliceStable(asks, func(i,j int) bool {
-		return asks[i].Price < asks[j].Price
+		return asks[i].Price.LessThan(asks[j].Price)
 	})
 	return asks, bids
 }

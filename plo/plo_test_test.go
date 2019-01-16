@@ -6,7 +6,7 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"io/ioutil"
 	"encoding/json"
-	"github.com/stephenlyu/tds/util"
+	"time"
 )
 
 type Key struct {
@@ -66,21 +66,23 @@ func TestPloRest_GetBalances(t *testing.T) {
 	err, ret := api.GetBalances()
 	chk(err)
 
+
 	Output(ret)
 }
 
 func TestPloRest_PlaceOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
+
 	reqOrders := []OrderReq {
 		{
-			ClientId: fmt.Sprintf("%d", util.NanoTick()),
 			PosAction: 0,
 			Side: "sell",
 			Symbol: "EOSUSD",
 			TotalQty: 1,
 			Type: "limit",
-			Price: 4,
+			Price: 2.4,
 			Leverage: 10,
+			PostOnly: 1,
 		},
 	}
 
@@ -99,7 +101,7 @@ func TestPloRest_SelfTrade(t *testing.T) {
 			Symbol: "EOSUSD",
 			TotalQty: 1,
 			Type: "limit",
-			Price: 2.5172,
+			Price: 2.4982,
 			Leverage: 10,
 		},
 		{
@@ -108,7 +110,7 @@ func TestPloRest_SelfTrade(t *testing.T) {
 			Symbol: "EOSUSD",
 			TotalQty: 1,
 			Type: "limit",
-			Price: 2.5172,
+			Price: 2.4982,
 			Leverage: 10,
 		},
 	}
@@ -119,9 +121,8 @@ func TestPloRest_SelfTrade(t *testing.T) {
 
 func TestPloRest_BatchOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.BatchOrders([]string{"58923A6E-A98F-3B6B-A153-CC988DC1A66D"})
+	err, ret := api.BatchOrders([]string{"3906E7B4-9D03-8E41-435A-ED6703B21684"})
 	chk(err)
-
 	Output(ret)
 }
 
@@ -143,7 +144,7 @@ func TestPloRest_QueryOrders(t *testing.T) {
 
 func TestPloRest_QueryPositions(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.QueryPositions(goex.EOS_USD, 2)
+	err, ret := api.QueryPositions(goex.EOS_USD, 1)
 	chk(err)
 
 	Output(ret)
@@ -155,4 +156,37 @@ func TestPloRest_QueryPosRanking(t *testing.T) {
 	chk(err)
 
 	Output(ret)
+}
+
+func TestCancelAllOrders(t *testing.T) {
+	api := NewPloRest(API_KEY, SECRET_KEY)
+	pair := goex.EOS_USD
+	err, orders := api.QueryOrders(pair, 1)
+	chk(err)
+
+	if len(orders) == 0 {
+		return
+	}
+
+	orderIds := make([]string, len(orders))
+	for i := range orders {
+		orderIds[i] = orders[i].OrderId
+	}
+
+	err, errors := api.CancelOrders(orderIds)
+	chk(err)
+
+	for _, e := range errors {
+		chk(e)
+	}
+
+	for {
+		err, orders = api.QueryOrders(pair, 1)
+		chk(err)
+		if len(orders) == 0 {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
 }

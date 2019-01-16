@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"encoding/base64"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -206,10 +207,11 @@ type OrderReq struct {
 	Type string 			`json:"type"`
 	Leverage int 			`json:"leverage"`
 	PosId string 			`json:"posId"`
+	PostOnly int 			`json:"postOnly"`
 }
 
 type OrderResp struct {
-	Error int 				`json:"err"`
+	Error int 				`json:"status"`
 	Msg string 				`json:"msg"`
 	Data *json.RawMessage	`json:"data"`
 	Order *struct {
@@ -233,6 +235,9 @@ type OrderResp struct {
 }
 
 func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
+	//data, _ := json.MarshalIndent(reqOrders, "", "  ")
+	//println(string(data))
+
 	ts := util.Tick()
 	bytes, _ := json.Marshal(reqOrders)
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
@@ -243,7 +248,6 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 	if err != nil {
 		return err, nil
 	}
-
 	var resp struct {
 		Data []OrderResp	`json:"data"`
 		Error int 	`json:"err"`
@@ -275,8 +279,6 @@ func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-
-	println(message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+SELF_TRADE_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -312,7 +314,6 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println(message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+CANCEL_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -347,77 +348,25 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 	return nil, errors
 }
 
-type _PloOrder struct {
-	AccountId string 		`json:"accountId"`
-	OwnerType int 			`json:"ownerType"`
-	Symbol string 			`json:"symbol"`
-	Type string 			`json:"type"`
-	Side string 			`json:"side"`
-	ClientId string 		`json:"clientId"`
-	Price string 			`json:"price"`
-	PosAction string 		`json:"posAction"`
-	AutoCancel int 			`json:"autoCancel"`
-	CurrentQty string 		`json:"currentQty"`
-	TotalQty string 		`json:"totalQty"`
-	Status int 				`json:"status"`			// 订单状态(0取消，1未成交，2部分成交，3完全成交)
-	Timestamp int64 		`json:"timestamp"`
-	PosMargin string 		`json:"posMargin"`
-	OpenFee string 			`json:"openFee"`
-	CloseFee string 		`json:"closeFee"`
-	PosId string 			`json:"posId"`
-	OrderId string 			`json:"orderId"`
-}
-
-func (o *_PloOrder) ToPloOrder() PloOrder {
-	posAction, _ := strconv.Atoi(o.PosAction)
-	price, _ := strconv.ParseFloat(o.Price, 64)
-	currentQty, _ := strconv.ParseFloat(o.CurrentQty, 64)
-	totalQty, _ := strconv.ParseFloat(o.TotalQty, 64)
-	posMargin, _ := strconv.ParseFloat(o.PosMargin, 64)
-	openFee, _ := strconv.ParseFloat(o.OpenFee, 64)
-	closeFee, _ := strconv.ParseFloat(o.CloseFee, 64)
-
-	return PloOrder{
-		AccountId: o.AccountId,
-		OwnerType: o.OwnerType,
-		Symbol: o.Symbol,
-		Type: o.Type,
-		Side: o.Type,
-		ClientId: o.ClientId,
-		Price: price,
-		PosAction: posAction,
-		AutoCancel: o.AutoCancel,
-		CurrentQty: currentQty,
-		TotalQty: totalQty,
-		Status: o.Status,
-		Timestamp: o.Timestamp,
-		PosMargin: posMargin,
-		OpenFee: openFee,
-		CloseFee: closeFee,
-		PosId: o.PosId,
-		OrderId: o.OrderId,
-	}
-}
-
 type PloOrder struct {
-	AccountId string 		`json:"accountId"`
-	OwnerType int 			`json:"ownerType"`
-	Symbol string 			`json:"symbol"`
-	Type string 			`json:"type"`
-	Side string 			`json:"side"`
-	ClientId string 		`json:"clientId"`
-	Price float64 			`json:"price"`
-	PosAction int 			`json:"posAction"`
-	AutoCancel int 			`json:"autoCancel"`
-	CurrentQty float64 		`json:"currentQty"`
-	TotalQty float64 		`json:"totalQty"`
-	Status int 				`json:"status"`			// 订单状态(0取消，1未成交，2部分成交，3完全成交)
-	Timestamp int64 		`json:"timestamp"`
-	PosMargin float64 		`json:"posMargin"`
-	OpenFee float64 			`json:"openFee"`
-	CloseFee float64 		`json:"closeFee"`
-	PosId string 			`json:"posId"`
-	OrderId string 			`json:"orderId"`
+	AccountId string 			`json:"accountId"`
+	OwnerType int 				`json:"ownerType"`
+	Symbol string 				`json:"symbol"`
+	Type string 				`json:"type"`
+	Side string 				`json:"side"`
+	ClientId string 			`json:"clientId"`
+	Price decimal.Decimal 		`json:"price"`
+	PosAction decimal.Decimal 	`json:"posAction"`
+	AutoCancel int 				`json:"autoCancel"`
+	CurrentQty decimal.Decimal 	`json:"currentQty"`
+	TotalQty decimal.Decimal 	`json:"totalQty"`
+	Status int 					`json:"status"`			// 订单状态(0取消，1未成交，2部分成交，3完全成交)
+	Timestamp int64 			`json:"timestamp"`
+	PosMargin decimal.Decimal 	`json:"posMargin"`
+	OpenFee decimal.Decimal 	`json:"openFee"`
+	CloseFee decimal.Decimal 	`json:"closeFee"`
+	PosId string 				`json:"posId"`
+	OrderId string 				`json:"orderId"`
 }
 
 func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
@@ -434,15 +383,13 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 
 	message += "&sign=" + signature
 
-	println(message)
-
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+BATCH_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
 		return err, nil
 	}
 
 	var resp struct {
-		Data []_PloOrder    `json:"data"`
+		Data []PloOrder    `json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -455,12 +402,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	ret := make([]PloOrder, len(resp.Data))
-	for i := range resp.Data {
-		ret[i] = resp.Data[i].ToPloOrder()
-	}
-
-	return nil, ret
+	return nil, resp.Data
 }
 
 func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []PloOrder) {
@@ -475,15 +417,18 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 
 	message += "&sign=" + signature
 
-	print(message)
-
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+ORDERS_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
 		return err, nil
 	}
 
 	var resp struct {
-		Data []_PloOrder    `json:"data"`
+		Data struct {
+			Total int			`json:"total"`
+			PerPage int 		`json:"per_page"`
+			CurrentPage int 	`json:"current_page"`
+			Data []PloOrder    	`json:"data"`
+		}			`json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -496,106 +441,36 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	ret := make([]PloOrder, len(resp.Data))
-	for i := range resp.Data {
-		ret[i] = resp.Data[i].ToPloOrder()
-	}
-
-	return nil, ret
-}
-
-type _PloPosition struct {
-	PosId string 			`json:"posId"`
-	Symbol string 			`json:"symbol"`
-	AccountId string 		`json:"accountId"`
-	OwnerType int 			`json:"ownerType"`
-	Type string 			`json:"type"`
-	OpenPrice string 		`json:"openPrice"`
-	ClosePrice string 		`json:"closePrice"`
-	AlarmPrice string 		`json:"alarmPrice"`
-	LiquidationPrice string `json:"liquidationPrice"`
-	BankruptcyPrice string 	`json:"bankruptcyPrice"`
-	TotalQty string 		`json:"totalQty"`
-	CurrentQty string 		`json:"currentQty"`
-	AvailableQty string 	`json:"availableQty"`
-	Margin string 			`json:"margin"`
-	Leverage int 			`json:"leverage"`
-	RealisedPNL string 		`json:"realisedPNL"`
-	Status int 				`json:"status"`				// 0开仓单，1平仓单，2强平，3自动减仓4自动减仓对手方
-	StopLossPrice string 	`json:"stopLossPrice"`
-	StopWinPrice string 	`json:"stopWinPrice"`
-	MaintMargin string 		`json:"maintMargin"`
-	TakerFee string 		`json:"takerFee"`
-	MakerFee string 		`json:"makerFee"`
-	Fund string 			`json:"fund"`
-	CreateTime int64 		`json:"createTime"`
-	OpenTime int64 			`json:"openTime"`
-	CloseTime int64 		`json:"closeTime"`
-}
-
-func (p *_PloPosition) ToPloPosition() PloPosition {
-	toFloat := func (s string) float64 {
-		v, _ := strconv.ParseFloat(s, 64)
-		return v
-	}
-
-	return PloPosition{
-		PosId: p.PosId,
-		Symbol: p.Symbol,
-		AccountId: p.AccountId,
-		OwnerType: p.OwnerType,
-		Type: p.Type,
-		OpenPrice: toFloat(p.OpenPrice),
-		ClosePrice: toFloat(p.ClosePrice),
-		AlarmPrice: toFloat(p.AlarmPrice),
-		LiquidationPrice: toFloat(p.LiquidationPrice),
-		BankruptcyPrice: toFloat(p.BankruptcyPrice),
-		TotalQty: toFloat(p.TotalQty),
-		CurrentQty: toFloat(p.CurrentQty),
-		AvailableQty: toFloat(p.AvailableQty),
-		Margin: toFloat(p.MaintMargin),
-		Leverage: p.Leverage,
-		RealisedPNL: toFloat(p.RealisedPNL),
-		Status: p.Status,
-		StopLossPrice: toFloat(p.StopLossPrice),
-		StopWinPrice: toFloat(p.StopWinPrice),
-		MaintMargin: toFloat(p.MaintMargin),
-		TakerFee: toFloat(p.TakerFee),
-		MakerFee: toFloat(p.MakerFee),
-		Fund: toFloat(p.Fund),
-		CreateTime: p.CreateTime,
-		OpenTime: p.OpenTime,
-		CloseTime: p.CloseTime,
-	}
+	return nil, resp.Data.Data
 }
 
 type PloPosition struct {
-	PosId string 			`json:"posId"`
-	Symbol string 			`json:"symbol"`
-	AccountId string 		`json:"accountId"`
-	OwnerType int 			`json:"ownerType"`
-	Type string 			`json:"type"`
-	OpenPrice float64 		`json:"openPrice"`
-	ClosePrice float64 		`json:"closePrice"`
-	AlarmPrice float64 		`json:"alarmPrice"`
-	LiquidationPrice float64 `json:"liquidationPrice"`
-	BankruptcyPrice float64 `json:"bankruptcyPrice"`
-	TotalQty float64 		`json:"totalQty"`
-	CurrentQty float64 		`json:"currentQty"`
-	AvailableQty float64 	`json:"availableQty"`
-	Margin float64 			`json:"margin"`
-	Leverage int 			`json:"leverage"`
-	RealisedPNL float64 	`json:"realisedPNL"`
-	Status int 				`json:"status"`				// 0开仓单，1平仓单，2强平，3自动减仓4自动减仓对手方
-	StopLossPrice float64 	`json:"stopLossPrice"`
-	StopWinPrice float64 	`json:"stopWinPrice"`
-	MaintMargin float64 	`json:"maintMargin"`
-	TakerFee float64 		`json:"takerFee"`
-	MakerFee float64 		`json:"makerFee"`
-	Fund float64 			`json:"fund"`
-	CreateTime int64 		`json:"createTime"`
-	OpenTime int64 			`json:"openTime"`
-	CloseTime int64 		`json:"closeTime"`
+	PosId string 					`json:"posId"`
+	Symbol string 					`json:"symbol"`
+	AccountId string 				`json:"accountId"`
+	OwnerType int 					`json:"ownerType"`
+	Type string 					`json:"type"`
+	OpenPrice decimal.Decimal 		`json:"openPrice"`
+	ClosePrice decimal.Decimal 		`json:"closePrice"`
+	AlarmPrice decimal.Decimal 		`json:"alarmPrice"`
+	LiquidationPrice decimal.Decimal `json:"liquidationPrice"`
+	BankruptcyPrice decimal.Decimal `json:"bankruptcyPrice"`
+	TotalQty decimal.Decimal 		`json:"totalQty"`
+	CurrentQty decimal.Decimal 		`json:"currentQty"`
+	AvailableQty decimal.Decimal 	`json:"availableQty"`
+	Margin decimal.Decimal 			`json:"margin"`
+	Leverage int 					`json:"leverage"`
+	RealisedPNL decimal.Decimal 	`json:"realisedPNL"`
+	Status int 						`json:"status"`				// 0开仓单，1平仓单，2强平，3自动减仓4自动减仓对手方
+	StopLossPrice decimal.Decimal 	`json:"stopLossPrice"`
+	StopWinPrice decimal.Decimal 	`json:"stopWinPrice"`
+	MaintMargin decimal.Decimal 	`json:"maintMargin"`
+	TakerFee decimal.Decimal 		`json:"takerFee"`
+	MakerFee decimal.Decimal 		`json:"makerFee"`
+	Fund decimal.Decimal 			`json:"fund"`
+	CreateTime int64 				`json:"createTime"`
+	OpenTime int64 					`json:"openTime"`
+	CloseTime int64 				`json:"closeTime"`
 }
 
 func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, []PloPosition) {
@@ -615,10 +490,8 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 		return err, nil
 	}
 
-	fmt.Println(string(bytes))
-
 	var resp struct {
-		Data []_PloPosition 	`json:"data"`
+		Data []PloPosition 	`json:"data"`
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
@@ -631,12 +504,7 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
 	}
 
-	ret := make([]PloPosition, len(resp.Data))
-	for i := range resp.Data {
-		ret[i] = resp.Data[i].ToPloPosition()
-	}
-
-	return nil, ret
+	return nil, resp.Data
 }
 
 func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, count int) (error, interface{}) {
@@ -656,8 +524,6 @@ func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, cou
 	if err != nil {
 		return err, nil
 	}
-
-	fmt.Println(string(bytes))
 
 	var resp struct {
 		Data []interface{} 	`json:"data"`
