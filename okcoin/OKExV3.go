@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"errors"
+	"sync"
 )
 
 const (
@@ -94,6 +95,12 @@ type OKExV3 struct {
 	apiSecretKey string
 	passphrase string
 	client            *http.Client
+
+	ws                *WsConn
+	createWsLock      sync.Mutex
+	wsDepthHandleMap  map[string]func(*Depth)
+	wsTradeHandleMap map[string]func(string, []Trade)
+	depthManagers	 map[string]*DepthManager
 }
 
 func NewOKExV3(client *http.Client, api_key, secret_key, passphrase string) *OKExV3 {
