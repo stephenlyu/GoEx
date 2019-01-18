@@ -19,7 +19,7 @@ func TestOKExV3_GetDepthWithWs(t *testing.T) {
 }
 
 func TestOKExV3_GetTradeWithWs(t *testing.T) {
-	okexFutureV3.GetTradeWithWs("EOS-USD-190329", func(instrumentId string, trades []goex.Trade) {
+	okexFutureV3.GetTradeWithWs("EOS-USD-SWAP", func(instrumentId string, trades []goex.Trade) {
 		log.Printf("%+v\n", trades)
 	})
 	time.Sleep(10 * time.Minute)

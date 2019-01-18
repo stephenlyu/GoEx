@@ -44,7 +44,7 @@ func (okFuture *OKExV3) createWsConn() {
 					return
 				}
 
-				println(string(msg))
+				//println(string(msg))
 
 				var data struct {
 					Table string
