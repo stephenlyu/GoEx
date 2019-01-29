@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 	"github.com/z-ray/log"
+	"regexp"
 )
+
+var CODE_PATTERN, _ = regexp.Compile("[0-9]+")
 
 func FromSecurity(security *entity.Security) string {
 	switch security.Code {
@@ -18,6 +21,10 @@ func FromSecurity(security *entity.Security) string {
 	case "FUT":
 		return fmt.Sprintf("%s-USD-SWAP", security.Category)
 	default:
+		if CODE_PATTERN.Match([]byte(security.Code)) {
+			return fmt.Sprintf("%s-USD-%s", security.Category, security.GetCode())
+		}
+
 		panic("Unknown contract type")
 	}
 	return ""

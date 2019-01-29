@@ -18,6 +18,8 @@ type OKExQuoter struct {
 	firstTrade bool
 
 	callback quoter.QuoterCallback
+
+	instrumentIdSecurityMap map[string]*entity.Security
 }
 
 func newOKExQuoter() quoter.Quoter {
@@ -25,6 +27,7 @@ func newOKExQuoter() quoter.Quoter {
 		okex: okcoin.NewOKExV3(http.DefaultClient, "", "", ""),
 		tickMap: make(map[string]*entity.TickItem),
 		firstTrade: true,
+		instrumentIdSecurityMap: make(map[string]*entity.Security),
 	}
 }
 
@@ -32,6 +35,7 @@ func (this *OKExQuoter) Subscribe(security *entity.Security) {
 	this.tickMap[security.String()] = &entity.TickItem{Code: security.String()}
 
 	instrumentId := FromSecurity(security)
+	this.instrumentIdSecurityMap[instrumentId] = security
 	this.okex.GetDepthWithWs(instrumentId, this.onDepth)
 	this.okex.GetTradeWithWs(instrumentId, this.onTrade)
 }
@@ -45,7 +49,7 @@ func (this *OKExQuoter) Destroy() {
 }
 
 func (this *OKExQuoter) onDepth(depth *goex.Depth) {
-	security := ToSecurity(depth.InstrumentId)
+	security, _ := this.instrumentIdSecurityMap[depth.InstrumentId]
 
 	thisTick := this.tickMap[security.String()]
 	thisTick.Timestamp = uint64(depth.UTime.UnixNano() / int64(time.Millisecond))
@@ -102,7 +106,7 @@ func (this *OKExQuoter) onTrade(instrumentId string, trades []goex.Trade) {
 		return
 	}
 
-	security := ToSecurity(instrumentId)
+	security, _ := this.instrumentIdSecurityMap[instrumentId]
 	thisTick := this.tickMap[security.String()]
 
 	open, high, low, amount, volume, side, buyVolume, sellVolume := thisTick.Open, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side, thisTick.BuyVolume, thisTick.SellVolume
