@@ -22,8 +22,10 @@ const (
 	FUTURE_V3_INSTRUMENT_TICKER = "/api/futures/v3/instruments/%s/ticker"
 	FUTURE_V3_INSTRUMENT_INDEX = "/api/futures/v3/instruments/%s/index"
 	FUTURE_V3_ORDER			   = "/api/futures/v3/order"
+	FUTURE_V3_ORDERS 		   = "/api/futures/v3/orders"
+	FUTURE_V3_CANCEL_ORDERS    = "/api/futures/v3/cancel_batch_orders/%s"
 	FUTURE_V3_CANCEL_ORDER		= "/api/futures/v3/cancel_order/%s/%s"
-	FUTURE_V3_ORDERS 			= "/api/futures/v3/orders/%s"
+	FUTURE_V3_INSTRUMENT_ORDERS = "/api/futures/v3/orders/%s"
 	FUTURE_V3_ORDER_INFO 		= "/api/futures/v3/orders/%s/%s"
 )
 
@@ -116,6 +118,7 @@ func (ok *OKExV3) buildHeader(method, requestPath, body string) map[string]strin
 	now := time.Now().In(time.UTC)
 	timestamp := now.Format(V3_DATE_FORMAT)
 	message := timestamp + method + requestPath + body
+	println(ok.apiSecretKey, message)
 	signature, _ := GetParamHmacSHA256Base64Sign(ok.apiSecretKey, message)
 	return map[string]string {
 		"OK-ACCESS-KEY": ok.apiKey,
@@ -385,6 +388,85 @@ func (ok *OKExV3) FutureCancelOrder(instrumentId, orderId string) error {
 	return nil
 }
 
+type OrderItem struct {
+	ClientOid string 	`json:"client_oid"`
+	Type string 		`json:"type"`
+	Price string 		`json:"price"`
+	Size string 		`json:"size"`
+	MatchPrice string 	`json:"match_price"`
+}
+
+type BatchPlaceOrderReq struct {
+	InstrumentId string 		`json:"instrument_id"`
+	OrdersData []OrderItem 		`json:"orders_data"`
+	Leverage int 				`json:"leverage"`
+}
+
+type BatchPlaceOrderRespItem struct {
+	ErrorMessage string 		`json:"error_message"`
+	ErrorCode int 				`json:"error_code"`
+	ClientOid string 			`json:"client_oid"`
+	OrderId string 				`json:"order_id"`
+}
+
+func (ok *OKExV3) PlaceFutureOrders(req BatchPlaceOrderReq) ([]BatchPlaceOrderRespItem, error) {
+	bytes, _ := json.Marshal(req)
+	data := string(bytes)
+
+	header := ok.buildHeader("POST", FUTURE_V3_ORDERS, data)
+
+	placeOrderUrl := FUTURE_V3_API_BASE_URL + FUTURE_V3_ORDERS
+	body, err := HttpPostJson(ok.client, placeOrderUrl, data, header)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var ret *struct {
+		Result bool `json:"result"`
+		Data []BatchPlaceOrderRespItem		`json:"order_info"`
+	}
+
+	err = json.Unmarshal(body, &ret)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ret.Result {
+		return nil, fmt.Errorf("place order fail, body: %s", string(body))
+	}
+
+	return ret.Data, nil
+}
+
+func (ok *OKExV3) FutureCancelOrders(instrumentId string, orderIds []string) error {
+	bytes, _ := json.Marshal(map[string]interface{} {
+		"order_ids": orderIds,
+	})
+
+	reqUrl := fmt.Sprintf(FUTURE_V3_CANCEL_ORDERS, instrumentId)
+
+	header := ok.buildHeader("POST", reqUrl, string(bytes))
+
+	reqPath := FUTURE_V3_API_BASE_URL + reqUrl
+	body, err := HttpPostJson(ok.client, reqPath, string(bytes), header)
+
+	var resp struct {
+		Result bool 		`json:"result"`
+		OrderIds []string 	`json:"order_ids"`
+		InstrumentId string `json:"instrument_id"`
+	}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err
+	}
+	if !resp.Result {
+		return errors.New(string(body))
+	}
+
+	return nil
+}
+
 type V3OrderInfo struct {
 	InstrumentId string 	`json:"instrument_id"`
 	Size string
@@ -427,11 +509,12 @@ func (this *V3OrderInfo) ToFutureOrder() *FutureOrder {
 	o.OType, _ = strconv.Atoi(this.Type)
 	o.Fee, _ = strconv.ParseFloat(this.Fee, 64)
 	o.LeverRate, _ = strconv.Atoi(this.Leverage)
+	o.ContractName = this.InstrumentId
 	return o
 }
 
 func (ok *OKExV3) GetInstrumentOrders(instrumentId string, status, from, to, limit string) ([]FutureOrder, error) {
-	reqUrl := fmt.Sprintf(FUTURE_V3_ORDERS, instrumentId)
+	reqUrl := fmt.Sprintf(FUTURE_V3_INSTRUMENT_ORDERS, instrumentId)
 	var params []string
 	if status != "" {
 		params = append(params, "status=" + status)

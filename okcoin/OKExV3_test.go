@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"github.com/stephenlyu/GoEx"
+	"strconv"
+	"time"
 )
 
 var (
@@ -32,7 +34,6 @@ func init() {
 	var key Key
 	err = json.Unmarshal(bytes, &key)
 	chk(err)
-
 	okexV3 = NewOKExV3(http.DefaultClient, key.ApiKey, key.SecretKey, key.Passphrase)
 }
 
@@ -88,6 +89,35 @@ func TestOKExV3_FutureCancelOrder(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func getId() string {
+	return strconv.FormatInt(time.Now().UnixNano(), 10)
+}
+
+func TestOKExV3_PlaceFutureOrders(t *testing.T) {
+	req := BatchPlaceOrderReq{
+		InstrumentId: "EOS-USD-190329",
+		Leverage: 10,
+		OrdersData: []OrderItem{
+			{
+				ClientOid: getId(),
+				Type: "1",
+				Price: "2",
+				Size: "1",
+				MatchPrice: "0",
+			},
+		},
+	}
+
+	ret, err := okexV3.PlaceFutureOrders(req)
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3_FutureCancelOrders(t *testing.T) {
+	err := okexV3.FutureCancelOrders("EOS-USD-190329", []string{"2228533294214144"})
+	assert.Nil(t, err)
+}
+
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 	orders, err := okexV3.GetInstrumentOrders("EOS-USD-181228", "7", "", "", "")
 	assert.Nil(t, err)
@@ -95,7 +125,7 @@ func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-181228", "1922187005039616")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2228533294214144")
 	assert.Nil(t, err)
 	output(order)
 }
