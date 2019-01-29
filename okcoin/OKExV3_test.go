@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"github.com/stephenlyu/GoEx"
-	"strconv"
-	"time"
+	"github.com/pborman/uuid"
+	"strings"
 )
 
 var (
 	okexV3 *OKExV3
+	okexV3Swap *OKExV3_SWAP
 )
 
 func chk(err error) {
@@ -35,6 +36,8 @@ func init() {
 	err = json.Unmarshal(bytes, &key)
 	chk(err)
 	okexV3 = NewOKExV3(http.DefaultClient, key.ApiKey, key.SecretKey, key.Passphrase)
+
+	okexV3Swap = NewOKExV3_SWAP(http.DefaultClient, key.ApiKey, key.SecretKey, key.Passphrase)
 }
 
 func output(v interface{}) {
@@ -79,18 +82,18 @@ func TestOKExV3_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_PlaceFutureOrder(t *testing.T) {
-	ret, err := okexV3.PlaceFutureOrder("", "EOS-USD-181228", "2", "1", 1, 0, 10)
+	ret, err := okexV3.PlaceFutureOrder(getId(), "EOS-USD-190329", "2", "1", 1, 0, 10)
 	assert.Nil(t, err)
 	output(ret)
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.FutureCancelOrder("EOS-USD-181228", "1922187005039616")
+	err := okexV3.FutureCancelOrder("EOS-USD-190329", "2228947265820672")
 	assert.Nil(t, err)
 }
 
 func getId() string {
-	return strconv.FormatInt(time.Now().UnixNano(), 10)
+	return strings.Replace(uuid.New(), "-", "", -1)
 }
 
 func TestOKExV3_PlaceFutureOrders(t *testing.T) {
@@ -125,13 +128,110 @@ func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2228533294214144")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2228965275147265")
 	assert.Nil(t, err)
 	output(order)
 }
 
 func TestOKExV3_GetLedger(t *testing.T) {
 	resp, err := okexV3.GetLedger(goex.EOS, "", "", "")
+	assert.Nil(t, err)
+	output(resp)
+}
+
+
+
+func TestOKExV3Swap_GetInstruments(t *testing.T) {
+	instruments, err := okexV3Swap.GetInstruments()
+	assert.Nil(t, err)
+	output(instruments)
+}
+
+func TestOKExV3Swap_GetPosition(t *testing.T) {
+	ret, err := okexV3Swap.GetPosition()
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetInstrumentPosition(t *testing.T) {
+	ret, err := okexV3Swap.GetInstrumentPosition("ETH-USD-SWAP")
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetInstrumentTicker(t *testing.T) {
+	ret, err := okexV3Swap.GetInstrumentTicker("ETH-USD-SWAP")
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetInstrumentIndex(t *testing.T) {
+	ret, err := okexV3Swap.GetInstrumentIndex("ETH-USD-SWAP")
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetAccount(t *testing.T) {
+	ret, err := okexV3Swap.GetAccount()
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3_SWAP_GetInstrumentAccount(t *testing.T) {
+	ret, err := okexV3Swap.GetInstrumentAccount("ETH-USD-SWAP")
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
+	ret, err := okexV3Swap.PlaceFutureOrder("1548746654345238000", "EOS-USD-SWAP", "1.9", "1", 1, 0, 10)
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_FutureCancelOrder(t *testing.T) {
+	err := okexV3Swap.FutureCancelOrder("EOS-USD-SWAP", "6a-4-43264dfdb-0")
+	assert.Nil(t, err)
+}
+
+func TestOKExV3Swap_PlaceFutureOrders(t *testing.T) {
+	req := V3SwapBatchPlaceOrderReq{
+		InstrumentId: "EOS-USD-SWAP",
+		OrdersData: []V3SwapOrderItem{
+			{
+				ClientOid: getId(),
+				Type: "1",
+				Price: "1.9",
+				Size: "1",
+				MatchPrice: "0",
+			},
+		},
+	}
+
+	ret, err := okexV3Swap.PlaceFutureOrders(req)
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3Swap_FutureCancelOrders(t *testing.T) {
+	err := okexV3Swap.FutureCancelOrders("EOS-USD-SWAP", []string{"6a-a-4326d496f-0"})
+	assert.Nil(t, err)
+}
+
+func TestOKExV3Swap_GetInstrumentOrders(t *testing.T) {
+	orders, err := okexV3Swap.GetInstrumentOrders("EOS-USD-SWAP", "7", "", "", "")
+	assert.Nil(t, err)
+	output(orders)
+}
+
+func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
+	order, err := okexV3Swap.GetInstrumentOrder("EOS-USD-SWAP", "6a-4-432634603-0")
+	assert.Nil(t, err)
+	output(order)
+}
+
+func TestOKExV3Swap_GetLedger(t *testing.T) {
+	resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", "", "", "")
 	assert.Nil(t, err)
 	output(resp)
 }
