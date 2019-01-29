@@ -12,6 +12,8 @@ import (
 	"bytes"
 	"sort"
 	"github.com/shopspring/decimal"
+	"strconv"
+	"errors"
 )
 
 func GzipDecodeV3(in []byte) ([]byte, error) {
@@ -30,23 +32,29 @@ func (okFuture *OKExV3) createWsConn() {
 		if okFuture.ws == nil {
 			okFuture.wsDepthHandleMap = make(map[string]func(*Depth))
 			okFuture.wsTradeHandleMap = make(map[string]func(string, []Trade))
+			okFuture.wsPositionHandleMap = make(map[string]func([]FuturePosition))
+			okFuture.wsAccountHandleMap = make(map[string]func(bool, *FutureAccount))
+			okFuture.wsOrderHandleMap = make(map[string]func([]FutureOrder))
 			okFuture.depthManagers = make(map[string]*DepthManager)
 
 			okFuture.ws = NewWsConn("wss://real.okex.com:10442/ws/v3")
-			okFuture.ws.Heartbeat(func() interface{} { return "ping"}, 30*time.Second)
+			okFuture.ws.Heartbeat(func() interface{} { return "ping"}, 20*time.Second)
 			okFuture.ws.ReConnect()
 			okFuture.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
 				if isBin {
 					msg, _ = GzipDecodeV3(msg)
 				}
+				println(string(msg))
 				if string(msg) == "pong" {
 					okFuture.ws.UpdateActivedTime()
 					return
 				}
 
-				//println(string(msg))
-
 				var data struct {
+					Event string
+					ErrorCode int
+					Message string
+					Success bool
 					Table string
 					Action string
 					Data []interface{}
@@ -54,6 +62,17 @@ func (okFuture *OKExV3) createWsConn() {
 				err := json.Unmarshal(msg, &data)
 				if err != nil {
 					log.Print(err)
+					return
+				}
+
+				if data.Event == "login" {
+					var err error
+					if !data.Success {
+						err = errors.New("Login failure")
+					}
+					if okFuture.wsLoginHandle != nil {
+						okFuture.wsLoginHandle(err)
+					}
 					return
 				}
 
@@ -74,6 +93,40 @@ func (okFuture *OKExV3) createWsConn() {
 						topic := fmt.Sprintf("%s:%s", data.Table, depth.InstrumentId)
 						okFuture.wsDepthHandleMap[topic](depth)
 					}
+				case "futures/position":
+					instrumentId, positions := okFuture.parseFuturesPosition(msg)
+					if positions != nil {
+						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
+						okFuture.wsPositionHandleMap[topic](positions)
+					}
+				case "futures/account":
+					account := okFuture.parseFuturesAccount(msg)
+					if account != nil {
+						okFuture.wsAccountHandleMap[data.Table](false, account)
+					}
+				case "futures/order":
+					instrumentId, orders := okFuture.parseFuturesOrder(msg)
+					if orders != nil {
+						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
+						okFuture.wsOrderHandleMap[topic](orders)
+					}
+				case "swap/position":
+					instrumentId, positions := okFuture.parseSwapPosition(msg)
+					if positions != nil {
+						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
+						okFuture.wsPositionHandleMap[topic](positions)
+					}
+				case "swap/account":
+					account := okFuture.parseSwapAccount(msg)
+					if account != nil {
+						okFuture.wsAccountHandleMap[data.Table](false, account)
+					}
+				case "swap/order":
+					instrumentId, orders := okFuture.parseSwapOrder(msg)
+					if orders != nil {
+						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
+						okFuture.wsOrderHandleMap[topic](orders)
+					}
 				}
 			})
 		}
@@ -82,6 +135,20 @@ func (okFuture *OKExV3) createWsConn() {
 
 func (okFuture *OKExV3) isSwap(instrumentId string) bool {
 	return strings.HasSuffix(instrumentId, "SWAP")
+}
+
+func (okFuture *OKExV3) Login(handle func(error)) error {
+	okFuture.createWsConn()
+	okFuture.wsLoginHandle = handle
+
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	message := timestamp + "GET/users/self/verify"
+	sign, _ := GetParamHmacSHA256Base64Sign(okFuture.apiSecretKey, message)
+
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "login",
+		"args": []interface{}{okFuture.apiKey, okFuture.passphrase, timestamp, sign},
+	})
 }
 
 func (okFuture *OKExV3) GetDepthWithWs(instrumentId string, handle func(*Depth)) error {
@@ -112,6 +179,58 @@ func (okFuture *OKExV3) GetTradeWithWs(instrumentId string, handle func(string, 
 	}
 
 	okFuture.wsTradeHandleMap[channel] = handle
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []interface{}{channel}})
+}
+
+func (okFuture *OKExV3) GetPositionWithWs(instrumentId string, handle func([]FuturePosition)) error {
+	okFuture.createWsConn()
+
+	var channel string
+	if okFuture.isSwap(instrumentId) {
+		channel = fmt.Sprintf("swap/position:%s", instrumentId)
+	} else {
+		channel = fmt.Sprintf("futures/position:%s", instrumentId)
+	}
+
+	okFuture.wsPositionHandleMap[channel] = handle
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []interface{}{channel}})
+}
+
+func (okFuture *OKExV3) GetAccountWithWs(currency Currency, isSwap bool, handle func(bool, *FutureAccount)) error {
+	okFuture.createWsConn()
+
+	var channel string
+	var key string
+	if isSwap {
+		channel = fmt.Sprintf("swap/account:%s-USD-SWAP", currency.Symbol)
+		key = fmt.Sprintf("swap/account")
+	} else {
+		channel = fmt.Sprintf("futures/account:%s", currency.Symbol)
+		key = fmt.Sprintf("futures/account")
+	}
+
+	println(channel)
+	okFuture.wsAccountHandleMap[key] = handle
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []interface{}{channel}})
+}
+
+func (okFuture *OKExV3) GetOrderWithWs(instrumentId string, handle func([]FutureOrder)) error {
+	okFuture.createWsConn()
+
+	var channel string
+	if okFuture.isSwap(instrumentId) {
+		channel = fmt.Sprintf("swap/order:%s", instrumentId)
+	} else {
+		channel = fmt.Sprintf("futures/order:%s", instrumentId)
+	}
+
+	okFuture.wsOrderHandleMap[channel] = handle
 	return okFuture.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []interface{}{channel}})
@@ -190,6 +309,122 @@ func (okFuture *OKExV3) parseDepth(msg []byte) *Depth {
 		AskList: asks,
 		BidList: bids,
 	}
+}
+
+func (okFuture *OKExV3) parseFuturesPosition(msg []byte) (string, []FuturePosition) {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []V3Position
+	}
+
+	json.Unmarshal(msg, &data)
+
+	instrumentId := data.Data[0].InstrumentId
+
+	ret := make([]FuturePosition, len(data.Data))
+	for i := range data.Data {
+		ret[i] = *data.Data[i].ToFuturePosition()
+	}
+
+	return instrumentId, ret
+}
+
+func (okFuture *OKExV3) parseFuturesAccount(msg []byte) *FutureAccount {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []map[string]V3CurrencyInfo
+	}
+
+	json.Unmarshal(msg, &data)
+
+	account := new(FutureAccount)
+	account.FutureSubAccounts = make(map[Currency]FutureSubAccount)
+
+	for symbol, info := range data.Data[0] {
+		currency := Currency{Symbol: symbol}
+		account.FutureSubAccounts[currency] = *info.ToFutureSubAccount(currency)
+	}
+
+	return account
+}
+
+func (okFuture *OKExV3) parseFuturesOrder(msg []byte) (string, []FutureOrder) {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []V3OrderInfo
+	}
+
+	json.Unmarshal(msg, &data)
+
+	instrumentId := data.Data[0].InstrumentId
+
+	ret := make([]FutureOrder, len(data.Data))
+	for i := range data.Data {
+		ret[i] = *data.Data[i].ToFutureOrder()
+	}
+
+	return instrumentId, ret
+}
+
+func (okFuture *OKExV3) parseSwapPosition(msg []byte) (string, []FuturePosition) {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []V3_SWAPPosition
+	}
+
+	json.Unmarshal(msg, &data)
+
+	instrumentId := data.Data[0].InstrumentId
+
+	ret := make([]FuturePosition, len(data.Data))
+	for i := range data.Data {
+		ret[i] = *data.Data[i].ToFuturePosition()
+	}
+
+	return instrumentId, ret
+}
+
+func (okFuture *OKExV3) parseSwapAccount(msg []byte) *FutureAccount {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []V3_SWAPCurrencyInfo
+	}
+
+	json.Unmarshal(msg, &data)
+
+	account := new(FutureAccount)
+	account.FutureSubAccounts = make(map[Currency]FutureSubAccount)
+
+	for _, info := range data.Data {
+		currency := V3SWAPInstrumentId2Currency(info.InstrumentId)
+		account.FutureSubAccounts[currency] = *info.ToFutureSubAccount(currency)
+	}
+
+	return account
+}
+
+func (okFuture *OKExV3) parseSwapOrder(msg []byte) (string, []FutureOrder) {
+	var data *struct {
+		Table  string
+		Action string
+		Data   []V3_SWAPOrderInfo
+	}
+
+	json.Unmarshal(msg, &data)
+
+	instrumentId := data.Data[0].InstrumentId
+
+	ret := make([]FutureOrder, len(data.Data))
+	for i := range data.Data {
+		ret[i] = *data.Data[i].ToFutureOrder()
+	}
+
+	return instrumentId, ret
 }
 
 func (okFuture *OKExV3) CloseWs() {

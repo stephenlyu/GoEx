@@ -102,7 +102,13 @@ func (ws *WsConn) Heartbeat(heartbeat func() interface{}, interval time.Duration
 		for {
 			select {
 			case <-timer.C:
-				err := ws.WriteJSON(heartbeat())
+				data := heartbeat()
+				var err error
+				if _, ok := data.(string); ok {
+					err = ws.WriteMessage(websocket.TextMessage, []byte(data.(string)))
+				} else {
+					err = ws.WriteJSON(data)
+				}
 				ws.errorCh <- err
 				if err != nil {
 					log.Println("heartbeat error , ", err)

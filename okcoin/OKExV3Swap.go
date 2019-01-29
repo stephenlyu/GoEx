@@ -72,7 +72,9 @@ func (this *V3_SWAPPosition) ToFuturePosition() *FuturePosition {
 		p.SellPriceAvg, _ = strconv.ParseFloat(this.AvgCost, 64)
 	}
 
-	p.CreateDate = V3_SWAPParseDate(this.Timestamp)
+	if this.Timestamp != "" {
+		p.CreateDate = V3_SWAPParseDate(this.Timestamp)
+	}
 	p.LeverRate, _ = strconv.Atoi(this.Leverage)
 	p.ForceLiquPrice, _ = strconv.ParseFloat(this.LiquidationPrice, 64)
 	p.InstrumentId = this.InstrumentId

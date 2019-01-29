@@ -88,7 +88,7 @@ func TestOKExV3_PlaceFutureOrder(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.FutureCancelOrder("EOS-USD-190329", "2228947265820672")
+	err := okexV3.FutureCancelOrder("EOS-USD-190329", "2229360331400192")
 	assert.Nil(t, err)
 }
 
@@ -184,7 +184,7 @@ func TestOKExV3_SWAP_GetInstrumentAccount(t *testing.T) {
 }
 
 func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
-	ret, err := okexV3Swap.PlaceFutureOrder("1548746654345238000", "EOS-USD-SWAP", "1.9", "1", 1, 0, 10)
+	ret, err := okexV3Swap.PlaceFutureOrder(getId(), "EOS-USD-SWAP", "1.9", "1", 1, 0, 10)
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -214,7 +214,7 @@ func TestOKExV3Swap_PlaceFutureOrders(t *testing.T) {
 }
 
 func TestOKExV3Swap_FutureCancelOrders(t *testing.T) {
-	err := okexV3Swap.FutureCancelOrders("EOS-USD-SWAP", []string{"6a-a-4326d496f-0"})
+	err := okexV3Swap.FutureCancelOrders("EOS-USD-SWAP", []string{"6a-9-432f23bf5-0"})
 	assert.Nil(t, err)
 }
 

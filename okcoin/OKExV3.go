@@ -67,7 +67,9 @@ func (this *V3Position) ToFuturePosition() *FuturePosition {
 	p.BuyAmount, _ = strconv.ParseFloat(this.LongQty, 64)
 	p.BuyAvailable, _ = strconv.ParseFloat(this.LongAvailQty, 64)
 	p.BuyPriceAvg, _ = strconv.ParseFloat(this.LongAvgCost, 64)
-	p.CreateDate = V3ParseDate(this.CreateAt)
+	if this.CreateAt != "" {
+		p.CreateDate = V3ParseDate(this.CreateAt)
+	}
 	p.LeverRate, _ = strconv.Atoi(this.Leverage)
 	p.SellAmount, _ = strconv.ParseFloat(this.ShortQty, 64)
 	p.SellAvailable, _ = strconv.ParseFloat(this.ShortAvailQty, 64)
@@ -100,8 +102,12 @@ type OKExV3 struct {
 
 	ws                *WsConn
 	createWsLock      sync.Mutex
+	wsLoginHandle func(err error)
 	wsDepthHandleMap  map[string]func(*Depth)
 	wsTradeHandleMap map[string]func(string, []Trade)
+	wsPositionHandleMap  map[string]func([]FuturePosition)
+	wsAccountHandleMap  map[string]func(bool, *FutureAccount)
+	wsOrderHandleMap  map[string]func([]FutureOrder)
 	depthManagers	 map[string]*DepthManager
 }
 
