@@ -154,7 +154,7 @@ func TestOKExV3Swap_GetPosition(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentPosition(t *testing.T) {
-	ret, err := okexV3Swap.GetInstrumentPosition("ETH-USD-SWAP")
+	ret, err := okexV3Swap.GetInstrumentPosition("EOS-USD-SWAP")
 	assert.Nil(t, err)
 	output(ret)
 }

@@ -159,7 +159,7 @@ func (ok *OKExV3_SWAP) GetInstruments() ([]V3_SWAPInstrument, error) {
 func (ok *OKExV3_SWAP) GetPosition() ([]FuturePosition, error) {
 	var result []struct {
 		MarginMode string 	`json:"margin_mode"`
-		Holding []V3Position
+		Holding []V3_SWAPPosition
 	}
 	header := ok.buildHeader("GET", SWAP_V3_POSITION, "")
 	err := HttpGet4(ok.client, SWAP_V3_API_BASE_URL + SWAP_V3_POSITION, header, &result)
@@ -182,7 +182,7 @@ func (ok *OKExV3_SWAP) GetPosition() ([]FuturePosition, error) {
 func (ok *OKExV3_SWAP) GetInstrumentPosition(instrumentId string) ([]FuturePosition, error) {
 	var result struct {
 		MarginMode string `json:"margin_mode"`
-		Holding []V3Position
+		Holding []V3_SWAPPosition
 	}
 	reqPath := fmt.Sprintf(SWAP_V3_INSTRUMENT_POSITION, instrumentId)
 	header := ok.buildHeader("GET", reqPath, "")
@@ -451,7 +451,6 @@ func (ok *OKExV3_SWAP) PlaceFutureOrders(req V3SwapBatchPlaceOrderReq) ([]V3Swap
 		Data []V3SwapBatchPlaceOrderRespItem		`json:"order_info"`
 	}
 
-	println(string(body))
 	err = json.Unmarshal(body, &ret)
 	if err != nil {
 		return nil, err
