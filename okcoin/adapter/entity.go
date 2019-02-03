@@ -19,6 +19,8 @@ func FromSecurity(security *entity.Security) (pair goex.CurrencyPair, contractTy
 		contractType = "this_week"
 	case "NFUT":
 		contractType = "next_week"
+	case "FUT":
+		contractType = "swap"
 	default:
 		panic("Unknown contract type")
 	}
@@ -35,6 +37,8 @@ func ToSecurity(pair goex.CurrencyPair, contractType string) *entity.Security {
 		code = fmt.Sprintf("%sTFUT.OKEX", cat)
 	case "next_week":
 		code = fmt.Sprintf("%sNFUT.OKEX", cat)
+	case "swap":
+		code = fmt.Sprintf("%sFUT.OKEX", cat)
 	default:
 		panic("Unknow contract type")
 	}
