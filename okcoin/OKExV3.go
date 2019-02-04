@@ -269,9 +269,12 @@ type V3CurrencyInfo struct {
 	Margin string
 	MarginMode string		`json:"margin_mode"`
 	MarginRatio string 		`json:"margin_ratio"`
-	RealizedPnl string 		`json:"realized_pnl"`
 	TotalAvailBalance string `json:"total_avail_balance"`
-	UnrealizedPnl string 	`json:"unrealized_pnl"`
+	Contracts []struct {
+		InstrumentId string 	`json:"instrument_id"`
+		RealizedPnl string 		`json:"realized_pnl"`
+		UnrealizedPnl string 	`json:"unrealized_pnl"`
+	}						`json:"contracts"`
 }
 
 func (this *V3CurrencyInfo) ToFutureSubAccount(currency Currency) *FutureSubAccount {
@@ -281,8 +284,15 @@ func (this *V3CurrencyInfo) ToFutureSubAccount(currency Currency) *FutureSubAcco
 	a.AccountRights, _ = strconv.ParseFloat(this.Equity, 64)
 	a.KeepDeposit, _ = strconv.ParseFloat(this.TotalAvailBalance, 64)
 	a.RiskRate, _ = strconv.ParseFloat(this.MarginRatio, 64)
-	a.ProfitReal, _ = strconv.ParseFloat(this.RealizedPnl, 64)
-	a.ProfitUnreal, _ = strconv.ParseFloat(this.UnrealizedPnl, 64)
+
+	a.ProfitReal = 0
+	a.ProfitUnreal = 0
+	for _, c := range this.Contracts {
+		pr, _ := strconv.ParseFloat(c.RealizedPnl, 64)
+		pur, _ := strconv.ParseFloat(c.UnrealizedPnl, 64)
+		a.ProfitReal += pr
+		a.ProfitUnreal += pur
+	}
 	return a
 }
 
