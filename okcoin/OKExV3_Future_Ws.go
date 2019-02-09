@@ -44,7 +44,7 @@ func (okFuture *OKExV3) createWsConn() {
 				if isBin {
 					msg, _ = GzipDecodeV3(msg)
 				}
-				println(string(msg))
+				//println(string(msg))
 				if string(msg) == "pong" {
 					okFuture.ws.UpdateActivedTime()
 					return

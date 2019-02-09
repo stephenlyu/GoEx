@@ -58,7 +58,7 @@ func TestOKExV3_GetPosition(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentPosition(t *testing.T) {
-	ret, err := okexV3.GetInstrumentPosition("ETH-USD-181228")
+	ret, err := okexV3.GetInstrumentPosition("EOS-USD-190329")
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -122,7 +122,7 @@ func TestOKExV3_FutureCancelOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3.GetInstrumentOrders("EOS-USD-181228", "7", "", "", "")
+	orders, err := okexV3.GetInstrumentOrders("EOS-USD-190329", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }

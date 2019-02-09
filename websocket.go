@@ -35,10 +35,12 @@ const (
 func NewWsConn(wsurl string) *WsConn {
 	wsConn, resp, err := websocket.DefaultDialer.Dial(wsurl, nil)
 	if err != nil {
-		log.Println(resp.Header)
-		log.Println(resp.Status)
-		bytes, _ := ioutil.ReadAll(resp.Body)
-		log.Println(string(bytes))
+		if resp != nil {
+			log.Println(resp.Header)
+			log.Println(resp.Status)
+			bytes, _ := ioutil.ReadAll(resp.Body)
+			log.Println(string(bytes))
+		}
 		panic(err)
 	}
 	return &WsConn{Conn: wsConn, url: wsurl, actived: time.Now(), checkConnectIntervalTime: 30 * time.Second, close: make(chan int, 1), errorCh: make(chan error)}

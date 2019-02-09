@@ -6,6 +6,7 @@ import (
 	"strings"
 	"github.com/z-ray/log"
 	"regexp"
+	"github.com/stephenlyu/GoEx"
 )
 
 var CODE_PATTERN, _ = regexp.Compile("[0-9]+")
@@ -44,4 +45,12 @@ func ToSecurity(instrumentId string) *entity.Security {
 		}
 	}
 	return entity.ParseSecurityUnsafe(code)
+}
+
+func InstrumentId2CurrencyPair(instrumentId string) goex.CurrencyPair {
+	parts := strings.Split(instrumentId, "-")
+	return goex.CurrencyPair{
+		goex.Currency{Symbol: parts[0]},
+		goex.Currency{Symbol: parts[1]},
+	}
 }
