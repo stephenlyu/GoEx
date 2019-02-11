@@ -18,6 +18,7 @@ const (
 	FUTURE_V3_INSTRUMENTS 	  = "/api/futures/v3/instruments"
 	FUTURE_V3_POSITION 		  = "/api/futures/v3/position"
 	FUTURE_V3_ACCOUNTS 		  = "/api/futures/v3/accounts"
+	FUTURE_V3_CURRENCY_ACCOUNTS = "/api/futures/v3/accounts/%s"
 	FUTURE_V3_INSTRUMENT_POSITION = "/api/futures/v3/%s/position"
 	FUTURE_V3_INSTRUMENT_TICKER = "/api/futures/v3/instruments/%s/ticker"
 	FUTURE_V3_INSTRUMENT_INDEX = "/api/futures/v3/instruments/%s/index"
@@ -270,11 +271,8 @@ type V3CurrencyInfo struct {
 	MarginMode string		`json:"margin_mode"`
 	MarginRatio string 		`json:"margin_ratio"`
 	TotalAvailBalance string `json:"total_avail_balance"`
-	Contracts []struct {
-		InstrumentId string 	`json:"instrument_id"`
-		RealizedPnl string 		`json:"realized_pnl"`
-		UnrealizedPnl string 	`json:"unrealized_pnl"`
-	}						`json:"contracts"`
+	RealizedPnl string 		`json:"realized_pnl"`
+	UnrealizedPnl string 	`json:"unrealized_pnl"`
 }
 
 func (this *V3CurrencyInfo) ToFutureSubAccount(currency Currency) *FutureSubAccount {
@@ -285,14 +283,8 @@ func (this *V3CurrencyInfo) ToFutureSubAccount(currency Currency) *FutureSubAcco
 	a.KeepDeposit, _ = strconv.ParseFloat(this.TotalAvailBalance, 64)
 	a.RiskRate, _ = strconv.ParseFloat(this.MarginRatio, 64)
 
-	a.ProfitReal = 0
-	a.ProfitUnreal = 0
-	for _, c := range this.Contracts {
-		pr, _ := strconv.ParseFloat(c.RealizedPnl, 64)
-		pur, _ := strconv.ParseFloat(c.UnrealizedPnl, 64)
-		a.ProfitReal += pr
-		a.ProfitUnreal += pur
-	}
+	a.ProfitReal, _ = strconv.ParseFloat(this.RealizedPnl, 64)
+	a.ProfitUnreal, _ = strconv.ParseFloat(this.UnrealizedPnl, 64)
 	return a
 }
 
@@ -336,6 +328,18 @@ func (ok *OKExV3) GetAccount() (*FutureAccount, error) {
 	account.FutureSubAccounts[BTG] = *resp.Info.Btg.ToFutureSubAccount(BTG)
 
 	return account, nil
+}
+
+func (ok *OKExV3) GetCurrencyAccount(currency Currency) (*FutureSubAccount, error) {
+	var resp *V3CurrencyInfo
+	reqUrl := fmt.Sprintf(FUTURE_V3_CURRENCY_ACCOUNTS, currency)
+	header := ok.buildHeader("GET", reqUrl, "")
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ToFutureSubAccount(currency), nil
 }
 
 func (ok *OKExV3) PlaceFutureOrder(clientOid string, instrumentId string, price, size string, orderType, matchPrice, leverage int) (string, error) {

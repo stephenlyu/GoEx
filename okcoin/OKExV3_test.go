@@ -10,6 +10,7 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"github.com/pborman/uuid"
 	"strings"
+	"strconv"
 )
 
 var (
@@ -58,7 +59,7 @@ func TestOKExV3_GetPosition(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentPosition(t *testing.T) {
-	ret, err := okexV3.GetInstrumentPosition("EOS-USD-190329")
+	ret, err := okexV3.GetInstrumentPosition("ETH-USD-190329")
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -77,6 +78,12 @@ func TestOKExV3_GetInstrumentIndex(t *testing.T) {
 
 func TestOKExV3_GetAccount(t *testing.T) {
 	ret, err := okexV3.GetAccount()
+	assert.Nil(t, err)
+	output(ret)
+}
+
+func TestOKExV3_GetCurrencyAccount(t *testing.T) {
+	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "ETH"})
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -137,9 +144,21 @@ func TestOKExV3_GetLedger(t *testing.T) {
 	resp, err := okexV3.GetLedger(goex.EOS, "", "", "")
 	assert.Nil(t, err)
 	output(resp)
+
+	from := "2019-02-09T15:08:18.000Z"
+	var amount float64
+	for _, o := range resp {
+		if o.Type != "match" && o.Type != "fee" {
+			continue
+		}
+		if o.Timestamp < from {
+			continue
+		}
+		v, _ := strconv.ParseFloat(o.Amount, 64)
+		amount += v
+	}
+	fmt.Printf("amount: %f", amount)
 }
-
-
 
 func TestOKExV3Swap_GetInstruments(t *testing.T) {
 	instruments, err := okexV3Swap.GetInstruments()
@@ -155,6 +174,9 @@ func TestOKExV3Swap_GetPosition(t *testing.T) {
 
 func TestOKExV3Swap_GetInstrumentPosition(t *testing.T) {
 	ret, err := okexV3Swap.GetInstrumentPosition("EOS-USD-SWAP")
+	assert.Nil(t, err)
+	output(ret)
+	ret, err = okexV3.GetInstrumentPosition("EOS-USD-190329")
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -234,4 +256,19 @@ func TestOKExV3Swap_GetLedger(t *testing.T) {
 	resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", "", "", "")
 	assert.Nil(t, err)
 	output(resp)
+	from := "2019-02-09T15:08:18.000Z"
+	var amount float64
+	for _, o := range resp {
+		if o.Type != "2" && o.Type != "4" {
+			continue
+		}
+		if o.Timestamp < from {
+			continue
+		}
+		v, _ := strconv.ParseFloat(o.Amount, 64)
+		amount += v
+		v, _ = strconv.ParseFloat(o.Fee, 64)
+		amount += v
+	}
+	fmt.Printf("amount: %f", amount)
 }

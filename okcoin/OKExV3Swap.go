@@ -593,12 +593,8 @@ func (ok *OKExV3_SWAP) GetInstrumentOrder(instrumentId string, orderId string) (
 
 type V3FutureLedger struct {
 	Amount string			`json:"amount"`
-	Balance string			`json:"balance"`
-	Currency string			`json:"currency"`
-	Details struct {
-		InstrumentId string `json:"instrument_id"`
-		OrderId int64 		`json:"order_id"`
-			}				`json:"details"`
+	Fee string				`json:"fee"`
+	InstrumentId string 	`json:"instrument_id"`
 	LedgerId string 		`json:"ledger_id"`
 	Timestamp string		`json:"timestamp"`
 	Type string				`json:"type"`
