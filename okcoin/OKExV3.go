@@ -125,7 +125,6 @@ func (ok *OKExV3) buildHeader(method, requestPath, body string) map[string]strin
 	now := time.Now().In(time.UTC)
 	timestamp := now.Format(V3_DATE_FORMAT)
 	message := timestamp + method + requestPath + body
-	println(ok.apiSecretKey, message)
 	signature, _ := GetParamHmacSHA256Base64Sign(ok.apiSecretKey, message)
 	return map[string]string {
 		"OK-ACCESS-KEY": ok.apiKey,
