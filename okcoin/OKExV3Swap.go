@@ -127,7 +127,6 @@ func (ok *OKExV3_SWAP) buildHeader(method, requestPath, body string) map[string]
 	now := time.Now().In(time.UTC)
 	timestamp := now.Format(V3_SWAP_DATE_FORMAT)
 	message := timestamp + method + requestPath + body
-	println(ok.apiSecretKey, message)
 	signature, _ := GetParamHmacSHA256Base64Sign(ok.apiSecretKey, message)
 	return map[string]string {
 		"OK-ACCESS-KEY": ok.apiKey,
@@ -366,7 +365,6 @@ func (ok *OKExV3_SWAP) PlaceFutureOrder(clientOid string, instrumentId string, p
 		return "", err
 	}
 
-	println(string(body))
 	var ret *struct {
 		OrderId string `json:"order_id"`
 		ClientOid string `json:"client_oid"`
@@ -477,7 +475,6 @@ func (ok *OKExV3_SWAP) FutureCancelOrders(instrumentId string, orderIds []string
 	if err != nil {
 		return err
 	}
-	println(string(body))
 
 	var resp struct {
 		Result string 		`json:"result"`
