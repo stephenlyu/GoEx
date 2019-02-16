@@ -28,6 +28,7 @@ const (
 	FUTURE_V3_CANCEL_ORDER		= "/api/futures/v3/cancel_order/%s/%s"
 	FUTURE_V3_INSTRUMENT_ORDERS = "/api/futures/v3/orders/%s"
 	FUTURE_V3_ORDER_INFO 		= "/api/futures/v3/orders/%s/%s"
+	WALLET_V3_TRANSFER 			= "/api/account/v3/transfer"
 )
 
 const (
@@ -626,4 +627,56 @@ func (ok *OKExV3) GetLedger(currency Currency, from, to, limit string) ([]Future
 	}
 
 	return resp, nil
+}
+
+const (
+	WALLET_ACCOUNT_SUB = 0
+	WALLET_ACCOUNT_SPOT = 1
+	WALLET_ACCOUNT_FUTURE = 3
+	WALLET_ACCOUNT_C2C = 4
+	WALLET_ACCOUNT_LEVERAGE = 5
+	WALLET_ACCOUNT_WALLET = 6
+	WALLET_ACCOUNT_ETT = 7
+	WALLET_ACCOUNT_FUND = 8
+	WALLET_ACCOUNT_SWAP = 9
+)
+
+type TransferResp struct {
+	TransferId int64 	`json:"transfer_id"`
+	Result bool 		`json:"result"`
+	Currency string 	`json:"currency"`
+	From int 			`json:"from"`
+	Amount float64 		`json:"amount"`
+	To int 				`json:"to"`
+}
+
+func (ok *OKExV3) WalletTransfer(currency Currency, amount float64, from, to int, subAccount string, instrumentId string) (error, *TransferResp) {
+	param := map[string]interface{} {
+		"currency": currency.Symbol,
+		"amount": amount,
+		"from": from,
+		"to": to,
+		"sub_account": subAccount,
+		"instrment_id": instrumentId,
+	}
+	bytes, _ := json.Marshal(param)
+
+	header := ok.buildHeader("POST", WALLET_V3_TRANSFER, string(bytes))
+
+	reqPath := FUTURE_V3_API_BASE_URL + WALLET_V3_TRANSFER
+	body, err := HttpPostJson(ok.client, reqPath, string(bytes), header)
+	if err != nil {
+		return err, nil
+	}
+	println(string(body))
+	var resp *TransferResp
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err, nil
+	}
+	if !resp.Result {
+		return errors.New(string(body)), nil
+	}
+
+	return nil, resp
 }

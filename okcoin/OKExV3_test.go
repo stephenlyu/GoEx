@@ -83,7 +83,7 @@ func TestOKExV3_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_GetCurrencyAccount(t *testing.T) {
-	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "ETH"})
+	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "EOS"})
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -129,7 +129,7 @@ func TestOKExV3_FutureCancelOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3.GetInstrumentOrders("EOS-USD-190329", "7", "", "", "")
+	orders, err := okexV3.GetInstrumentOrders("ETH-USD-190329", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -173,13 +173,16 @@ func TestOKExV3Swap_GetPosition(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentPosition(t *testing.T) {
-	ret, err := okexV3Swap.GetInstrumentPosition("EOS-USD-SWAP")
+	currency := "ETH"
+	ret, err := okexV3Swap.GetInstrumentPosition(currency + "-USD-SWAP")
 	assert.Nil(t, err)
 	output(ret)
-	ret, err = okexV3.GetInstrumentPosition("EOS-USD-190329")
+	ret, err = okexV3.GetInstrumentPosition(currency + "-USD-190329")
 	assert.Nil(t, err)
 	output(ret)
 }
+
+
 
 func TestOKExV3Swap_GetInstrumentTicker(t *testing.T) {
 	ret, err := okexV3Swap.GetInstrumentTicker("ETH-USD-SWAP")
@@ -200,7 +203,7 @@ func TestOKExV3Swap_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_SWAP_GetInstrumentAccount(t *testing.T) {
-	ret, err := okexV3Swap.GetInstrumentAccount("ETH-USD-SWAP")
+	ret, err := okexV3Swap.GetInstrumentAccount("EOS-USD-SWAP")
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -241,7 +244,7 @@ func TestOKExV3Swap_FutureCancelOrders(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3Swap.GetInstrumentOrders("EOS-USD-SWAP", "7", "", "", "")
+	orders, err := okexV3Swap.GetInstrumentOrders("ETH-USD-SWAP", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -259,9 +262,9 @@ func TestOKExV3Swap_GetLedger(t *testing.T) {
 	from := "2019-02-09T15:08:18.000Z"
 	var amount float64
 	for _, o := range resp {
-		if o.Type != "2" && o.Type != "4" {
-			continue
-		}
+		//if o.Type != "2" && o.Type != "4" {
+		//	continue
+		//}
 		if o.Timestamp < from {
 			continue
 		}
@@ -271,4 +274,28 @@ func TestOKExV3Swap_GetLedger(t *testing.T) {
 		amount += v
 	}
 	fmt.Printf("amount: %f", amount)
+}
+
+func TestQueryAccount(t *testing.T) {
+	currency := "EOS"
+	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: currency})
+	assert.Nil(t, err)
+	output(ret)
+
+	retSwap, err := okexV3Swap.GetInstrumentAccount(currency + "-USD-SWAP")
+	assert.Nil(t, err)
+	output(retSwap)
+
+	fmt.Println(ret.AccountRights + retSwap.AccountRights)
+}
+
+func TestOKExV3_WalletTransfer(t *testing.T) {
+	currency := "EOS"
+	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_SWAP, WALLET_ACCOUNT_WALLET, "", "")
+	//assert.Nil(t, err)
+	//output(resp)
+
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_FUTURE, "", "")
+	assert.Nil(t, err)
+	output(resp)
 }
