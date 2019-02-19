@@ -10,7 +10,7 @@ import (
 var bitmexWs = NewBitMexWs("", "")
 
 func TestBitMexWs_GetDepthWithWs(t *testing.T) {
-	bitmexWs.GetDepthWithWs(goex.CurrencyPair{goex.XBT, goex.USD}, func(depth *goex.Depth) {
+	bitmexWs.GetDepthWithWs("XBTM19", func(depth *goex.Depth) {
 		log.Printf("%+v\n", depth)
 	})
 	time.Sleep(1 * time.Minute)
@@ -18,7 +18,7 @@ func TestBitMexWs_GetDepthWithWs(t *testing.T) {
 }
 
 func TestBitMexWs_GetTradeWithWs(t *testing.T) {
-	bitmexWs.GetTradeWithWs(goex.CurrencyPair{goex.XBT, goex.USD}, func(pair goex.CurrencyPair, trades []goex.Trade) {
+	bitmexWs.GetTradeWithWs("XBTM19", func(symbol string, trades []goex.Trade) {
 		log.Println(trades)
 	})
 	time.Sleep(10 * time.Minute)

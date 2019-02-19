@@ -16,7 +16,7 @@ type BitMexWs struct {
 	ws               *WsConn
 	createWsLock     sync.Mutex
 	wsDepthHandleMap map[string]func(*Depth)
-	wsTradeHandleMap map[string]func(CurrencyPair, []Trade)
+	wsTradeHandleMap map[string]func(string, []Trade)
 	orderHandle      func([]FutureOrder)
 	fillHandle       func([]FutureFill)
 	accountHandle    func(*FutureAccount)
@@ -36,7 +36,7 @@ func (bitmexWs *BitMexWs) createWsConn() {
 
 		if bitmexWs.ws == nil {
 			bitmexWs.wsDepthHandleMap = make(map[string]func(*Depth))
-			bitmexWs.wsTradeHandleMap = make(map[string]func(CurrencyPair, []Trade))
+			bitmexWs.wsTradeHandleMap = make(map[string]func(string, []Trade))
 
 			bitmexWs.ws = NewWsConn("wss://www.bitmex.com/realtime")
 			bitmexWs.ws.SetErrorHandler(bitmexWs.errorHandle)
@@ -72,14 +72,13 @@ func (bitmexWs *BitMexWs) createWsConn() {
 				case "trade":
 					symbol, trades := bitmexWs.parseTrade(msg)
 					if symbol != "" {
-						pair := ParseSymbol(symbol)
 						topic := fmt.Sprintf("trade:%s", symbol)
-						bitmexWs.wsTradeHandleMap[topic](pair, trades)
+						bitmexWs.wsTradeHandleMap[topic](symbol, trades)
 					}
 				case "orderBook10":
 					depth := bitmexWs.parseDepth(msg)
 					if depth != nil {
-						topic := fmt.Sprintf("orderBook10:%s", depth.Pair.ToSymbol(""))
+						topic := fmt.Sprintf("orderBook10:%s", depth.Symbol)
 						bitmexWs.wsDepthHandleMap[topic](depth)
 					}
 				case "order":
@@ -157,7 +156,7 @@ func (bitmexWs *BitMexWs) parseDepth(msg []byte) *Depth {
 	r := data.Data[0]
 	ret := &Depth{}
 	ret.UTime, _ = time.Parse(UTC_FORMAT, r.Timestamp)
-	ret.Pair = ParseSymbol(r.Symbol)
+	ret.Symbol = r.Symbol
 	ret.AskList = make(DepthRecords, len(r.Asks))
 	ret.BidList = make(DepthRecords, len(r.Bids))
 
@@ -247,18 +246,18 @@ func (bitmexWs *BitMexWs) parseExecution(msg []byte) []FutureFill {
 	return ret
 }
 
-func (bitmexWs *BitMexWs) GetDepthWithWs(pair CurrencyPair, handle func(*Depth)) error {
+func (bitmexWs *BitMexWs) GetDepthWithWs(symbol string, handle func(*Depth)) error {
 	bitmexWs.createWsConn()
-	topic := fmt.Sprintf("orderBook10:%s", pair.ToSymbol(""))
+	topic := fmt.Sprintf("orderBook10:%s", symbol)
 	bitmexWs.wsDepthHandleMap[topic] = handle
 	return bitmexWs.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []string{topic}})
 }
 
-func (bitmexWs *BitMexWs) GetTradeWithWs(pair CurrencyPair, handle func(CurrencyPair, []Trade)) error {
+func (bitmexWs *BitMexWs) GetTradeWithWs(symbol string, handle func(string, []Trade)) error {
 	bitmexWs.createWsConn()
-	topic := fmt.Sprintf("trade:%s", pair.ToSymbol(""))
+	topic := fmt.Sprintf("trade:%s", symbol)
 	bitmexWs.wsTradeHandleMap[topic] = handle
 	return bitmexWs.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",

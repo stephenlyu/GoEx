@@ -35,9 +35,9 @@ func newBitmexQuoter() quoter.Quoter {
 func (this *BitmexQuoter) Subscribe(security *entity.Security) {
 	this.tickMap[security.String()] = &entity.TickItem{Code: security.String()}
 
-	pair := FromSecurity(security)
-	this.api.GetDepthWithWs(pair, this.onDepth)
-	this.api.GetTradeWithWs(pair, this.onTrade)
+	symbol := FromSecurity(security)
+	this.api.GetDepthWithWs(symbol, this.onDepth)
+	this.api.GetTradeWithWs(symbol, this.onTrade)
 }
 
 func (this *BitmexQuoter) SetCallback(callback quoter.QuoterCallback) {
@@ -52,7 +52,7 @@ func (this *BitmexQuoter) onDepth(depth *goex.Depth) {
 	lastTs, _ := this.lastTimestamps[depth.Pair.String()]
 	ts := depth.UTime.UnixNano() / 1000000
 
-	security := ToSecurity(depth.Pair)
+	security := ToSecurity(depth.Symbol)
 	thisTick := this.tickMap[security.String()]
 	if thisTick.Volume == 0 && ts - lastTs < DEPTH_INTERVAL {
 		return
@@ -93,7 +93,7 @@ func (this *BitmexQuoter) onDepth(depth *goex.Depth) {
 	this.lastTimestamps[depth.Pair.String()] = ts
 }
 
-func (this *BitmexQuoter) onTrade(pair goex.CurrencyPair, trades []goex.Trade) {
+func (this *BitmexQuoter) onTrade(symbol string, trades []goex.Trade) {
 	// 忽略第一次收到的Trade
 	if this.firstTrade {
 		this.firstTrade = false
@@ -104,7 +104,7 @@ func (this *BitmexQuoter) onTrade(pair goex.CurrencyPair, trades []goex.Trade) {
 		return
 	}
 
-	security := ToSecurity(pair)
+	security := ToSecurity(symbol)
 	thisTick := this.tickMap[security.String()]
 
 	open, high, low, amount, volume, side, buyVolume, sellVolume := thisTick.Open, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side, thisTick.BuyVolume, thisTick.SellVolume

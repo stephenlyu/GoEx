@@ -5,6 +5,7 @@ import (
 	"github.com/stephenlyu/tds/entity"
 	"github.com/Sirupsen/logrus"
 	"time"
+	"fmt"
 )
 
 type _callback struct {
@@ -18,8 +19,16 @@ func (this _callback) OnTickItem(tick *entity.TickItem) {
 func TestBitmexQuoter_Subscribe(t *testing.T) {
 	q := NewBitmexQutoterFatory().CreateQuoter(nil)
 	q.SetCallback(&_callback{})
-	q.Subscribe(entity.ParseSecurityUnsafe("BTCFUT.BITMEX"))
+	q.Subscribe(entity.ParseSecurityUnsafe("BTCM19.BITMEX"))
 
 	time.Sleep(10 * time.Minute)
 	q.Destroy()
+}
+
+
+func TestToSecurity(t *testing.T) {
+	fmt.Println(ToSecurity("XBTUSD"))
+	fmt.Println(ToSecurity("XBTM19"))
+	fmt.Println(FromSecurity(entity.ParseSecurityUnsafe("BTCFUT.BITMEX")))
+	fmt.Println(FromSecurity(entity.ParseSecurityUnsafe("BTCM19.BITMEX")))
 }

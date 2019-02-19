@@ -87,6 +87,7 @@ func (dr DepthRecords) Less(i, j int) bool {
 type Depth struct {
 	ContractType string //for future
 	InstrumentId string
+	Symbol string
 	Pair         CurrencyPair
 	UTime        time.Time
 	AskList,
@@ -199,7 +200,7 @@ type FutureFill struct {
 	FillId string
 	OrderId string
 	ClientOrderId string
-	Symbol CurrencyPair
+	Symbol string
 	Side TradeSide
 	LastQty int64
 	LastPrice float64

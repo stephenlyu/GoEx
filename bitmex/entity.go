@@ -3,7 +3,6 @@ package bitmex
 import (
 	"github.com/stephenlyu/GoEx"
 	"time"
-	"log"
 	"strings"
 )
 
@@ -62,7 +61,7 @@ func (order *BitmexOrder) ToFutureOrder() *goex.FutureOrder {
 	case ORDER_STATUS_EXPIRED:
 		ret.Status = goex.ORDER_CANCEL
 	}
-	ret.Currency = ParseSymbol(order.Symbol)
+	ret.ContractName = order.Symbol
 	if order.Side == "Buy" {
 		if order.OrderType == "Limit" {
 			ret.Side = goex.BUY
@@ -100,7 +99,7 @@ func (e *Execution) ToFill() *goex.FutureFill {
 	f.FillId = e.TrdMatchId
 	f.OrderId = e.OrderId
 	f.ClientOrderId = e.ClientOrderId
-	f.Symbol = ParseSymbol(e.Symbol)
+	f.Symbol = e.Symbol
 	if e.Side == "Buy" {
 		f.Side = goex.BUY
 	} else {
@@ -127,11 +126,7 @@ type BitmexPosition struct {
 
 func (p *BitmexPosition) ToFuturePosition() *goex.FuturePosition {
 	ret := new(goex.FuturePosition)
-	pair := ParseSymbol(p.Symbol)
-	if pair.CurrencyA == goex.XBT {
-		pair.CurrencyA = goex.BTC
-	}
-	ret.Symbol = pair
+	ret.InstrumentId = p.Symbol
 	if p.CurrentQty < 0 {
 		ret.SellAmount = -p.CurrentQty
 		ret.SellPriceAvg = p.AveragePrice
@@ -197,12 +192,4 @@ func ParseTimestamp(ts string) (error, int64) {
 func FormatTimestamp(ts int64) string {
 	t := time.Unix(ts / 1000, ts % 1000 * int64(time.Millisecond)).In(time.UTC)
 	return t.Format(UTC_FORMAT)
-}
-
-func ParseSymbol(symbol string) goex.CurrencyPair {
-	if symbol != "XBTUSD" {
-		log.Fatalf("symbol %s not supported", symbol)
-	}
-
-	return goex.CurrencyPair{goex.XBT, goex.USD}
 }
