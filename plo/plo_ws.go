@@ -45,7 +45,7 @@ func (ploWs *PloWs) createWsConn() {
 			ploWs.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			ploWs.wsTradeHandleMap = make(map[string]func(CurrencyPair, bool, []TradeDecimal))
 
-			ploWs.ws = NewWsConn("wss://test-api.plo.one/ws")
+			ploWs.ws = NewWsConn("wss://api.plo.one/ws")
 			ploWs.ws.SetErrorHandler(ploWs.errorHandle)
 			ploWs.ws.ReConnect()
 			ploWs.ws.Heartbeat(func() interface{} {
