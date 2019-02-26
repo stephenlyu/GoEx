@@ -41,7 +41,7 @@ func TestPloWs_GetDepthWithWs(t *testing.T) {
 
 	<- ch
 
-	ploWs.GetDepthWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, func(depth *goex.DepthDecimal) {
+	ploWs.GetDepthWithWs(goex.CurrencyPair{goex.Currency{Symbol:"SHE"}, goex.USD}, func(depth *goex.DepthDecimal) {
 		log.Printf("%+v\n", depth)
 	})
 	time.Sleep(10 * time.Minute)
@@ -63,9 +63,10 @@ func TestPloWs_GetTradeWithWs(t *testing.T) {
 
 	<- ch
 
-	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.EOS, goex.USD}, true, func(pair goex.CurrencyPair, isIndex bool, trades []goex.TradeDecimal) {
+	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.Currency{Symbol:"SHE"}, goex.USD}, false, func(pair goex.CurrencyPair, isIndex bool, trades []goex.TradeDecimal) {
 		log.Println(pair, isIndex, trades)
 	})
+	log.Println("here")
 	time.Sleep(10 * time.Minute)
 	ploWs.ws.CloseWs()
 }
