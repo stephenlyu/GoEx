@@ -21,6 +21,7 @@ const (
 	BALANCES_URL = "/hapi/BatchOperation/balances"
 	PLACE_ORDER_URL = "/hapi/BatchOperation/batchPosExec"
 	SELF_TRADE_URL = "/hapi/BatchOperation/selfTrade"
+	SIMPLE_SELF_TRADE_URL = "/hapi/BatchOperation/simpleSelfTrade"
 	CANCEL_ORDER_URL = "/hapi/BatchOperation/batchOrderCancel"
 	BATCH_ORDER_URL = "/hapi/BatchOperation/batchOrderCondquery"
 	ORDERS_URL = "/hapi/BatchOperation/orders"
@@ -344,6 +345,38 @@ func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
 		return err
 	}
 
+	var resp struct {
+		Error int 	`json:"err"`
+		Msg string 	`json:"msg"`
+	}
+	err = json.Unmarshal(bytes, &resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != 0 {
+		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg)
+	}
+
+	return nil
+}
+
+func (this *PloRest) SimpleSelfTrade(reqOrders []OrderReq) (error) {
+	data, _ := json.MarshalIndent(reqOrders, "", "  ")
+	println(string(data))
+
+	ts := util.Tick()
+	bytes, _ := json.Marshal(reqOrders)
+	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
+
+	message += "&sign=" + signature
+	println("simpleSelftrade", message)
+
+	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+SIMPLE_SELF_TRADE_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+	if err != nil {
+		return err
+	}
+	println(string(bytes))
 	var resp struct {
 		Error int 	`json:"err"`
 		Msg string 	`json:"msg"`
