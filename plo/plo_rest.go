@@ -177,7 +177,7 @@ type PloConfig struct {
 
 func (this *PloRest) GetConfigList() (error, []PloConfig) {
 	var data struct {
-		Error string		`json:"err"`
+		Error decimal.Decimal		`json:"err"`
 		Msg string 			`json:"msg"`
 		Data []PloConfig	`json:"data"`
 	}
@@ -186,8 +186,8 @@ func (this *PloRest) GetConfigList() (error, []PloConfig) {
 		return err, nil
 	}
 
-	if data.Error != "0" {
-		return fmt.Errorf("error: %s", data.Error), nil
+	if !data.Error.IsZero() {
+		return fmt.Errorf("error: %s", data.Error.String()), nil
 	}
 
 	return nil, data.Data
@@ -228,7 +228,7 @@ func (this *PloRest) GetBalances() (error, *goex.FutureAccount) {
 
 	var resp struct {
 		Data []PloBalance	`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -236,8 +236,8 @@ func (this *PloRest) GetBalances() (error, *goex.FutureAccount) {
 		return err, nil
 	}
 
-	if resp.Error > 0 {
-		return fmt.Errorf("error: %d", resp.Error), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s", resp.Error.String()), nil
 	}
 
 	ret := new(goex.FutureAccount)
@@ -265,7 +265,7 @@ type OrderReq struct {
 }
 
 type OrderResp struct {
-	Error int 				`json:"status"`
+	Error decimal.Decimal 	`json:"status"`
 	Msg string 				`json:"msg"`
 	Data *json.RawMessage	`json:"data"`
 	Order *struct {
@@ -306,7 +306,7 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 	println(string(bytes))
 	var resp struct {
 		Data []OrderResp	`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -314,13 +314,13 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	for i := range resp.Data {
 		item := &resp.Data[i]
-		if item.Error == 0 {
+		if !item.Error.IsZero() {
 			json.Unmarshal([]byte(*item.Data), &item.Order)
 			item.Data = nil
 		}
@@ -346,7 +346,7 @@ func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
 	}
 
 	var resp struct {
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -354,8 +354,8 @@ func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
 		return err
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg)
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg)
 	}
 
 	return nil
@@ -378,7 +378,7 @@ func (this *PloRest) SimpleSelfTrade(reqOrders []OrderReq) (error) {
 	}
 	println(string(bytes))
 	var resp struct {
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -386,8 +386,8 @@ func (this *PloRest) SimpleSelfTrade(reqOrders []OrderReq) (error) {
 		return err
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg)
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg)
 	}
 
 	return nil
@@ -415,10 +415,10 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 
 	var resp struct {
 		Data []struct {
-			Error int 		`json:"err"`
+			Error decimal.Decimal 	`json:"err"`
 			Msg string 		`json:"msg"`
 		}	`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -426,15 +426,15 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	errors := make([]error, len(resp.Data))
 	for i := range resp.Data {
 		item := &resp.Data[i]
-		if item.Error > 0 {
-			errors[i] = fmt.Errorf("error: %d msg: %s", item.Error, item.Msg)
+		if !item.Error.IsZero() {
+			errors[i] = fmt.Errorf("error: %s msg: %s", item.Error.String(), item.Msg)
 		}
 	}
 
@@ -484,7 +484,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 
 	var resp struct {
 		Data []PloOrder    `json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -492,8 +492,8 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	return nil, resp.Data
@@ -524,7 +524,7 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 			CurrentPage int 	`json:"current_page"`
 			Data []PloOrder    	`json:"data"`
 		}			`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -532,8 +532,8 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	return nil, resp.Data.Data
@@ -589,7 +589,7 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 	println(string(bytes))
 	var resp struct {
 		Data []PloPosition 	`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -597,8 +597,8 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	return nil, resp.Data
@@ -624,7 +624,7 @@ func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, cou
 
 	var resp struct {
 		Data []interface{} 	`json:"data"`
-		Error int 	`json:"err"`
+		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
 	}
 	err = json.Unmarshal(bytes, &resp)
@@ -632,8 +632,8 @@ func (this *PloRest) QueryPosRanking(pair goex.CurrencyPair, posType string, cou
 		return err, nil
 	}
 
-	if resp.Error != 0 {
-		return fmt.Errorf("error: %d msg: %s", resp.Error, resp.Msg), nil
+	if !resp.Error.IsZero() {
+		return fmt.Errorf("error: %s msg: %s", resp.Error.String(), resp.Msg), nil
 	}
 
 	return nil, resp.Data
