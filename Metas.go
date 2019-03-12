@@ -20,6 +20,20 @@ type Order struct {
 	Side      TradeSide
 }
 
+type OrderDecimal struct {
+	Price,
+	Amount,
+	AvgPrice,
+	DealAmount,
+	Fee decimal.Decimal
+	OrderID2  string
+	OrderID   int
+	OrderTime int
+	Status    TradeStatus
+	Currency  CurrencyPair
+	Side      TradeSide
+}
+
 type Trade struct {
 	Tid    int64   `json:"tid"`
 	Type   string  `json:"type"`
@@ -50,6 +64,21 @@ type Account struct {
 	Asset       float64 //总资产
 	NetAsset    float64 //净资产
 	SubAccounts map[Currency]SubAccount
+}
+
+type SubAccountDecimal struct {
+	Currency Currency
+	Amount,
+	FrozenAmount,
+	AvailableAmount,
+	LoanAmount decimal.Decimal
+}
+
+type AccountDecimal struct {
+	Exchange    string
+	Asset       decimal.Decimal //总资产
+	NetAsset    decimal.Decimal //净资产
+	SubAccounts map[Currency]SubAccountDecimal
 }
 
 type Ticker struct {
@@ -115,6 +144,7 @@ func (dr DepthRecordsDecimal) Less(i, j int) bool {
 
 type DepthDecimal struct {
 	ContractType string //for future
+	InstrumentId string
 	Pair         CurrencyPair
 	UTime        time.Time
 	AskList,
