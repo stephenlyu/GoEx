@@ -35,6 +35,13 @@ const (
 	V3_DATE_FORMAT = "2006-01-02T15:04:05.000Z"
 )
 
+const (
+	V3_ORDER_TYPE_NORMAL = 0
+	V3_ORDER_TYPE_POST_ONLY = 1
+	V3_ORDER_TYPE_FOK = 2
+	V3_ORDER_TYPE_IOC = 3
+)
+
 type V3Instrument struct {
 	ContractVal string 		`json:"contract_val"`
 	Delivery string
@@ -342,11 +349,12 @@ func (ok *OKExV3) GetCurrencyAccount(currency Currency) (*FutureSubAccount, erro
 	return resp.ToFutureSubAccount(currency), nil
 }
 
-func (ok *OKExV3) PlaceFutureOrder(clientOid string, instrumentId string, price, size string, orderType, matchPrice, leverage int) (string, error) {
+func (ok *OKExV3) PlaceFutureOrder(clientOid string, instrumentId string, price, size string, _type, orderType, matchPrice, leverage int) (string, error) {
 	params := map[string]string {
 		"client_oid": clientOid,
 		"instrument_id": instrumentId,
-		"type": strconv.Itoa(orderType),
+		"type": strconv.Itoa(_type),
+		"order_type": strconv.Itoa(orderType),
 		"price": price,
 		"size": size,
 		"match_price": strconv.Itoa(matchPrice),
@@ -411,6 +419,7 @@ func (ok *OKExV3) FutureCancelOrder(instrumentId, orderId string) error {
 type OrderItem struct {
 	ClientOid string 	`json:"client_oid"`
 	Type string 		`json:"type"`
+	OrderType string 	`json:"order_type"`
 	Price string 		`json:"price"`
 	Size string 		`json:"size"`
 	MatchPrice string 	`json:"match_price"`

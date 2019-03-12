@@ -11,6 +11,7 @@ import (
 	"github.com/pborman/uuid"
 	"strings"
 	"strconv"
+	"time"
 )
 
 var (
@@ -89,9 +90,14 @@ func TestOKExV3_GetCurrencyAccount(t *testing.T) {
 }
 
 func TestOKExV3_PlaceFutureOrder(t *testing.T) {
-	ret, err := okexV3.PlaceFutureOrder(getId(), "EOS-USD-190329", "2", "1", 1, 0, 10)
+	code := "EOS-USD-190329"
+	orderId, err := okexV3.PlaceFutureOrder(getId(), code, "3.45", "1", 1, V3_ORDER_TYPE_POST_ONLY, 0, 10)
 	assert.Nil(t, err)
-	output(ret)
+	output(orderId)
+
+	order, err := okexV3.GetInstrumentOrder(code, orderId)
+	assert.Nil(t, err)
+	output(order)
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
@@ -124,7 +130,7 @@ func TestOKExV3_PlaceFutureOrders(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrders(t *testing.T) {
-	err := okexV3.FutureCancelOrders("EOS-USD-190329", []string{"2228533294214144"})
+	err := okexV3.FutureCancelOrders("EOS-USD-190329", []string{"2465877328667648"})
 	assert.Nil(t, err)
 }
 
@@ -135,7 +141,7 @@ func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2228965275147265")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2465895595286528")
 	assert.Nil(t, err)
 	output(order)
 }
@@ -209,9 +215,21 @@ func TestOKExV3_SWAP_GetInstrumentAccount(t *testing.T) {
 }
 
 func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
-	ret, err := okexV3Swap.PlaceFutureOrder(getId(), "EOS-USD-SWAP", "1.9", "1", 1, 0, 10)
+	code := "EOS-USD-SWAP"
+	orderId, err := okexV3Swap.PlaceFutureOrder(getId(), code, "3.45", "1", 1, V3_SWAP_ORDER_TYPE_POST_ONLY, 0, 10)
 	assert.Nil(t, err)
-	output(ret)
+	output(orderId)
+
+	for {
+		order, err := okexV3Swap.GetInstrumentOrder(code, orderId)
+		assert.Nil(t, err)
+		if order == nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		output(order)
+		break
+	}
 }
 
 func TestOKExV3Swap_FutureCancelOrder(t *testing.T) {
@@ -250,7 +268,7 @@ func TestOKExV3Swap_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3Swap.GetInstrumentOrder("EOS-USD-SWAP", "6a-4-432634603-0")
+	order, err := okexV3Swap.GetInstrumentOrder("EOS-USD-SWAP", "6a-9-50a0a42d7-0")
 	assert.Nil(t, err)
 	output(order)
 }
@@ -259,21 +277,21 @@ func TestOKExV3Swap_GetLedger(t *testing.T) {
 	resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", "", "", "")
 	assert.Nil(t, err)
 	output(resp)
-	from := "2019-02-09T15:08:18.000Z"
-	var amount float64
-	for _, o := range resp {
-		//if o.Type != "2" && o.Type != "4" {
-		//	continue
-		//}
-		if o.Timestamp < from {
-			continue
-		}
-		v, _ := strconv.ParseFloat(o.Amount, 64)
-		amount += v
-		v, _ = strconv.ParseFloat(o.Fee, 64)
-		amount += v
-	}
-	fmt.Printf("amount: %f", amount)
+	//from := "2019-02-09T15:08:18.000Z"
+	//var amount float64
+	//for _, o := range resp {
+	//	//if o.Type != "2" && o.Type != "4" {
+	//	//	continue
+	//	//}
+	//	if o.Timestamp < from {
+	//		continue
+	//	}
+	//	v, _ := strconv.ParseFloat(o.Amount, 64)
+	//	amount += v
+	//	v, _ = strconv.ParseFloat(o.Fee, 64)
+	//	amount += v
+	//}
+	//fmt.Printf("amount: %f", amount)
 }
 
 func TestQueryAccount(t *testing.T) {
@@ -291,11 +309,11 @@ func TestQueryAccount(t *testing.T) {
 
 func TestOKExV3_WalletTransfer(t *testing.T) {
 	currency := "EOS"
-	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_SWAP, WALLET_ACCOUNT_WALLET, "", "")
-	//assert.Nil(t, err)
-	//output(resp)
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
+	assert.Nil(t, err)
+	output(resp)
 
-	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_FUTURE, "", "")
+	err, resp = okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SWAP, "", "")
 	assert.Nil(t, err)
 	output(resp)
 }

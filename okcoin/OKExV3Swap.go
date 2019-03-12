@@ -34,6 +34,13 @@ const (
 	V3_SWAP_DATE_FORMAT = "2006-01-02T15:04:05.000Z"
 )
 
+const (
+	V3_SWAP_ORDER_TYPE_NORMAL = 0
+	V3_SWAP_ORDER_TYPE_POST_ONLY = 1
+	V3_SWAP_ORDER_TYPE_FOK = 2
+	V3_SWAP_ORDER_TYPE_IOC = 3
+)
+
 type V3_SWAPInstrument struct {
 	ContractVal string 		`json:"contract_val"`
 	InstrumentId string 	`json:"instrument_id"`
@@ -343,11 +350,12 @@ func (ok *OKExV3_SWAP) GetInstrumentAccount(instrumentId string) (*FutureSubAcco
 	return resp.Info.ToFutureSubAccount(currency), nil
 }
 
-func (ok *OKExV3_SWAP) PlaceFutureOrder(clientOid string, instrumentId string, price, size string, orderType, matchPrice, leverage int) (string, error) {
+func (ok *OKExV3_SWAP) PlaceFutureOrder(clientOid string, instrumentId string, price, size string, _type, orderType, matchPrice, leverage int) (string, error) {
 	params := map[string]string {
 		"client_oid": clientOid,
 		"instrument_id": instrumentId,
-		"type": strconv.Itoa(orderType),
+		"type": strconv.Itoa(_type),
+		"order_type": strconv.Itoa(orderType),
 		"price": price,
 		"size": size,
 		"match_price": strconv.Itoa(matchPrice),
@@ -414,6 +422,7 @@ func (ok *OKExV3_SWAP) FutureCancelOrder(instrumentId, orderId string) error {
 type V3SwapOrderItem struct {
 	ClientOid string 	`json:"client_oid"`
 	Type string 		`json:"type"`
+	OrderType string 	`json:"order_type"`
 	Price string 		`json:"price"`
 	Size string 		`json:"size"`
 	MatchPrice string 	`json:"match_price"`
