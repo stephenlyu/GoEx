@@ -297,7 +297,7 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("placeorders", message)
+	//println("placeorders", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+PLACE_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -320,7 +320,7 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 
 	for i := range resp.Data {
 		item := &resp.Data[i]
-		if !item.Error.IsZero() {
+		if item.Error.IsZero() {
 			json.Unmarshal([]byte(*item.Data), &item.Order)
 			item.Data = nil
 		}

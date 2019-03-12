@@ -155,7 +155,7 @@ func TestPloRest_BatchOrders(t *testing.T) {
 
 func TestPloRest_CancelOrders(t *testing.T) {
 	api := NewPloRest(API_KEY, SECRET_KEY)
-	err, ret := api.CancelOrders([]string{"9E24C4AE-2D64-F479-55D3-8244295642F7"})
+	err, ret := api.CancelOrders([]string{"2C8D19C1-446E-7E67-C697-2F445F47A8BC"})
 	chk(err)
 
 	Output(ret)

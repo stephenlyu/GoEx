@@ -104,6 +104,12 @@ func (ploWs *PloWs) createWsConn() {
 						topic := fmt.Sprintf("orderBookL2:%s", depth.Pair.ToSymbol(""))
 						ploWs.wsDepthHandleMap[topic](depth)
 					}
+				case "orderBookL1":
+					depth := ploWs.parseDepth(msg)
+					if depth != nil {
+						topic := fmt.Sprintf("orderBookL1:%s", depth.Pair.ToSymbol(""))
+						ploWs.wsDepthHandleMap[topic](depth)
+					}
 				case "order":
 					orders := ploWs.parseOrder(msg)
 					if len(orders) > 0 && ploWs.orderHandle != nil {
@@ -245,7 +251,7 @@ func (ploWs *PloWs) parsePosition(msg []byte) []PloPosition {
 func (ploWs *PloWs) GetDepthWithWs(pair CurrencyPair, handle func(*DepthDecimal)) error {
 	ploWs.createWsConn()
 	symbol := pair.ToSymbol("")
-	topic := fmt.Sprintf("orderBookL2:%s", symbol)
+	topic := fmt.Sprintf("orderBookL1:%s", symbol)
 	ploWs.wsDepthHandleMap[topic] = handle
 	ploWs.depthManagers[symbol] = NewDepthManager()
 	return ploWs.ws.Subscribe(map[string]interface{}{

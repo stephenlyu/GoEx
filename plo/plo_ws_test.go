@@ -63,7 +63,7 @@ func TestPloWs_GetTradeWithWs(t *testing.T) {
 
 	<- ch
 
-	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.Currency{Symbol:"SHE"}, goex.USD}, false, func(pair goex.CurrencyPair, isIndex bool, trades []goex.TradeDecimal) {
+	ploWs.GetTradeWithWs(goex.CurrencyPair{goex.Currency{Symbol:"SHE"}, goex.USD}, true, func(pair goex.CurrencyPair, isIndex bool, trades []goex.TradeDecimal) {
 		log.Println(pair, isIndex, trades)
 	})
 	log.Println("here")
