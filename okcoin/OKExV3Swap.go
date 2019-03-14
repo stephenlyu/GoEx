@@ -510,6 +510,7 @@ type V3_SWAPOrderInfo struct {
 	FilledQty string 		`json:"filled_qty"`
 	Fee string
 	OrderId string 			`json:"order_id"`
+	ClientOid string 		`json:"client_oid"`
 	Price string
 	PriceAvg string 		`json:"price_avg"`
 	Status string
@@ -528,6 +529,7 @@ func (this *V3_SWAPOrderInfo) ToFutureOrder() *FutureOrder {
 	o.AvgPrice, _ = strconv.ParseFloat(this.PriceAvg, 64)
 	o.DealAmount, _ = strconv.ParseFloat(this.FilledQty, 64)
 	o.OrderID2 = this.OrderId
+	o.ClientOrderID = this.ClientOid
 	o.OrderTime = V3_SWAPParseDate(this.Timestamp)
 	switch this.Status {
 	case "-1":

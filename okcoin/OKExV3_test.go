@@ -91,7 +91,9 @@ func TestOKExV3_GetCurrencyAccount(t *testing.T) {
 
 func TestOKExV3_PlaceFutureOrder(t *testing.T) {
 	code := "EOS-USD-190329"
-	orderId, err := okexV3.PlaceFutureOrder(getId(), code, "3.45", "1", 1, V3_ORDER_TYPE_POST_ONLY, 0, 10)
+	clientOid := getId()
+	println(clientOid)
+	orderId, err := okexV3.PlaceFutureOrder(clientOid, code, "3.6", "1", 1, V3_ORDER_TYPE_POST_ONLY, 0, 10)
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -135,13 +137,13 @@ func TestOKExV3_FutureCancelOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3.GetInstrumentOrders("ETH-USD-190329", "7", "", "", "")
+	orders, err := okexV3.GetInstrumentOrders("EOS-USD-190329", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "2465895595286528")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "6aa114e7b65f4f038965d14207a99d38")
 	assert.Nil(t, err)
 	output(order)
 }
@@ -216,7 +218,9 @@ func TestOKExV3_SWAP_GetInstrumentAccount(t *testing.T) {
 
 func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
 	code := "EOS-USD-SWAP"
-	orderId, err := okexV3Swap.PlaceFutureOrder(getId(), code, "3.45", "1", 1, V3_SWAP_ORDER_TYPE_POST_ONLY, 0, 10)
+	clientOid := getId()
+	println(clientOid)
+	orderId, err := okexV3Swap.PlaceFutureOrder(clientOid, code, "3.45", "1", 1, V3_SWAP_ORDER_TYPE_POST_ONLY, 0, 10)
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -233,7 +237,7 @@ func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
 }
 
 func TestOKExV3Swap_FutureCancelOrder(t *testing.T) {
-	err := okexV3Swap.FutureCancelOrder("EOS-USD-SWAP", "6a-4-43264dfdb-0")
+	err := okexV3Swap.FutureCancelOrder("EOS-USD-SWAP", "6a-4-51419f705-0")
 	assert.Nil(t, err)
 }
 
@@ -268,7 +272,7 @@ func TestOKExV3Swap_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3Swap.GetInstrumentOrder("EOS-USD-SWAP", "6a-9-50a0a42d7-0")
+	order, err := okexV3Swap.GetInstrumentOrder("EOS-USD-SWAP", "65a0951ebaa341bfa892062d44a5d113")
 	assert.Nil(t, err)
 	output(order)
 }
