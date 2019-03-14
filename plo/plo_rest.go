@@ -289,8 +289,8 @@ type OrderResp struct {
 }
 
 func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
-	data, _ := json.MarshalIndent(reqOrders, "", "  ")
-	println(string(data))
+	//data, _ := json.MarshalIndent(reqOrders, "", "  ")
+	//println(string(data))
 
 	ts := util.Tick()
 	bytes, _ := json.Marshal(reqOrders)
@@ -303,7 +303,7 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 	if err != nil {
 		return err, nil
 	}
-	println(string(bytes))
+	//println(string(bytes))
 	var resp struct {
 		Data []OrderResp	`json:"data"`
 		Error decimal.Decimal 	`json:"err"`
@@ -330,15 +330,15 @@ func (this *PloRest) PlaceOrders(reqOrders []OrderReq) (error, []OrderResp) {
 }
 
 func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
-	data, _ := json.MarshalIndent(reqOrders, "", "  ")
-	println(string(data))
+	//data, _ := json.MarshalIndent(reqOrders, "", "  ")
+	//println(string(data))
 
 	ts := util.Tick()
 	bytes, _ := json.Marshal(reqOrders)
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("selftrade", message)
+	//println("selftrade", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+SELF_TRADE_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -362,21 +362,21 @@ func (this *PloRest) SelfTrade(reqOrders []OrderReq) (error) {
 }
 
 func (this *PloRest) SimpleSelfTrade(reqOrders []OrderReq) (error) {
-	data, _ := json.MarshalIndent(reqOrders, "", "  ")
-	println(string(data))
+	//data, _ := json.MarshalIndent(reqOrders, "", "  ")
+	//println(string(data))
 
 	ts := util.Tick()
 	bytes, _ := json.Marshal(reqOrders)
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("simpleSelftrade", message)
+	//println("simpleSelftrade", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+SIMPLE_SELF_TRADE_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
 		return err
 	}
-	println(string(bytes))
+	//println(string(bytes))
 	var resp struct {
 		Error decimal.Decimal 	`json:"err"`
 		Msg string 	`json:"msg"`
@@ -406,7 +406,7 @@ func (this *PloRest) CancelOrders(orderIds []string) (error, []error) {
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("cancel orders", message)
+	//println("cancel orders", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+CANCEL_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -475,7 +475,7 @@ func (this *PloRest) BatchOrders(orderIds []string) (error, []PloOrder) {
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("batch orders", message)
+	//println("batch orders", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+BATCH_ORDER_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -510,7 +510,7 @@ func (this *PloRest) QueryOrders(pair goex.CurrencyPair, status int) (error, []P
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("query orders", message)
+	//println("query orders", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+ORDERS_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
@@ -580,13 +580,13 @@ func (this *PloRest) QueryPositions(pair goex.CurrencyPair, status int) (error, 
 	message, signature := BuildSignature(this.apiKey, this.apiSecretKey, ts, base64.StdEncoding.EncodeToString(bytes))
 
 	message += "&sign=" + signature
-	println("query positions", message)
+	//println("query positions", message)
 
 	bytes, err := goex.HttpPostForm3(this.client, BASE_URL+POSITIONS_URL, message, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 	if err != nil {
 		return err, nil
 	}
-	println(string(bytes))
+	//println(string(bytes))
 	var resp struct {
 		Data []PloPosition 	`json:"data"`
 		Error decimal.Decimal 	`json:"err"`
