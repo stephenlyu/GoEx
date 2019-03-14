@@ -432,47 +432,49 @@ func (okFuture *OKExV3) CloseWs() {
 }
 
 type DepthManager struct {
-	buyMap map[string][]decimal.Decimal
-	sellMap map[string][]decimal.Decimal
+	buyMap map[string]DepthRecord
+	sellMap map[string]DepthRecord
 }
 
 func NewDepthManager() *DepthManager {
 	return &DepthManager{
-		buyMap: make(map[string][]decimal.Decimal),
-		sellMap: make(map[string][]decimal.Decimal),
+		buyMap: make(map[string]DepthRecord),
+		sellMap: make(map[string]DepthRecord),
 	}
 }
 
 func (this *DepthManager) Update(action string, askList, bidList [][]decimal.Decimal) (DepthRecords, DepthRecords) {
 	if action == "partial" {
-		this.buyMap = make(map[string][]decimal.Decimal)
-		this.sellMap = make(map[string][]decimal.Decimal)
+		this.buyMap = make(map[string]DepthRecord)
+		this.sellMap = make(map[string]DepthRecord)
 	}
 
 	for _, o := range askList {
-		price := o[0].String()
+		key := o[0].String()
 		if o[1].Equal(decimal.Zero) {
-			delete(this.sellMap, price)
+			delete(this.sellMap, key)
 		} else {
-			this.sellMap[price] = o
+			price, _ := o[0].Float64()
+			amount, _ := o[1].Float64()
+			this.sellMap[key] = DepthRecord{Price: price, Amount: amount}
 		}
 	}
 
 	for _, o := range bidList {
-		price := o[0].String()
+		key := o[0].String()
 		if o[1].Equal(decimal.Zero) {
-			delete(this.buyMap, price)
+			delete(this.buyMap, key)
 		} else {
-			this.buyMap[price] = o
+			price, _ := o[0].Float64()
+			amount, _ := o[1].Float64()
+			this.buyMap[key] = DepthRecord{Price: price, Amount: amount}
 		}
 	}
 
 	bids := make(DepthRecords, len(this.buyMap))
 	i := 0
 	for _, item := range this.buyMap {
-		price, _ := item[0].Float64()
-		amount, _ := item[1].Float64()
-		bids[i] = DepthRecord{Price: price, Amount: amount}
+		bids[i] = item
 		i++
 	}
 	sort.SliceStable(bids, func(i,j int) bool {
@@ -482,9 +484,7 @@ func (this *DepthManager) Update(action string, askList, bidList [][]decimal.Dec
 	asks := make(DepthRecords, len(this.sellMap))
 	i = 0
 	for _, item := range this.sellMap {
-		price, _ := item[0].Float64()
-		amount, _ := item[1].Float64()
-		asks[i] = DepthRecord{Price: price, Amount: amount}
+		asks[i] = item
 		i++
 	}
 	sort.SliceStable(asks, func(i,j int) bool {

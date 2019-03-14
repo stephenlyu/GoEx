@@ -6,16 +6,22 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"log"
 	"time"
+	"os"
+	"runtime/pprof"
 )
 
 var okexFutureV3 = NewOKExV3(http.DefaultClient, "", "", "")
 
 func TestOKExV3_GetDepthWithWs(t *testing.T) {
-	okexFutureV3.GetDepthWithWs("EOS-USD-190329", func(depth *goex.Depth) {
-		log.Printf("%+v\n", depth)
+	okexFutureV3.GetDepthWithWs("EOS-USD-SWAP", func(depth *goex.Depth) {
+		log.Printf("ask1: %f bid1: %f\n", depth.AskList[0].Price, depth.BidList[0].Price)
 	})
-	time.Sleep(10 * time.Minute)
-	okexFuture.ws.CloseWs()
+	writer, err := os.Create("cpu.prof")
+	chk(err)
+	pprof.StartCPUProfile(writer)
+	time.Sleep(time.Minute)
+	pprof.StopCPUProfile()
+	okexFuture.CloseWs()
 }
 
 func TestOKExV3_GetTradeWithWs(t *testing.T) {
