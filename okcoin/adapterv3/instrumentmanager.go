@@ -8,11 +8,14 @@ import (
 	"strings"
 	"sort"
 	"sync"
+	"github.com/stephenlyu/tds/date"
 )
 
 //
 // 负责将Security映射为对应的InstumentId
 //
+
+const WEEK_MILLS = 7 * 24 * 3600 * 1000
 
 type InstrumentManager struct {
 	api *okcoin.OKExV3
@@ -55,18 +58,32 @@ func (this *InstrumentManager) ensureMap() error {
 	}
 
 	m := make(map[string]string)
+	getDate := func(instrumentId string) string {
+		return strings.Split(instrumentId, "-")[2]
+	}
 	for currency, ids := range currencyInstruments {
 		sort.SliceStable(ids, func(i,j int) bool {
 			return ids[i] < ids[j]
 		})
-		if len(ids) > 0 {
+		if len(ids) == 3 {
 			m[currency + "TFUT.OKEX"] = ids[0]
-		}
-		if len(ids) > 1 {
 			m[currency + "NFUT.OKEX"] = ids[1]
-		}
-		if len(ids) > 2 {
 			m[currency + "QFUT.OKEX"] = ids[2]
+		} else if len(ids) == 2 {
+			now := date.GetNowString()
+			yearPrefix := now[:2]
+
+			d1, _ := date.DayString2Timestamp(yearPrefix + getDate(ids[0]))
+			d2, _ := date.DayString2Timestamp(yearPrefix + getDate(ids[1]))
+			if d2 - d1 == WEEK_MILLS {
+				m[currency + "TFUT.OKEX"] = ids[0]
+				m[currency + "NFUT.OKEX"] = ids[1]
+				m[currency + "QFUT.OKEX"] = ""
+			} else {
+				m[currency + "TFUT.OKEX"] = ids[0]
+				m[currency + "NFUT.OKEX"] = ""
+				m[currency + "QFUT.OKEX"] = ids[1]
+			}
 		}
 	}
 
