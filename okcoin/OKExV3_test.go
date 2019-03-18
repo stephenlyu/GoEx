@@ -321,3 +321,10 @@ func TestOKExV3_WalletTransfer(t *testing.T) {
 	assert.Nil(t, err)
 	output(resp)
 }
+
+func TestOKExV3_GetWallet(t *testing.T) {
+	currency := "EOS"
+	ret, err := okexV3.GetWallet(goex.Currency{Symbol: currency})
+	assert.Nil(t, err)
+	output(ret)
+}

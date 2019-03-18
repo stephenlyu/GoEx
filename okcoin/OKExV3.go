@@ -29,6 +29,7 @@ const (
 	FUTURE_V3_INSTRUMENT_ORDERS = "/api/futures/v3/orders/%s"
 	FUTURE_V3_ORDER_INFO 		= "/api/futures/v3/orders/%s/%s"
 	WALLET_V3_TRANSFER 			= "/api/account/v3/transfer"
+	WALLET_V3_INFO 				= "/api/account/v3/wallet/%s"
 )
 
 const (
@@ -691,4 +692,28 @@ func (ok *OKExV3) WalletTransfer(currency Currency, amount float64, from, to int
 	}
 
 	return nil, resp
+}
+
+type WalletCurrency struct {
+	Balance float64
+	Hold float64
+	Available float64
+	Currency string
+}
+
+func (ok *OKExV3) GetWallet(currency Currency) (*WalletCurrency, error) {
+	reqUrl := fmt.Sprintf(WALLET_V3_INFO, strings.ToLower(currency.Symbol))
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []WalletCurrency
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, nil
+	}
+
+	return &resp[0], nil
 }
