@@ -60,7 +60,7 @@ func TestOKExV3_GetPosition(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentPosition(t *testing.T) {
-	ret, err := okexV3.GetInstrumentPosition("ETH-USD-190329")
+	ret, err := okexV3.GetInstrumentPosition("ETH-USD-190628")
 	assert.Nil(t, err)
 	output(ret)
 }

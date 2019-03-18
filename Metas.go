@@ -25,10 +25,14 @@ type OrderDecimal struct {
 	Amount,
 	AvgPrice,
 	DealAmount,
+	Notinal,
+	DealNotional,
 	Fee decimal.Decimal
 	OrderID2  string
 	OrderID   int
+	ClientOid string
 	OrderTime int
+	Timestamp int64
 	Status    TradeStatus
 	Currency  CurrencyPair
 	Side      TradeSide

@@ -1,4 +1,4 @@
-package okcoin
+package okexv3spot
 
 import (
 	"encoding/json"
