@@ -95,7 +95,7 @@ func TestOKExV3Spot_PlaceOrder(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.FutureCancelOrder("EOS-USDT", "", "02616a2d891641f7b8abec7790dc6693")
+	err := okexV3.FutureCancelOrder("EOS-USDT", "", "cba31249763b45459bbf684bb47f9fb5")
 	assert.Nil(t, err)
 }
 

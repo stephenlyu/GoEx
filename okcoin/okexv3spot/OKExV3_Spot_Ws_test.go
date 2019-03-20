@@ -25,39 +25,36 @@ func TestOKExV3_GetTradeWithWs(t *testing.T) {
 	time.Sleep(10 * time.Minute)
 	okexSpotV3.ws.CloseWs()
 }
-//
-//func TestOKExV3_Login(t *testing.T) {
-//	ch := make(chan struct{})
-//	okexV3.Login(func(err error) {
-//		close(ch)
-//	})
-//	<- ch
-//}
-//
-//func OnAccount(isSwap bool, account *goex.FutureAccount) {
-//	log.Printf("OnAccount %+v", account)
-//}
-//
-//func OnPosition(positions []goex.FuturePosition) {
-//	log.Printf("OnPosition %+v", positions)
-//}
-//
-//func OnOrder(orders []goex.FutureOrder) {
-//	log.Printf("OnOrder %+v", orders)
-//}
-//
-//func TestOKExV3_Authenticated_Futures(t *testing.T) {
-//	ch := make(chan struct{})
-//	okexV3.Login(func(err error) {
-//		close(ch)
-//	})
-//	<- ch
-//
-//	const instrumentId = "EOS-USD-190329"
-//
-//	okexV3.GetAccountWithWs(goex.EOS, false, OnAccount)
-//	okexV3.GetPositionWithWs(instrumentId, OnPosition)
-//	okexV3.GetOrderWithWs(instrumentId, OnOrder)
-//
-//	time.Sleep(10 * time.Minute)
-//}
+
+func TestOKExV3_Login(t *testing.T) {
+	ch := make(chan struct{})
+	okexV3.Login(func(err error) {
+		close(ch)
+	})
+	<- ch
+}
+
+func OnAccount(account *goex.SubAccountDecimal) {
+	log.Printf("OnAccount %+v", account)
+}
+
+func OnOrder(orders []goex.OrderDecimal) {
+	log.Printf("OnOrder %+v", orders)
+}
+
+func TestOKExV3_Authenticated_Spot(t *testing.T) {
+	ch := make(chan struct{})
+	okexV3.Login(func(err error) {
+		close(ch)
+	})
+	<- ch
+
+	println("login success.")
+
+	const instrumentId = "EOS-USDT"
+
+	okexV3.GetAccountWithWs(goex.EOS, OnAccount)
+	okexV3.GetOrderWithWs(instrumentId, OnOrder)
+
+	time.Sleep(10 * time.Minute)
+}

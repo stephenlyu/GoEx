@@ -92,12 +92,13 @@ func (okSpot *OKExV3Spot) createWsConn() {
 						topic := fmt.Sprintf("%s:%s", data.Table, depth.InstrumentId)
 						okSpot.wsDepthHandleMap[topic](depth)
 					}
-				case "futures/account":
+				case "spot/account":
 					account := okSpot.parseAccount(msg)
 					if account != nil {
-						okSpot.wsAccountHandleMap[data.Table](account)
+						channel := fmt.Sprintf("%s:%s", data.Table, account.Currency)
+						okSpot.wsAccountHandleMap[channel](account)
 					}
-				case "futures/order":
+				case "spot/order":
 					instrumentId, orders := okSpot.parseOrder(msg)
 					if orders != nil {
 						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
@@ -257,7 +258,6 @@ func (okSpot *OKExV3Spot) parseAccount(msg []byte) *SubAccountDecimal {
 }
 
 func (okSpot *OKExV3Spot) parseOrder(msg []byte) (string, []OrderDecimal) {
-	// TODO:
 	var data *struct {
 		Table  string
 		Action string
@@ -269,9 +269,9 @@ func (okSpot *OKExV3Spot) parseOrder(msg []byte) (string, []OrderDecimal) {
 	instrumentId := data.Data[0].InstrumentId
 
 	ret := make([]OrderDecimal, len(data.Data))
-	//for i := range data.Data {
-	//	ret[i] = *data.Data[i].ToFutureOrder()
-	//}
+	for i := range data.Data {
+		ret[i] = *data.Data[i].ToOrder()
+	}
 
 	return instrumentId, ret
 }
