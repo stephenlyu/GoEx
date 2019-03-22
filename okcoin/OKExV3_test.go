@@ -10,8 +10,8 @@ import (
 	"github.com/stephenlyu/GoEx"
 	"github.com/pborman/uuid"
 	"strings"
-	"strconv"
 	"time"
+	"strconv"
 )
 
 var (
@@ -143,29 +143,28 @@ func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-190329", "6aa114e7b65f4f038965d14207a99d38")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190628", "2517531327024128")
 	assert.Nil(t, err)
 	output(order)
 }
 
 func TestOKExV3_GetLedger(t *testing.T) {
-	resp, err := okexV3.GetLedger(goex.EOS, "", "", "")
-	assert.Nil(t, err)
-	output(resp)
-
-	from := "2019-02-09T15:08:18.000Z"
-	var amount float64
-	for _, o := range resp {
-		if o.Type != "match" && o.Type != "fee" {
-			continue
+	var ledgers []FutureLedger
+	page := 1
+	for {
+		resp, err := okexV3.GetLedger(goex.EOS, strconv.Itoa(page), "", "100")
+		assert.Nil(t, err)
+		if len(resp) == 0 {
+			break
+		} else {
+			ledgers = append(ledgers, resp...)
 		}
-		if o.Timestamp < from {
-			continue
-		}
-		v, _ := strconv.ParseFloat(o.Amount, 64)
-		amount += v
+		page++
+		time.Sleep(time.Millisecond * 500)
 	}
-	fmt.Printf("amount: %f", amount)
+	bytes, err := json.MarshalIndent(ledgers, "", "  ")
+	assert.Nil(t, err)
+	ioutil.WriteFile("eos-ledgers.json", bytes, 0666)
 }
 
 func TestOKExV3Swap_GetInstruments(t *testing.T) {
@@ -278,24 +277,23 @@ func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetLedger(t *testing.T) {
-	resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", "", "", "")
+	var ledgers []V3FutureLedger
+	page := 1
+	for {
+		fmt.Printf("page %d..\n", page)
+		resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", strconv.Itoa(page), "", "100")
+		assert.Nil(t, err)
+		if len(resp) == 0 {
+			break
+		} else {
+			ledgers = append(ledgers, resp...)
+		}
+		page++
+		time.Sleep(time.Millisecond * 400)
+	}
+	bytes, err := json.MarshalIndent(ledgers, "", "  ")
 	assert.Nil(t, err)
-	output(resp)
-	//from := "2019-02-09T15:08:18.000Z"
-	//var amount float64
-	//for _, o := range resp {
-	//	//if o.Type != "2" && o.Type != "4" {
-	//	//	continue
-	//	//}
-	//	if o.Timestamp < from {
-	//		continue
-	//	}
-	//	v, _ := strconv.ParseFloat(o.Amount, 64)
-	//	amount += v
-	//	v, _ = strconv.ParseFloat(o.Fee, 64)
-	//	amount += v
-	//}
-	//fmt.Printf("amount: %f", amount)
+	ioutil.WriteFile("eos-swap-ledgers.json", bytes, 0666)
 }
 
 func TestQueryAccount(t *testing.T) {
@@ -313,13 +311,13 @@ func TestQueryAccount(t *testing.T) {
 
 func TestOKExV3_WalletTransfer(t *testing.T) {
 	currency := "EOS"
-	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 200, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
 	assert.Nil(t, err)
 	output(resp)
 
-	err, resp = okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SWAP, "", "")
-	assert.Nil(t, err)
-	output(resp)
+	//err, resp = okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SWAP, "", "")
+	//assert.Nil(t, err)
+	//output(resp)
 }
 
 func TestOKExV3_GetWallet(t *testing.T) {
@@ -327,4 +325,26 @@ func TestOKExV3_GetWallet(t *testing.T) {
 	ret, err := okexV3.GetWallet(goex.Currency{Symbol: currency})
 	assert.Nil(t, err)
 	output(ret)
+}
+
+
+func TestOKExV3_GetWalletLedger(t *testing.T) {
+	var ledgers []WalletLedger
+	page := 1
+	for {
+		fmt.Printf("page %d..\n", page)
+		resp, err := okexV3.GetWalletLedger(goex.ETH, strconv.Itoa(page), "", "100", "")
+		assert.Nil(t, err)
+		ledgers = append(ledgers, resp...)
+		fmt.Println(len(resp))
+		if len(resp) < 100 {
+			break
+		}
+		page++
+		time.Sleep(time.Millisecond * 400)
+		break
+	}
+	bytes, err := json.MarshalIndent(ledgers, "", "  ")
+	assert.Nil(t, err)
+	ioutil.WriteFile("eos-wallet-ledgers.json", bytes, 0666)
 }

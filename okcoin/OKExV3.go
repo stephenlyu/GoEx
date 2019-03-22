@@ -642,6 +642,56 @@ func (ok *OKExV3) GetLedger(currency Currency, from, to, limit string) ([]Future
 	return resp, nil
 }
 
+//"amount":-0.00100941,
+//"balance":0,
+//"currency":"BTC",
+//"fee":0,
+//"ledger_id":9260348,
+//"timestamp":"2018-10-19T01:12:21.000Z",
+//"typename":"To: spot account"
+
+type WalletLedger struct {
+	Amount float64
+	Balance float64
+	Currency string
+	Fee float64
+	LedgerId int64 				`json:"ledger_id"`
+	Timestamp string
+	TypeName string 			`json:"typename"`
+}
+
+func (ok *OKExV3) GetWalletLedger(currency Currency, from, to, limit, _type string) ([]WalletLedger, error) {
+	reqUrl := fmt.Sprintf("/api/account/v3/ledger")
+	var params []string
+	params = append(params, "currency=" + strings.ToLower(currency.Symbol))
+	if _type != "" {
+		params = append(params, "type=" + _type)
+	}
+	if from != "" {
+		params = append(params, "from=" + from)
+	}
+	if to != "" {
+		params = append(params, "to=" + to)
+	}
+	if limit != "" {
+		params = append(params, "limit=" + limit)
+	}
+	if len(params) > 0 {
+		reqUrl += "?" + strings.Join(params, "&")
+	}
+	println(reqUrl)
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []WalletLedger
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 const (
 	WALLET_ACCOUNT_SUB = 0
 	WALLET_ACCOUNT_SPOT = 1
