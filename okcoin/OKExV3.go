@@ -11,6 +11,7 @@ import (
 	"strings"
 	"errors"
 	"sync"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -30,6 +31,10 @@ const (
 	FUTURE_V3_ORDER_INFO 		= "/api/futures/v3/orders/%s/%s"
 	WALLET_V3_TRANSFER 			= "/api/account/v3/transfer"
 	WALLET_V3_INFO 				= "/api/account/v3/wallet/%s"
+	V3_WITHDRAW_FEE				= "/api/account/v3/withdrawal/fee"
+	V3_WITHDRAW					= "/api/account/v3/withdrawal"
+	V3_DEPOSIT_HISTORY 			= "/api/account/v3/deposit/history/%s"
+	V3_WITHDRAW_HISTORY 		= "/api/account/v3/withdrawal/history/%s"
 )
 
 const (
@@ -642,19 +647,22 @@ func (ok *OKExV3) GetLedger(currency Currency, from, to, limit string) ([]Future
 	return resp, nil
 }
 
-//"amount":-0.00100941,
-//"balance":0,
-//"currency":"BTC",
-//"fee":0,
-//"ledger_id":9260348,
-//"timestamp":"2018-10-19T01:12:21.000Z",
-//"typename":"To: spot account"
+const (
+	WalletLedgerTypeDeposit = "1"
+	WalletLedgerTypeWithdraw = "2"
+	WalletLedgerTypeCancelWithdraw = "13"
+	WalletLedgerTypeToFuture = "18"
+	WalletLedgerTypeFromFuture = "19"
+	WalletLedgerTypeToSubAccount = "20"
+	WalletLedgerTypeFromSubAccount = "21"
+	WalletLedgerTypeGet = "28"
+)
 
 type WalletLedger struct {
-	Amount float64
-	Balance float64
+	Amount decimal.Decimal
+	Balance decimal.Decimal
 	Currency string
-	Fee float64
+	Fee decimal.Decimal
 	LedgerId int64 				`json:"ledger_id"`
 	Timestamp string
 	TypeName string 			`json:"typename"`
@@ -679,7 +687,6 @@ func (ok *OKExV3) GetWalletLedger(currency Currency, from, to, limit, _type stri
 	if len(params) > 0 {
 		reqUrl += "?" + strings.Join(params, "&")
 	}
-	println(reqUrl)
 	header := ok.buildHeader("GET", reqUrl, "")
 
 	var resp []WalletLedger
@@ -745,9 +752,9 @@ func (ok *OKExV3) WalletTransfer(currency Currency, amount float64, from, to int
 }
 
 type WalletCurrency struct {
-	Balance float64
-	Hold float64
-	Available float64
+	Balance decimal.Decimal
+	Hold decimal.Decimal
+	Available decimal.Decimal
 	Currency string
 }
 
@@ -766,4 +773,129 @@ func (ok *OKExV3) GetWallet(currency Currency) (*WalletCurrency, error) {
 	}
 
 	return &resp[0], nil
+}
+
+type WithDrawFee struct {
+	Currency string
+	MinFee decimal.Decimal 	`json:"min_fee"`
+	MaxFee decimal.Decimal 	`json:"max_fee"`
+}
+
+func (ok *OKExV3) GetWithdrawFee(currency string) ([]WithDrawFee, error) {
+	reqUrl := V3_WITHDRAW_FEE
+	if currency != "" {
+		reqUrl += "?currency=" + currency
+	}
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []WithDrawFee
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, nil
+	}
+
+	return resp, nil
+}
+
+const (
+	WithdrawDestinationOKCoin = 2
+	WithdrawDestinationOkex = 3
+	WithdrawDestinationOuter = 4
+)
+
+type WithdrawResp struct {
+	Amount float64
+	WithdrawalId int64
+	Currency string
+	Result bool
+}
+
+func (ok *OKExV3) Withdraw(currency Currency, amount float64, destination int, toAddress string, tradePwd string, fee float64) (error, *WithdrawResp) {
+	param := map[string]interface{} {
+		"currency": currency.Symbol,
+		"amount": amount,
+		"destination": destination,
+		"toAddress": toAddress,
+		"tradePwd": tradePwd,
+		"fee": fee,
+	}
+	bytes, _ := json.Marshal(param)
+
+	header := ok.buildHeader("POST", V3_WITHDRAW, string(bytes))
+
+	reqPath := FUTURE_V3_API_BASE_URL + V3_WITHDRAW
+	body, err := HttpPostJson(ok.client, reqPath, string(bytes), header)
+	if err != nil {
+		return err, nil
+	}
+
+	var resp *WithdrawResp
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err, nil
+	}
+	if !resp.Result {
+		return errors.New(string(body)), nil
+	}
+
+	return nil, resp
+}
+
+type DepositRecord struct {
+	Amount float64
+	Txid string
+	Currency string
+	To string
+	Timestamp string
+	Status int
+}
+
+func (ok *OKExV3) GetDepositHistory(currency string) ([]DepositRecord, error) {
+	reqUrl := fmt.Sprintf(V3_DEPOSIT_HISTORY, currency)
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []DepositRecord
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, nil
+	}
+
+	return resp, nil
+}
+
+type WithdrawRecord struct {
+	Amount	decimal.Decimal	//	数量
+	Timestamp string		// 提币申请时间
+	From string				// 提币地址(如果收币地址是OKEx平台地址，则此处将显示用户账户)
+	To string				// 收币地址
+	Tag	string				// 部分币种提币需要标签，若不需要则不返回此字段
+	PaymentId string		`json:"payment_id"`		// 部分币种提币需要此字段，若不需要则不返回此字段
+	Txid string				// 提币哈希记录(内部转账将不返回此字段)
+	Fee	string				// 提币手续费和对应币种，如0.00000009btc
+	Status string			// 提现状态（-3:撤销中;-2:已撤销;-1:失败;0:等待提现;1:提现中;2:已汇出;3:邮箱确认;4:人工审核中5:等待身份认证）
+}
+
+func (ok *OKExV3) GetWithdrawHistory(currency string) ([]WithdrawRecord, error) {
+	reqUrl := fmt.Sprintf(V3_WITHDRAW_HISTORY, currency)
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []WithdrawRecord
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) == 0 {
+		return nil, nil
+	}
+
+	return resp, nil
 }
