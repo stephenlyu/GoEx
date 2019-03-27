@@ -53,6 +53,7 @@ func (this *GateIOSpot) createWsConn() {
 			this.depthManagers = make(map[string]*DepthManager)
 
 			this.ws = NewWsConn("wss://ws.gate.io/v3/")
+			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.Heartbeat(func() interface{} {
 				return map[string]interface{} {
 					"id": _NextId(),
@@ -62,7 +63,7 @@ func (this *GateIOSpot) createWsConn() {
 			}, 20*time.Second)
 			this.ws.ReConnect()
 			this.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
-				println(string(msg))
+				//println(string(msg))
 				var data struct {
 					Id interface{}
 					Error *struct {
@@ -136,7 +137,6 @@ func (this *GateIOSpot) Login(handle func(error)) error {
 	nonce := time.Now().UnixNano() / 1000000
 	sign, _ := GetParamHmacSHA512Base64SignEx(this.apiSecretKey, strconv.FormatInt(nonce, 10))
 	params := []interface{}{this.apiKey, sign, nonce}
-	fmt.Printf("%+v\n", params)
 
 	return this.ws.Subscribe(map[string]interface{}{
 		"id":   _LOGIN_ID,
@@ -386,6 +386,10 @@ func (this *GateIOSpot) parseOrder(msg []byte) *OrderDecimal {
 	}
 
 	return ret
+}
+
+func (this *GateIOSpot) SetErrorHandler(handle func(error)) {
+	this.errorHandle = handle
 }
 
 func (this *GateIOSpot) CloseWs() {

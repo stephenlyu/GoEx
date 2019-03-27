@@ -47,6 +47,7 @@ type GateIOSpot struct {
 	wsAccountHandleMap  map[string]func(*AccountDecimal)
 	wsOrderHandleMap  map[string]func(*OrderDecimal)
 	depthManagers	 map[string]*DepthManager
+	errorHandle      func(error)
 }
 
 func NewGateIOSpot(	apiKey, apiSecretKey string) *GateIOSpot {
@@ -107,7 +108,6 @@ func (this *GateIOSpot) GetMarketInfo() ([]MarketInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	println(string(body))
 	var data struct {
 		Result string
 		Pairs []map[string]MarketInfo
@@ -437,7 +437,6 @@ func (this *GateIOSpot) CancelAllOrders(pair CurrencyPair, types string) error {
 	if err != nil {
 		return err
 	}
-	println(string(body))
 	var data struct {
 		Result bool
 		Message string
@@ -483,7 +482,6 @@ func (this *GateIOSpot) translateType(_type string) TradeSide {
 
 func (this *GateIOSpot) GetOrder(pair CurrencyPair, orderId string) (*OrderDecimal, error) {
 	var param string = "orderNumber=" + orderId + "&currencyPair=" + strings.ToLower(pair.ToSymbol("_"))
-	println(param)
 	header := this.buildHeader(param)
 	body, err := HttpPostForm3(this.client, API_BASE_URL + GET_ORDER, param, header)
 	if err != nil {
