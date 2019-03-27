@@ -160,8 +160,6 @@ func (this *GateIOSpot) GetDepthWithWs(pairs []CurrencyPair, intervals []float64
 		this.depthManagers[symbol] = NewDepthManager()
 	}
 
-	fmt.Printf("%+v\n", params)
-
 	method := "depth.subscribe"
 	this.wsDepthHandleMap[method] = handle
 	return this.ws.Subscribe(map[string]interface{}{

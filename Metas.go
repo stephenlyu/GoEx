@@ -28,6 +28,7 @@ type OrderDecimal struct {
 	Notinal,
 	DealNotional,
 	Fee decimal.Decimal
+	FeeCurrency string
 	OrderID2  string
 	OrderID   int
 	ClientOid string

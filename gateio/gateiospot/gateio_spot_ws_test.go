@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-var gateioSpot = NewGateIOSpot("", "")
-
 func TestOKExV3_GetDepthWithWs(t *testing.T) {
 	gateioSpot.GetDepthWithWs([]goex.CurrencyPair{goex.EOS_USDT}, []float64{0.001}, 30, func(depth *goex.DepthDecimal) {
 		log.Printf("%+v\n", depth)
