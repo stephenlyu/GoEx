@@ -44,8 +44,8 @@ type GateIOSpot struct {
 	wsLoginHandle func(err error)
 	wsDepthHandleMap  map[string]func(*DepthDecimal)
 	wsTradeHandleMap map[string]func(CurrencyPair, []TradeDecimal)
-	wsAccountHandleMap  map[string]func(*SubAccountDecimal)
-	wsOrderHandleMap  map[string]func([]OrderDecimal)
+	wsAccountHandleMap  map[string]func(*AccountDecimal)
+	wsOrderHandleMap  map[string]func(*OrderDecimal)
 	depthManagers	 map[string]*DepthManager
 }
 

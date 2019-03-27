@@ -99,3 +99,13 @@ func GetParamHmacSHA512Base64Sign(hmac_key string, hmac_data string) string {
 
 	return base64.StdEncoding.EncodeToString(hash_hmac_bytes)
 }
+
+func GetParamHmacSHA512Base64SignEx(secret, params string) (string, error) {
+	mac := hmac.New(sha512.New, []byte(secret))
+	_, err := mac.Write([]byte(params))
+	if err != nil {
+		return "", err
+	}
+	signByte := mac.Sum(nil)
+	return base64.StdEncoding.EncodeToString(signByte), nil
+}

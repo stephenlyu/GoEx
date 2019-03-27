@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 	"strconv"
 	"sync/atomic"
+	"strings"
 )
 
 const _LOGIN_ID = int64(0xFFFFFFFFFF)
@@ -47,8 +48,8 @@ func (this *GateIOSpot) createWsConn() {
 		if this.ws == nil {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			this.wsTradeHandleMap = make(map[string]func(CurrencyPair, []TradeDecimal))
-			this.wsAccountHandleMap = make(map[string]func(*SubAccountDecimal))
-			this.wsOrderHandleMap = make(map[string]func([]OrderDecimal))
+			this.wsAccountHandleMap = make(map[string]func(*AccountDecimal))
+			this.wsOrderHandleMap = make(map[string]func(*OrderDecimal))
 			this.depthManagers = make(map[string]*DepthManager)
 
 			this.ws = NewWsConn("wss://ws.gate.io/v3/")
@@ -110,18 +111,18 @@ func (this *GateIOSpot) createWsConn() {
 						topic := "depth.subscribe"
 						this.wsDepthHandleMap[topic](depth)
 					}
-				//case "balance.update":
-				//	account := this.parseAccount(msg)
-				//	if account != nil {
-				//		channel := fmt.Sprintf("%s:%s", data.Table, account.Currency)
-				//		this.wsAccountHandleMap[channel](account)
-				//	}
-				//case "order.update":
-				//	instrumentId, orders := this.parseOrder(msg)
-				//	if orders != nil {
-				//		topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
-				//		this.wsOrderHandleMap[topic](orders)
-				//	}
+				case "balance.update":
+					account := this.parseAccount(msg)
+					if account != nil {
+						topic := "balance.subscribe"
+						this.wsAccountHandleMap[topic](account)
+					}
+				case "order.update":
+					order := this.parseOrder(msg)
+					if order != nil {
+						topic := "order.subscribe"
+						this.wsOrderHandleMap[topic](order)
+					}
 				}
 			})
 		}
@@ -133,12 +134,14 @@ func (this *GateIOSpot) Login(handle func(error)) error {
 	this.wsLoginHandle = handle
 
 	nonce := time.Now().UnixNano() / 1000000
-	sign, _ := GetParamHmacSHA256Base64Sign(this.apiSecretKey, strconv.FormatInt(nonce, 10))
+	sign, _ := GetParamHmacSHA512Base64SignEx(this.apiSecretKey, strconv.FormatInt(nonce, 10))
+	params := []interface{}{this.apiKey, sign, nonce}
+	fmt.Printf("%+v\n", params)
 
 	return this.ws.Subscribe(map[string]interface{}{
 		"id":   _LOGIN_ID,
 		"method": "server.sign",
-		"params": []interface{}{this.apiKey, sign, nonce},
+		"params": params,
 	})
 }
 
@@ -185,24 +188,38 @@ func (this *GateIOSpot) GetTradeWithWs(pairs []CurrencyPair, handle func(Currenc
 		"params": symbols})
 }
 
-func (okSpot *GateIOSpot) GetAccountWithWs(currency Currency, handle func(*SubAccountDecimal)) error {
-	okSpot.createWsConn()
+func (this *GateIOSpot) GetAccountWithWs(currencies []Currency, handle func(*AccountDecimal)) error {
+	this.createWsConn()
 
-	channel := fmt.Sprintf("spot/account:%s", currency.Symbol)
-	okSpot.wsAccountHandleMap[channel] = handle
-	return okSpot.ws.Subscribe(map[string]interface{}{
-		"op":   "subscribe",
-		"args": []interface{}{channel}})
+	params := make([]string, len(currencies))
+	for i, c := range currencies {
+		params[i] = c.Symbol
+	}
+
+	method := "balance.subscribe"
+	this.wsAccountHandleMap[method] = handle
+	return this.ws.Subscribe(map[string]interface{}{
+		"id":   _NextId(),
+		"method": method,
+		"params": params})
 }
 
-func (okSpot *GateIOSpot) GetOrderWithWs(instrumentId string, handle func([]OrderDecimal)) error {
-	okSpot.createWsConn()
+func (this *GateIOSpot) GetOrderWithWs(pairs []CurrencyPair, handle func(*OrderDecimal)) error {
+	this.createWsConn()
 
-	channel := fmt.Sprintf("spot/order:%s", instrumentId)
-	okSpot.wsOrderHandleMap[channel] = handle
-	return okSpot.ws.Subscribe(map[string]interface{}{
-		"op":   "subscribe",
-		"args": []interface{}{channel}})
+	params := make([]string, len(pairs))
+	for i := range pairs {
+		symbol := pairs[i].ToSymbol("_")
+		params[i] = symbol
+	}
+	
+	method := "order.subscribe"
+	this.wsOrderHandleMap[method] = handle
+	return this.ws.Subscribe(map[string]interface{}{
+		"id":   _NextId(),
+		"method": method,
+		"params": params,
+	})
 }
 
 func (this *GateIOSpot) parseTrade(msg []byte) (string, []TradeDecimal) {
@@ -272,48 +289,103 @@ func (this *GateIOSpot) parseDepth(msg []byte) *DepthDecimal {
 	}
 }
 
-func (this *GateIOSpot) parseAccount(msg []byte) *SubAccountDecimal {
+func (this *GateIOSpot) parseAccount(msg []byte) *AccountDecimal {
 	var data *struct {
-		Table  string
-		Action string
-		Data   []struct {
-			Balance decimal.Decimal
+		Params []map[string]struct {
 			Available decimal.Decimal
-			Hold decimal.Decimal
-			Id string
-			Currency string
+			Freeze decimal.Decimal
 		}
 	}
 
 	json.Unmarshal(msg, &data)
 
-	r := &data.Data[0]
-	currency := Currency{Symbol: r.Currency}
-	return &SubAccountDecimal{
-		Currency: currency,
-		Amount: r.Balance,
-		AvailableAmount: r.Available,
-		FrozenAmount: r.Hold,
+	ret := new(AccountDecimal)
+	ret.SubAccounts = make(map[Currency]SubAccountDecimal)
+
+	for _, p := range data.Params {
+		for key, o := range p {
+			currency := NewCurrency(strings.ToUpper(key), "")
+			ret.SubAccounts[currency] = SubAccountDecimal{
+				Currency: currency,
+				AvailableAmount: o.Available,
+				FrozenAmount: o.Freeze,
+				Amount: o.Available.Add(o.Freeze),
+			}
+			break
+		}
 	}
+
+	return ret
 }
 
-func (this *GateIOSpot) parseOrder(msg []byte) (string, []OrderDecimal) {
-	return "", nil
-	//var data *struct {
-	//	Table  string
-	//	Action string
-	//}
-	//
-	//json.Unmarshal(msg, &data)
-	//
-	//instrumentId := data.Data[0].InstrumentId
-	//
-	//ret := make([]OrderDecimal, len(data.Data))
-	//for i := range data.Data {
-	//	ret[i] = *data.Data[i].ToOrder()
-	//}
-	//
-	//return instrumentId, ret
+func (this *GateIOSpot) parseOrder(msg []byte) *OrderDecimal {
+	var data *struct {
+		Params []interface{}
+	}
+
+	json.Unmarshal(msg, &data)
+	if len(data.Params) != 2 {
+		return nil
+	}
+	event := int(data.Params[0].(float64))
+
+	bytes,_ := json.Marshal(data.Params[1])
+	var order struct{
+		Id decimal.Decimal
+		Market string
+		User int64
+		CTime decimal.Decimal
+		MTime decimal.Decimal
+		Price decimal.Decimal
+		Amount decimal.Decimal
+		Left decimal.Decimal
+		DealFee decimal.Decimal
+		OrderType int
+		Type int
+		FilledAmount decimal.Decimal
+		FilledTotal decimal.Decimal
+	}
+	json.Unmarshal(bytes, &order)
+
+	var status TradeStatus
+	switch event {
+	case 1, 2:
+		if order.FilledAmount.IsPositive() {
+			status = ORDER_PART_FINISH
+		} else {
+			status = ORDER_UNFINISH
+		}
+	case 3:
+		if order.FilledAmount.LessThan(order.Amount) {
+			status = ORDER_CANCEL
+		} else {
+			status = ORDER_FINISH
+		}
+	}
+
+	ret := new(OrderDecimal)
+
+	ret.OrderID2 = order.Id.String()
+	ret.Currency = NewCurrencyPair2(strings.ToUpper(order.Market))
+	ret.Timestamp = order.CTime.Mul(decimal.New(1000, 0)).IntPart()
+	ret.Price = order.Price
+	ret.Amount = order.Amount
+	ret.Fee = order.DealFee
+	switch order.Type {
+	case 1:
+		ret.Side = SELL
+	case 2:
+		ret.Side = BUY
+	default:
+		panic("bad order type")
+	}
+	ret.Status = status
+	ret.DealAmount = order.FilledAmount
+	if order.FilledAmount.IsPositive() {
+		ret.AvgPrice = order.FilledTotal.Div(order.FilledAmount)
+	}
+
+	return ret
 }
 
 func (this *GateIOSpot) CloseWs() {

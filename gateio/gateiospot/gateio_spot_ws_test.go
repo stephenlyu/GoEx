@@ -22,36 +22,38 @@ func TestOKExV3_GetTradeWithWs(t *testing.T) {
 	time.Sleep(10 * time.Minute)
 	gateioSpot.ws.CloseWs()
 }
-//
-//func TestOKExV3_Login(t *testing.T) {
-//	ch := make(chan struct{})
-//	okexV3.Login(func(err error) {
-//		close(ch)
-//	})
-//	<- ch
-//}
-//
-//func OnAccount(account *goex.SubAccountDecimal) {
-//	log.Printf("OnAccount %+v", account)
-//}
-//
-//func OnOrder(orders []goex.OrderDecimal) {
-//	log.Printf("OnOrder %+v", orders)
-//}
-//
-//func TestOKExV3_Authenticated_Spot(t *testing.T) {
-//	ch := make(chan struct{})
-//	okexV3.Login(func(err error) {
-//		close(ch)
-//	})
-//	<- ch
-//
-//	println("login success.")
-//
-//	const instrumentId = "EOS-USDT"
-//
-//	okexV3.GetAccountWithWs(goex.EOS, OnAccount)
-//	okexV3.GetOrderWithWs(instrumentId, OnOrder)
-//
-//	time.Sleep(10 * time.Minute)
-//}
+
+func TestOKExV3_Login(t *testing.T) {
+	ch := make(chan struct{})
+	gateioSpot.Login(func(err error) {
+		close(ch)
+	})
+	<- ch
+}
+
+func OnAccount(account *goex.AccountDecimal) {
+	log.Printf("OnAccount %+v", account)
+}
+
+func OnOrder(order *goex.OrderDecimal) {
+	log.Printf("OnOrder %+v", order)
+}
+
+func TestOKExV3_Authenticated_Spot(t *testing.T) {
+	ch := make(chan struct{})
+	gateioSpot.Login(func(err error) {
+		close(ch)
+	})
+	<- ch
+
+	println("login success.")
+
+	currencyA, currencyB := "ETH", "USDT"
+
+	ca := goex.Currency{Symbol: currencyA}
+	cb := goex.Currency{Symbol: currencyB}
+	gateioSpot.GetAccountWithWs([]goex.Currency{ca, cb}, OnAccount)
+	gateioSpot.GetOrderWithWs([]goex.CurrencyPair{goex.NewCurrencyPair(ca, cb)}, OnOrder)
+
+	time.Sleep(10 * time.Minute)
+}
