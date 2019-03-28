@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stephenlyu/GoEx"
 	"github.com/shopspring/decimal"
+	"sync"
 )
 
 var (
@@ -76,13 +77,43 @@ func TestGateIOSpot_GetAccount(t *testing.T) {
 }
 
 func TestGateIOSpot_PlaceOrder(t *testing.T) {
-	ret, err := gateioSpot.PlaceOrder("sell", goex.ETH_USDT, decimal.NewFromFloat(200), decimal.NewFromFloat(0.01))
+	pair := goex.CurrencyPair{
+		CurrencyA: goex.Currency{Symbol:"BU"},
+		CurrencyB: goex.Currency{Symbol:"ETH"},
+	}
+	ret, err := gateioSpot.PlaceOrder("buy", pair, decimal.NewFromFloat(0.0002893), decimal.NewFromFloat(10))
 	assert.Nil(t, err)
 	output(ret)
 }
 
+func TestGateIOSpot_SelfTrade(t *testing.T) {
+	pair := goex.CurrencyPair{
+		CurrencyA: goex.Currency{Symbol:"BU"},
+		CurrencyB: goex.Currency{Symbol:"ETH"},
+	}
+
+	price := decimal.NewFromFloat(0.0002850)
+	amount := decimal.NewFromFloat(5)
+	wg := sync.WaitGroup{}
+	go func() {
+		ret, err := gateioSpot.PlaceOrder("buy", pair, price, amount)
+		assert.Nil(t, err)
+		output(ret)
+		wg.Done()
+	} ()
+	go func() {
+		ret, err := gateioSpot.PlaceOrder("sell", pair, price, amount)
+		assert.Nil(t, err)
+		output(ret)
+		wg.Done()
+	} ()
+
+	wg.Add(2)
+	wg.Wait()
+}
+
 func TestGateIOSpot_CancelOrder(t *testing.T) {
-	err := gateioSpot.CancelOrder(goex.ETH_USDT, "3024225306")
+	err := gateioSpot.CancelOrder(goex.ETH_USDT, "3036638558")
 	assert.Nil(t, err)
 }
 
