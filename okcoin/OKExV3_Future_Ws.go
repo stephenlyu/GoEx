@@ -32,6 +32,7 @@ func (okFuture *OKExV3) createWsConn() {
 		if okFuture.ws == nil {
 			okFuture.wsDepthHandleMap = make(map[string]func(*Depth))
 			okFuture.wsTradeHandleMap = make(map[string]func(string, []Trade))
+			okFuture.wsFundingRateHandleMap = make(map[string]func(SWAPFundingRate))
 			okFuture.wsPositionHandleMap = make(map[string]func([]FuturePosition))
 			okFuture.wsAccountHandleMap = make(map[string]func(bool, *FutureAccount))
 			okFuture.wsOrderHandleMap = make(map[string]func([]FutureOrder))
@@ -110,6 +111,11 @@ func (okFuture *OKExV3) createWsConn() {
 						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
 						okFuture.wsOrderHandleMap[topic](orders)
 					}
+				case "swap/funding_rate":
+					fundingRate := okFuture.parseFundingRate(msg)
+					if fundingRate != nil {
+						okFuture.wsFundingRateHandleMap[data.Table](*fundingRate)
+					}
 				case "swap/position":
 					instrumentId, positions := okFuture.parseSwapPosition(msg)
 					if positions != nil {
@@ -179,6 +185,18 @@ func (okFuture *OKExV3) GetTradeWithWs(instrumentId string, handle func(string, 
 	}
 
 	okFuture.wsTradeHandleMap[channel] = handle
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []interface{}{channel}})
+}
+
+func (okFuture *OKExV3) GetFundingRateWithWs(instrumentId string, handle func(SWAPFundingRate)) error {
+	okFuture.createWsConn()
+
+	var channel string
+	channel = fmt.Sprintf("swap/funding_rate:%s", instrumentId)
+
+	okFuture.wsFundingRateHandleMap["swap/funding_rate"] = handle
 	return okFuture.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []interface{}{channel}})
@@ -386,6 +404,14 @@ func (okFuture *OKExV3) parseSwapPosition(msg []byte) (string, []FuturePosition)
 	}
 
 	return instrumentId, ret
+}
+
+func (okFuture *OKExV3) parseFundingRate(msg []byte) *SWAPFundingRate {
+	var data *struct{
+		Data []SWAPFundingRate
+	}
+	json.Unmarshal(msg, &data)
+	return &data.Data[0]
 }
 
 func (okFuture *OKExV3) parseSwapAccount(msg []byte) *FutureAccount {

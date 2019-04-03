@@ -11,6 +11,7 @@ import (
 	"strings"
 	"errors"
 	"sync"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -40,6 +41,18 @@ const (
 	V3_SWAP_ORDER_TYPE_FOK = 2
 	V3_SWAP_ORDER_TYPE_IOC = 3
 )
+
+//”funding_rate”: “0.0025”,
+//”funding_time”: “2018-11-22T10:12:59.253Z”,
+//”instrument_id”: “BTC-USD-SWAP”,
+//”interest_rate”: “0.0001”
+type SWAPFundingRate struct {
+	Timestamp int64 					`json:"timestamp"`
+	FundingRate decimal.Decimal			`json:"funding_rate"`
+	FundingTime string 					`json:"funding_time"`
+	InstrumentId string 				`json:"instrument_id"`
+	InterestRate decimal.Decimal		`json:"interest_rate"`
+}
 
 type V3_SWAPInstrument struct {
 	ContractVal string 		`json:"contract_val"`

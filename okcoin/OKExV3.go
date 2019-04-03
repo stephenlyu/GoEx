@@ -120,6 +120,7 @@ type OKExV3 struct {
 	wsLoginHandle func(err error)
 	wsDepthHandleMap  map[string]func(*Depth)
 	wsTradeHandleMap map[string]func(string, []Trade)
+	wsFundingRateHandleMap map[string]func(SWAPFundingRate)
 	wsPositionHandleMap  map[string]func([]FuturePosition)
 	wsAccountHandleMap  map[string]func(bool, *FutureAccount)
 	wsOrderHandleMap  map[string]func([]FutureOrder)
