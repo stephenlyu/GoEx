@@ -84,7 +84,7 @@ func TestOKExV3_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_GetCurrencyAccount(t *testing.T) {
-	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "EOS"})
+	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "BTC"})
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -310,28 +310,38 @@ func TestQueryAccount(t *testing.T) {
 }
 
 func TestOKExV3_WalletTransfer(t *testing.T) {
-	currency := "EOS"
-	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 200, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
-	assert.Nil(t, err)
-	output(resp)
-
-	//err, resp = okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 10, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SWAP, "", "")
+	currency := "BTC"
+	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 0.0325, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
 	//assert.Nil(t, err)
 	//output(resp)
+
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 4.81851096, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_FUTURE, "", "")
+	assert.Nil(t, err)
+	output(resp)
 }
 
 func TestOKExV3_GetWallet(t *testing.T) {
-	currency := "EOS"
+	currency := "BTC"
 	ret, err := okexV3.GetWallet(goex.Currency{Symbol: currency})
 	assert.Nil(t, err)
 	output(ret)
 }
 
 func TestOKExV3_GetWithdrawFee(t *testing.T) {
-	currency := ""
+	currency := "BTC"
 	ret, err := okexV3.GetWithdrawFee(currency)
 	assert.Nil(t, err)
 	output(ret)
+}
+
+func TestOKExV3_Withdraw(t *testing.T) {
+	ret, err := okexV3.GetWithdrawFee(goex.BTC.Symbol)
+	assert.Nil(t, err)
+	fee, _ := ret[0].MinFee.Float64()
+
+	err, resp := okexV3.Withdraw(goex.BTC, 0.01, WithdrawDestinationOuter, "3JELrbJKjokmdWHJcXNFPp7WhX4awZHXHY", "tokenpanda2018", fee)
+	assert.Nil(t, err)
+	output(resp)
 }
 
 func TestOKExV3_GetWalletLedger(t *testing.T) {
@@ -339,7 +349,7 @@ func TestOKExV3_GetWalletLedger(t *testing.T) {
 	page := 1
 	for {
 		fmt.Printf("page %d..\n", page)
-		resp, err := okexV3.GetWalletLedger(goex.EOS, strconv.Itoa(page), "", "100", WalletLedgerTypeToFuture)
+		resp, err := okexV3.GetWalletLedger(goex.BTC, strconv.Itoa(page), "", "100", "")
 		assert.Nil(t, err)
 		ledgers = append(ledgers, resp...)
 		fmt.Println(len(resp))
@@ -363,7 +373,7 @@ func TestOKExV3_GetDepositHistory(t *testing.T) {
 }
 
 func TestOKExV3_GetWithdrawHistory(t *testing.T) {
-	currency := "EOS"
+	currency := "BTC"
 	ret, err := okexV3.GetWithdrawHistory(currency)
 	assert.Nil(t, err)
 	output(ret)

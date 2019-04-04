@@ -810,7 +810,7 @@ const (
 
 type WithdrawResp struct {
 	Amount float64
-	WithdrawalId int64
+	WithdrawalId int64		`json:"withdrawal_id"`
 	Currency string
 	Result bool
 }
@@ -820,8 +820,8 @@ func (ok *OKExV3) Withdraw(currency Currency, amount float64, destination int, t
 		"currency": currency.Symbol,
 		"amount": amount,
 		"destination": destination,
-		"toAddress": toAddress,
-		"tradePwd": tradePwd,
+		"to_address": toAddress,
+		"trade_pwd": tradePwd,
 		"fee": fee,
 	}
 	bytes, _ := json.Marshal(param)
@@ -874,6 +874,8 @@ func (ok *OKExV3) GetDepositHistory(currency string) ([]DepositRecord, error) {
 
 type WithdrawRecord struct {
 	Amount	decimal.Decimal	//	数量
+	WithdrawalId int64 	`json:"withdrawal_id"`
+	Currency string
 	Timestamp string		// 提币申请时间
 	From string				// 提币地址(如果收币地址是OKEx平台地址，则此处将显示用户账户)
 	To string				// 收币地址
@@ -881,7 +883,7 @@ type WithdrawRecord struct {
 	PaymentId string		`json:"payment_id"`		// 部分币种提币需要此字段，若不需要则不返回此字段
 	Txid string				// 提币哈希记录(内部转账将不返回此字段)
 	Fee	string				// 提币手续费和对应币种，如0.00000009btc
-	Status string			// 提现状态（-3:撤销中;-2:已撤销;-1:失败;0:等待提现;1:提现中;2:已汇出;3:邮箱确认;4:人工审核中5:等待身份认证）
+	Status int			// 提现状态（-3:撤销中;-2:已撤销;-1:失败;0:等待提现;1:提现中;2:已汇出;3:邮箱确认;4:人工审核中5:等待身份认证）
 }
 
 func (ok *OKExV3) GetWithdrawHistory(currency string) ([]WithdrawRecord, error) {
