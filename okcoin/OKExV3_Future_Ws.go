@@ -32,6 +32,7 @@ func (okFuture *OKExV3) createWsConn() {
 		if okFuture.ws == nil {
 			okFuture.wsDepthHandleMap = make(map[string]func(*Depth))
 			okFuture.wsTradeHandleMap = make(map[string]func(string, []Trade))
+			okFuture.wsIndexTickerHandleMap = make(map[string]func(string, []Ticker))
 			okFuture.wsFundingRateHandleMap = make(map[string]func(SWAPFundingRate))
 			okFuture.wsPositionHandleMap = make(map[string]func([]FuturePosition))
 			okFuture.wsAccountHandleMap = make(map[string]func(bool, *FutureAccount))
@@ -93,6 +94,12 @@ func (okFuture *OKExV3) createWsConn() {
 					if depth != nil {
 						topic := fmt.Sprintf("%s:%s", data.Table, depth.InstrumentId)
 						okFuture.wsDepthHandleMap[topic](depth)
+					}
+				case "index/ticker":
+					instrumentId, tickers := okFuture.parseIndexTicker(msg)
+					if len(tickers) > 0 {
+						topic := fmt.Sprintf("%s:%s", data.Table, instrumentId)
+						okFuture.wsIndexTickerHandleMap[topic](instrumentId, tickers)
 					}
 				case "futures/position":
 					instrumentId, positions := okFuture.parseFuturesPosition(msg)
@@ -185,6 +192,18 @@ func (okFuture *OKExV3) GetTradeWithWs(instrumentId string, handle func(string, 
 	}
 
 	okFuture.wsTradeHandleMap[channel] = handle
+	return okFuture.ws.Subscribe(map[string]interface{}{
+		"op":   "subscribe",
+		"args": []interface{}{channel}})
+}
+
+func (okFuture *OKExV3) GetIndexTickerWithWs(instrumentId string, handle func(string, []Ticker)) error {
+	okFuture.createWsConn()
+
+	var channel string
+	channel = fmt.Sprintf("index/ticker:%s", instrumentId)
+
+	okFuture.wsIndexTickerHandleMap[channel] = handle
 	return okFuture.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",
 		"args": []interface{}{channel}})
@@ -327,6 +346,37 @@ func (okFuture *OKExV3) parseDepth(msg []byte) *Depth {
 		AskList: asks,
 		BidList: bids,
 	}
+}
+
+func (okFuture *OKExV3) parseIndexTicker(msg []byte) (string, []Ticker) {
+	var data *struct{
+		Data []struct {
+			Last decimal.Decimal
+			High24h decimal.Decimal	`json:"high_24h"`
+			Low24h decimal.Decimal 	`json:"low_24h"`
+			InstrumentId string 	`json:"instrument_id"`
+			Open24h decimal.Decimal	`json:"open_24h"`
+			Timestamp string
+		}
+	}
+	json.Unmarshal(msg, &data)
+
+	instrumentId := data.Data[0].InstrumentId
+
+	var tickers []Ticker
+	for _, r := range data.Data {
+		last, _ := r.Last.Float64()
+		high, _ := r.High24h.Float64()
+		low, _ := r.Low24h.Float64()
+		timestamp := V3ParseDate(r.Timestamp)
+		tickers = append(tickers, Ticker{
+			Last: last,
+			High: high,
+			Low: low,
+			Date: uint64(timestamp),
+		})
+	}
+	return instrumentId, tickers
 }
 
 func (okFuture *OKExV3) parseFuturesPosition(msg []byte) (string, []FuturePosition) {

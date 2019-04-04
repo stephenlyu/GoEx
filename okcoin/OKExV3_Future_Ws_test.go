@@ -32,6 +32,14 @@ func TestOKExV3_GetTradeWithWs(t *testing.T) {
 	okexFuture.ws.CloseWs()
 }
 
+func TestOKExV3_GetIndexTickerWithWs(t *testing.T) {
+	okexFutureV3.GetIndexTickerWithWs("EOS-USD", func(instrumentId string, tickers []goex.Ticker) {
+		log.Printf("%+v\n", tickers)
+	})
+	time.Sleep(10 * time.Minute)
+	okexFuture.ws.CloseWs()
+}
+
 func TestOKExV3_GetFundingRateWithWs(t *testing.T) {
 	okexFutureV3.GetFundingRateWithWs("EOS-USD-SWAP", func(fundingRate SWAPFundingRate) {
 		log.Printf("%+v\n", fundingRate)
