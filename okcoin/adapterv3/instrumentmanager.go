@@ -61,6 +61,7 @@ func (this *InstrumentManager) ensureMap() error {
 	getDate := func(instrumentId string) string {
 		return strings.Split(instrumentId, "-")[2]
 	}
+	var missingCode bool
 	for currency, ids := range currencyInstruments {
 		sort.SliceStable(ids, func(i,j int) bool {
 			return ids[i] < ids[j]
@@ -84,6 +85,7 @@ func (this *InstrumentManager) ensureMap() error {
 				m[currency + "NFUT.OKEX"] = ""
 				m[currency + "QFUT.OKEX"] = ids[1]
 			}
+			missingCode = true
 		}
 	}
 
@@ -95,7 +97,10 @@ func (this *InstrumentManager) ensureMap() error {
 	this.lock.Lock()
 	this.codeInstrumentIdMap = m
 	this.instrumentIdCodeMap = rm
-	this.nextSyncTimestamp = NextSyncTimestamp(util.Tick())
+	// 周合约交割后，会出现一个只有两个合约的阶段，这个阶段，需要持续更新，直到新的合约产生
+	if !missingCode {
+		this.nextSyncTimestamp = NextSyncTimestamp(util.Tick())
+	}
 	this.lock.Unlock()
 	return nil
 }
