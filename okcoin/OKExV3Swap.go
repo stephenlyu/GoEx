@@ -49,6 +49,7 @@ const (
 type SWAPFundingRate struct {
 	Timestamp int64 					`json:"timestamp"`
 	FundingRate decimal.Decimal			`json:"funding_rate"`
+	RealizedRate decimal.Decimal		`json:"realized_rate"`
 	FundingTime string 					`json:"funding_time"`
 	InstrumentId string 				`json:"instrument_id"`
 	InterestRate decimal.Decimal		`json:"interest_rate"`
@@ -642,6 +643,33 @@ func (ok *OKExV3_SWAP) GetLedger(instrumentId string, from, to, limit string) ([
 	header := ok.buildHeader("GET", reqUrl, "")
 
 	var resp []V3FutureLedger
+
+	err := HttpGet4(ok.client, SWAP_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (ok *OKExV3_SWAP) GetFundingRateHistory(instrumentId string, from, to, limit string) ([]SWAPFundingRate, error) {
+	reqUrl := fmt.Sprintf("/api/swap/v3/instruments/%s/historical_funding_rate", instrumentId)
+	var params []string
+	if from != "" {
+		params = append(params, "from=" + from)
+	}
+	if to != "" {
+		params = append(params, "to=" + to)
+	}
+	if limit != "" {
+		params = append(params, "limit=" + limit)
+	}
+	if len(params) > 0 {
+		reqUrl += "?" + strings.Join(params, "&")
+	}
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp []SWAPFundingRate
 
 	err := HttpGet4(ok.client, SWAP_V3_API_BASE_URL + reqUrl, header, &resp)
 	if err != nil {
