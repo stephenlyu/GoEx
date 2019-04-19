@@ -5,6 +5,7 @@ import (
 	"github.com/stephenlyu/tds/util"
 	"fmt"
 	"github.com/stephenlyu/tds/date"
+	"time"
 )
 
 func TestNextSyncTimestamp(t *testing.T) {
@@ -33,5 +34,17 @@ func TestInstrumentManager_GetInstrumentId(t *testing.T) {
 			panic(err)
 		}
 		fmt.Println(code, instrumentId)
+	}
+}
+
+func TestNewInstrumentManager(t *testing.T) {
+	mgr := NewInstrumentManager()
+	for {
+		instrumentId, err := mgr.GetInstrumentId("EOSNFUT.OKEX")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(instrumentId)
+		time.Sleep(time.Minute)
 	}
 }

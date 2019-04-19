@@ -22,6 +22,7 @@ type InstrumentManager struct {
 
 	lock sync.RWMutex
 	nextSyncTimestamp uint64
+	tryTimes int
 	codeInstrumentIdMap map[string]string
 	instrumentIdCodeMap map[string]string
 }
@@ -95,11 +96,24 @@ func (this *InstrumentManager) ensureMap() error {
 	}
 
 	this.lock.Lock()
-	this.codeInstrumentIdMap = m
-	this.instrumentIdCodeMap = rm
-	// 周合约交割后，会出现一个只有两个合约的阶段，这个阶段，需要持续更新，直到新的合约产生
-	if !missingCode {
-		this.nextSyncTimestamp = NextSyncTimestamp(util.Tick())
+	var changed = false
+	for k, v := range m {
+		if this.codeInstrumentIdMap[k] != v {
+			changed = true
+			break
+		}
+	}
+	this.tryTimes++
+	if changed || this.tryTimes > 60 {
+		this.codeInstrumentIdMap = m
+		this.instrumentIdCodeMap = rm
+		// 周合约交割后，会出现一个只有两个合约的阶段，这个阶段，需要持续更新，直到新的合约产生
+		if !missingCode {
+			this.nextSyncTimestamp = NextSyncTimestamp(util.Tick())
+			this.tryTimes = 0
+		}
+	} else {
+		this.tryTimes++
 	}
 	this.lock.Unlock()
 	return nil
@@ -143,7 +157,7 @@ func NextSyncTimestamp(now uint64) uint64 {
 	if passedDayMillis > 16 * HOUR_MILLIS {
 		return dayStartTs + (24 + 16 - 8) * HOUR_MILLIS
 	}
-	return dayStartTs + (16 - 8) * HOUR_MILLIS
+	return dayStartTs + (16 - 8) * HOUR_MILLIS + 5 * 1000	// 延迟5秒
 }
 
 var DEFAULT_INSTRUMENT_MANAGER = NewInstrumentManager()
