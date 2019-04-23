@@ -166,6 +166,9 @@ func (ok *OKExV3) GetInstruments() ([]V3Instrument, error) {
 	}
 	var instruments []V3Instrument
 	err = json.Unmarshal(body, &instruments)
+	if err != nil {
+		println(string(body))
+	}
 	return instruments, err
 }
 
@@ -383,18 +386,19 @@ func (ok *OKExV3) PlaceFutureOrder(clientOid string, instrumentId string, price,
 	var ret *struct {
 		OrderId string `json:"order_id"`
 		ClientOid string `json:"client_oid"`
-		ErrorCode int 	`json:"error_code"`
+		ErrorCode decimal.Decimal 	`json:"error_code"`
 		ErrorMessage string `json:"error_message"`
 		Result bool `json:"result"`
 	}
 
 	err = json.Unmarshal(body, &ret)
 	if err != nil {
+		panic(err)
 		return "", err
 	}
 
-	if ret.ErrorCode != 0 {
-		return "", fmt.Errorf("error code: %d", ret.ErrorCode)
+	if ret.ErrorCode.IntPart() != 0 {
+		return "", fmt.Errorf("error code: %d", ret.ErrorCode.IntPart())
 	}
 
 	return ret.OrderId, nil
@@ -441,7 +445,7 @@ type BatchPlaceOrderReq struct {
 
 type BatchPlaceOrderRespItem struct {
 	ErrorMessage string 		`json:"error_message"`
-	ErrorCode int 				`json:"error_code"`
+	ErrorCode decimal.Decimal 	`json:"error_code"`
 	ClientOid string 			`json:"client_oid"`
 	OrderId string 				`json:"order_id"`
 }
@@ -458,7 +462,6 @@ func (ok *OKExV3) PlaceFutureOrders(req BatchPlaceOrderReq) ([]BatchPlaceOrderRe
 	if err != nil {
 		return nil, err
 	}
-	println(string(body))
 
 	var ret *struct {
 		Result bool `json:"result"`
@@ -467,6 +470,7 @@ func (ok *OKExV3) PlaceFutureOrders(req BatchPlaceOrderReq) ([]BatchPlaceOrderRe
 
 	err = json.Unmarshal(body, &ret)
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 
