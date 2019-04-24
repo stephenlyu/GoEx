@@ -669,7 +669,7 @@ type WalletLedger struct {
 	Balance decimal.Decimal
 	Currency string
 	Fee decimal.Decimal
-	LedgerId int64 				`json:"ledger_id"`
+	LedgerId decimal.Decimal 	`json:"ledger_id"`
 	Timestamp string
 	TypeName string 			`json:"typename"`
 }
@@ -718,12 +718,12 @@ const (
 )
 
 type TransferResp struct {
-	TransferId int64 	`json:"transfer_id"`
-	Result bool 		`json:"result"`
-	Currency string 	`json:"currency"`
-	From int 			`json:"from"`
-	Amount float64 		`json:"amount"`
-	To int 				`json:"to"`
+	TransferId decimal.Decimal 	`json:"transfer_id"`
+	Result bool 				`json:"result"`
+	Currency string 			`json:"currency"`
+	From decimal.Decimal 		`json:"from"`
+	Amount decimal.Decimal 		`json:"amount"`
+	To decimal.Decimal 			`json:"to"`
 }
 
 func (ok *OKExV3) WalletTransfer(currency Currency, amount float64, from, to int, subAccount string, instrumentId string) (error, *TransferResp) {
