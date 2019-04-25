@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"time"
 	"fmt"
-	"strconv"
 	"strings"
 	"errors"
 	"sync"
@@ -18,6 +17,7 @@ import (
 const (
 	SPOT_V3_API_BASE_URL    = "https://www.okex.com"
 	SPOT_V3_INSTRUMENTS 	  = "/api/spot/v3/instruments"
+	SPOT_V3_TRADES 			= "/api/spot/v3/instruments/%s/trades"
 	SPOT_V3_ACCOUNTS 		  = "/api/spot/v3/accounts"
 	SPOT_V3_CURRENCY_ACCOUNTS = "/api/spot/v3/accounts/%s"
 	SPOT_V3_INSTRUMENT_TICKER = "/api/spot/v3/instruments/%s/ticker"
@@ -63,6 +63,10 @@ func InstrumentId2CurrencyPair(instrumentId string) CurrencyPair {
 	}
 }
 
+func CurrencyPair2InstrumentId(pair CurrencyPair) string {
+	return fmt.Sprintf("%s-%s", pair.CurrencyA.Symbol, pair.CurrencyB.Symbol)
+}
+
 type OKExV3Spot struct {
 	apiKey,
 	apiSecretKey string
@@ -77,6 +81,7 @@ type OKExV3Spot struct {
 	wsAccountHandleMap  map[string]func(*SubAccountDecimal)
 	wsOrderHandleMap  map[string]func([]OrderDecimal)
 	depthManagers	 map[string]*DepthManager
+	errorHandle      func(error)
 }
 
 func NewOKExV3Spot(client *http.Client, api_key, secret_key, passphrase string) *OKExV3Spot {
@@ -120,7 +125,43 @@ func (ok *OKExV3Spot) GetInstruments() ([]V3Instrument, error) {
 	return instruments, err
 }
 
-func (ok *OKExV3Spot) GetInstrumentTicker(instrumentId string) (*Ticker, error) {
+func (ok *OKExV3Spot) GetTrades(instrumentId string) ([]TradeDecimal, error) {
+	resp, err := ok.client.Get(SPOT_V3_API_BASE_URL + fmt.Sprintf(SPOT_V3_TRADES, instrumentId))
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	var data []struct{
+		Timestamp string
+		TradeId decimal.Decimal 		`json:"trade_id"`
+		Price decimal.Decimal
+		Size decimal.Decimal
+		Side string
+	}
+	err = json.Unmarshal(body, &data)
+
+	var ret []TradeDecimal
+	for _, o := range data {
+		ret = append(ret, TradeDecimal{
+			Tid: o.TradeId.IntPart(),
+			Type: o.Side,
+			Amount: o.Size,
+			Price: o.Price,
+			Date: V3ParseDate(o.Timestamp),
+		})
+	}
+
+	return ret, err
+}
+
+func (ok *OKExV3Spot) GetInstrumentTicker(instrumentId string) (*TickerDecimal, error) {
 	url := SPOT_V3_API_BASE_URL + SPOT_V3_INSTRUMENT_TICKER
 	resp, err := ok.client.Get(fmt.Sprintf(url, instrumentId))
 	if err != nil {
@@ -142,16 +183,14 @@ func (ok *OKExV3Spot) GetInstrumentTicker(instrumentId string) (*Ticker, error) 
 		return nil, err
 	}
 
-	fmt.Println(tickerMap)
-
-	ticker := new(Ticker)
+	ticker := new(TickerDecimal)
 	ticker.Date = uint64(V3ParseDate(tickerMap["timestamp"].(string)))
-	ticker.Buy, _ = strconv.ParseFloat(tickerMap["best_bid"].(string), 64)
-	ticker.Sell, _ = strconv.ParseFloat(tickerMap["best_ask"].(string), 64)
-	ticker.Last, _ = strconv.ParseFloat(tickerMap["last"].(string), 64)
-	ticker.High, _ = strconv.ParseFloat(tickerMap["high_24h"].(string), 64)
-	ticker.Low, _ = strconv.ParseFloat(tickerMap["low_24h"].(string), 64)
-	ticker.Vol, _ = strconv.ParseFloat(tickerMap["base_volume_24h"].(string), 64)
+	ticker.Buy, _ = decimal.NewFromString(tickerMap["best_bid"].(string))
+	ticker.Sell, _ = decimal.NewFromString(tickerMap["best_ask"].(string))
+	ticker.Last, _ = decimal.NewFromString(tickerMap["last"].(string))
+	ticker.High, _ = decimal.NewFromString(tickerMap["high_24h"].(string))
+	ticker.Low, _ = decimal.NewFromString(tickerMap["low_24h"].(string))
+	ticker.Vol, _ = decimal.NewFromString(tickerMap["base_volume_24h"].(string))
 
 	return ticker, nil
 }
@@ -282,7 +321,7 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	return ret.OrderId, nil
 }
 
-func (ok *OKExV3Spot) FutureCancelOrder(instrumentId, orderId, clientOid string) error {
+func (ok *OKExV3Spot) CancelOrder(instrumentId, orderId, clientOid string) error {
 	var param = make(map[string]interface{})
 	param["instrument_id"] = instrumentId
 	var reqUrl string
@@ -327,6 +366,8 @@ type BatchPlaceOrderRespItem struct {
 	ClientOid string 			`json:"client_oid"`
 	OrderId string 				`json:"order_id"`
 	Result bool 				`json:"result"`
+	ErrorCode decimal.Decimal	`json:"error_code"`
+	ErrorMessage string 		`json:"error_message"`
 }
 
 func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, error) {
@@ -373,7 +414,7 @@ func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, er
 	return nil, nil
 }
 
-func (ok *OKExV3Spot) FutureCancelOrders(instrumentId string, orderIds []string, clientOid string) error {
+func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clientOid string) error {
 	param := make(map[string]interface{})
 	param["instrument_id"] = instrumentId
 	if len(orderIds) > 0 {

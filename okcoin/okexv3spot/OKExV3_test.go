@@ -55,6 +55,12 @@ func TestOKExV3_GetInstrumentTicker(t *testing.T) {
 	output(ret)
 }
 
+func TestOKExV3_GetTrades(t *testing.T) {
+	ret, err := okexV3.GetTrades("ETH-USDT")
+	assert.Nil(t, err)
+	output(ret)
+}
+
 func TestOKExV3_GetAccount(t *testing.T) {
 	ret, err := okexV3.GetAccount()
 	assert.Nil(t, err)
@@ -62,7 +68,7 @@ func TestOKExV3_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_GetCurrencyAccount(t *testing.T) {
-	ret, err := okexV3.GetCurrencyAccount(goex.EOS)
+	ret, err := okexV3.GetCurrencyAccount(goex.USDT)
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -95,7 +101,7 @@ func TestOKExV3Spot_PlaceOrder(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.FutureCancelOrder("EOS-USDT", "", "cba31249763b45459bbf684bb47f9fb5")
+	err := okexV3.CancelOrder("EOS-USDT", "", "cba31249763b45459bbf684bb47f9fb5")
 	assert.Nil(t, err)
 }
 
@@ -121,7 +127,7 @@ func TestOKExV3_PlaceOrders(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrders(t *testing.T) {
-	err := okexV3.FutureCancelOrders("EOS-USDT", []string {"2500567789935616"}, "")
+	err := okexV3.CancelOrders("EOS-USDT", []string {"2500567789935616"}, "")
 	assert.Nil(t, err)
 }
 
@@ -138,7 +144,7 @@ func TestOKExV3_GetInstrumentPendingOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USDT", "2500391798385665")
+	order, err := okexV3.GetInstrumentOrder("EOS-USDT", "2500391798385669")
 	assert.Nil(t, err)
 	output(order)
 }

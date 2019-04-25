@@ -37,6 +37,7 @@ func (okSpot *OKExV3Spot) createWsConn() {
 			okSpot.depthManagers = make(map[string]*DepthManager)
 
 			okSpot.ws = NewWsConn("wss://real.okex.com:10442/ws/v3")
+			okSpot.ws.SetErrorHandler(okSpot.errorHandle)
 			okSpot.ws.Heartbeat(func() interface{} { return "ping"}, 20*time.Second)
 			okSpot.ws.ReConnect()
 			okSpot.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
@@ -336,4 +337,8 @@ func (this *DepthManager) Update(action string, askList, bidList [][]decimal.Dec
 		return asks[i].Price.LessThan(asks[j].Price)
 	})
 	return asks, bids
+}
+
+func (this *OKExV3Spot) SetErrorHandler(handle func(error)) {
+	this.errorHandle = handle
 }

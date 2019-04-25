@@ -99,6 +99,19 @@ type Ticker struct {
 	ContractId   int64        `json:"omitempty"`
 }
 
+type TickerDecimal struct {
+	ContractType string       		`json:"omitempty"`
+	Pair         CurrencyPair 		`json:"omitempty"`
+	Last         decimal.Decimal    `json:"last"`
+	Buy          decimal.Decimal    `json:"buy"`
+	Sell         decimal.Decimal    `json:"sell"`
+	High         decimal.Decimal    `json:"high"`
+	Low          decimal.Decimal    `json:"low"`
+	Vol          decimal.Decimal    `json:"vol"`
+	Date         uint64       		`json:"date"` // 单位:秒(second)
+	ContractId   int64        		`json:"omitempty"`
+}
+
 type DepthRecord struct {
 	Price,
 	Amount float64

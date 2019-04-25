@@ -661,6 +661,8 @@ const (
 	WalletLedgerTypeFromFuture = "19"
 	WalletLedgerTypeToSubAccount = "20"
 	WalletLedgerTypeFromSubAccount = "21"
+	WalletLedgerTypeToSpot = "37"
+	WalletLedgerTypeFromSpot = "38"
 	WalletLedgerTypeGet = "28"
 )
 
