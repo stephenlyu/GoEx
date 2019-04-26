@@ -188,6 +188,7 @@ func (ok *OKExV3Spot) GetInstrumentTicker(instrumentId string) (*TickerDecimal, 
 	ticker.Buy, _ = decimal.NewFromString(tickerMap["best_bid"].(string))
 	ticker.Sell, _ = decimal.NewFromString(tickerMap["best_ask"].(string))
 	ticker.Last, _ = decimal.NewFromString(tickerMap["last"].(string))
+	ticker.Open, _ = decimal.NewFromString(tickerMap["open_24h"].(string))
 	ticker.High, _ = decimal.NewFromString(tickerMap["high_24h"].(string))
 	ticker.Low, _ = decimal.NewFromString(tickerMap["low_24h"].(string))
 	ticker.Vol, _ = decimal.NewFromString(tickerMap["base_volume_24h"].(string))

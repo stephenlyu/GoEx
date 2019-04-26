@@ -105,6 +105,7 @@ type TickerDecimal struct {
 	Last         decimal.Decimal    `json:"last"`
 	Buy          decimal.Decimal    `json:"buy"`
 	Sell         decimal.Decimal    `json:"sell"`
+	Open         decimal.Decimal    `json:"open"`
 	High         decimal.Decimal    `json:"high"`
 	Low          decimal.Decimal    `json:"low"`
 	Vol          decimal.Decimal    `json:"vol"`
