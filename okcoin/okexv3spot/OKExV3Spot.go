@@ -289,7 +289,6 @@ func (this OrderReq) ToParam() map[string]interface{} {
 func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	bytes, _ := json.Marshal(req.ToParam())
 	data := string(bytes)
-	println(data)
 
 	header := ok.buildHeader("POST", SPOT_V3_ORDERS, data)
 
@@ -335,8 +334,6 @@ func (ok *OKExV3Spot) CancelOrder(instrumentId, orderId, clientOid string) error
 	}
 	bytes, _ := json.Marshal(param)
 	data := string(bytes)
-	println(data)
-
 
 	header := ok.buildHeader("POST", reqUrl, data)
 
@@ -366,7 +363,7 @@ type BatchPlaceOrderRespItem struct {
 	ClientOid string 			`json:"client_oid"`
 	OrderId string 				`json:"order_id"`
 	Result bool 				`json:"result"`
-	ErrorCode decimal.Decimal	`json:"error_code"`
+	ErrorCode string			`json:"error_code"`
 	ErrorMessage string 		`json:"error_message"`
 }
 
@@ -386,7 +383,6 @@ func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, er
 
 	bytes, _ := json.Marshal(param)
 	data := string(bytes)
-	println(data)
 	header := ok.buildHeader("POST", SPOT_V3_BATCH_ORDERS, data)
 
 	placeOrderUrl := SPOT_V3_API_BASE_URL + SPOT_V3_BATCH_ORDERS
@@ -395,7 +391,6 @@ func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, er
 	if err != nil {
 		return nil, err
 	}
-
 	var ret map[string][]BatchPlaceOrderRespItem
 
 	err = json.Unmarshal(body, &ret)
@@ -414,19 +409,18 @@ func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, er
 	return nil, nil
 }
 
-func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clientOid string) error {
+func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clientOids []string) error {
 	param := make(map[string]interface{})
 	param["instrument_id"] = instrumentId
 	if len(orderIds) > 0 {
 		param["order_ids"] = orderIds
-	} else if clientOid != "" {
-		param["client_oid"] = clientOid
+	} else if len(clientOids) > 0 {
+		param["client_oids"] = clientOids
 	} else {
 		return errors.New("Bad param")
 	}
 
 	bytes, _ := json.Marshal([]interface{}{param})
-
 	reqUrl := SPOT_V3_CANCEL_ORDERS
 
 	header := ok.buildHeader("POST", reqUrl, string(bytes))
@@ -439,7 +433,6 @@ func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clien
 		}
 		return err
 	}
-
 	var resp map[string]struct {
 		Result bool 		`json:"result"`
 		OrderIds []string 	`json:"order_ids"`
