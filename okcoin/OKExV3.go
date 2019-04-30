@@ -167,7 +167,7 @@ func (ok *OKExV3) GetInstruments() ([]V3Instrument, error) {
 	var instruments []V3Instrument
 	err = json.Unmarshal(body, &instruments)
 	if err != nil {
-		println(string(body))
+		fmt.Println("OKExV3.GetInstruments", string(body))
 	}
 	return instruments, err
 }
@@ -777,7 +777,7 @@ func (ok *OKExV3) GetWallet(currency Currency) (*WalletCurrency, error) {
 		return nil, err
 	}
 	if len(resp) == 0 {
-		return nil, nil
+		return &WalletCurrency{Currency: currency.Symbol}, nil
 	}
 
 	return &resp[0], nil

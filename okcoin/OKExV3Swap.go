@@ -355,12 +355,12 @@ func (ok *OKExV3_SWAP) GetInstrumentAccount(instrumentId string) (*FutureSubAcco
 	if err != nil {
 		return nil, err
 	}
+	currency := V3SWAPInstrumentId2Currency(instrumentId)
 
 	if resp.Info == nil {
-		return nil, nil
+		return &FutureSubAccount{Currency: currency}, nil
 	}
 
-	currency := V3SWAPInstrumentId2Currency(instrumentId)
 	return resp.Info.ToFutureSubAccount(currency), nil
 }
 
