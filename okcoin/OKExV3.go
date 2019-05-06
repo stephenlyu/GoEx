@@ -619,7 +619,7 @@ type FutureLedger struct {
 	Currency string			`json:"currency"`
 	Details struct {
 		InstrumentId string `json:"instrument_id"`
-		OrderId int64 		`json:"order_id"`
+		OrderId decimal.Decimal `json:"order_id"`
 			}				`json:"details"`
 	LedgerId string 		`json:"ledger_id"`
 	Timestamp string		`json:"timestamp"`
@@ -816,7 +816,7 @@ const (
 )
 
 type WithdrawResp struct {
-	Amount float64
+	Amount decimal.Decimal
 	WithdrawalId decimal.Decimal		`json:"withdrawal_id"`
 	Currency string
 	Result bool
