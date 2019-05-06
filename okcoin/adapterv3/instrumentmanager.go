@@ -9,6 +9,7 @@ import (
 	"sort"
 	"sync"
 	"github.com/stephenlyu/tds/date"
+	"time"
 )
 
 //
@@ -45,7 +46,16 @@ func (this *InstrumentManager) ensureMap() error {
 		return nil
 	}
 
-	instruments, err := this.api.GetInstruments()
+	var err error
+	var instruments []okcoin.V3Instrument
+
+	for i := 0; i < 5; i++ {
+		instruments, err = this.api.GetInstruments()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 	if err != nil {
 		return err
 	}

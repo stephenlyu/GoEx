@@ -167,7 +167,7 @@ func (ok *OKExV3) GetInstruments() ([]V3Instrument, error) {
 	var instruments []V3Instrument
 	err = json.Unmarshal(body, &instruments)
 	if err != nil {
-		fmt.Println("OKExV3.GetInstruments", string(body))
+		return nil, fmt.Errorf("error: %s", string(body))
 	}
 	return instruments, err
 }
