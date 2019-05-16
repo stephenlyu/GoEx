@@ -36,8 +36,12 @@ func (this *OKExQuoter) Subscribe(security *entity.Security) {
 
 	instrumentId := FromSecurity(security)
 	this.instrumentIdSecurityMap[instrumentId] = security
-	this.okex.GetDepthWithWs(instrumentId, this.onDepth)
-	this.okex.GetTradeWithWs(instrumentId, this.onTrade)
+	if security.IsIndex() {
+		this.okex.GetIndexTickerWithWs(instrumentId, this.onTicker)
+	} else {
+		this.okex.GetDepthWithWs(instrumentId, this.onDepth)
+		this.okex.GetTradeWithWs(instrumentId, this.onTrade)
+	}
 }
 
 func (this *OKExQuoter) SetCallback(callback quoter.QuoterCallback) {
@@ -154,4 +158,29 @@ func (this *OKExQuoter) onTrade(instrumentId string, trades []goex.Trade) {
 	}
 
 	thisTick.Open, thisTick.Price, thisTick.High, thisTick.Low, thisTick.Amount, thisTick.Volume, thisTick.Side, thisTick.BuyVolume, thisTick.SellVolume = open, price, high, low, amount, volume, side, buyVolume, sellVolume
+}
+
+func (this *OKExQuoter) onTicker(instrumentId string, tickers []goex.Ticker) {
+	security, ok := this.instrumentIdSecurityMap[instrumentId]
+	if !ok {
+		return
+	}
+
+	if len(tickers) == 0 {
+		return
+	}
+
+	ticker := tickers[0]
+
+	tick := &entity.TickItem{
+		Code: security.String(),
+		Timestamp: uint64(ticker.Date),
+		Price: ticker.Last,
+		High: ticker.Last,
+		Low: ticker.Last,
+		Volume: 1,
+	}
+	if this.callback != nil {
+		this.callback.OnTickItem(tick)
+	}
 }

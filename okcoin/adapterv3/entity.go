@@ -12,6 +12,10 @@ import (
 var CODE_PATTERN, _ = regexp.Compile("[0-9]+")
 
 func FromSecurity(security *entity.Security) string {
+	if security.IsIndex() {
+		return fmt.Sprintf("%s-USD", security.GetCategory())
+	}
+
 	switch security.Code {
 	case "QFUT", "TFUT", "NFUT":
 		instrumentId, err := DEFAULT_INSTRUMENT_MANAGER.GetInstrumentId(security.String())
@@ -36,6 +40,9 @@ func ToSecurity(instrumentId string) *entity.Security {
 	if strings.HasSuffix(instrumentId, "SWAP") {
 		parts := strings.Split(instrumentId, "-")
 		code = fmt.Sprintf("%sFUT.OKEX", parts[0])
+	} else if strings.HasSuffix(instrumentId, "USD") {
+		parts := strings.Split(instrumentId, "-")
+		code = fmt.Sprintf("%sINDEX.OKEX", parts[0])
 	} else {
 		var err error
 		code, err = DEFAULT_INSTRUMENT_MANAGER.GetCode(instrumentId)
