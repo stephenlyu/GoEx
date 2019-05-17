@@ -49,11 +49,7 @@ func TestOKExV3_GetFundingRateWithWs(t *testing.T) {
 }
 
 func TestOKExV3_Login(t *testing.T) {
-	ch := make(chan struct{})
-	okexV3.Login(func(err error) {
-		close(ch)
-	})
-	<- ch
+	okexV3.Login()
 }
 
 func OnAccount(isSwap bool, account *goex.FutureAccount) {
@@ -69,13 +65,9 @@ func OnOrder(orders []goex.FutureOrder) {
 }
 
 func TestOKExV3_Authenticated_Futures(t *testing.T) {
-	ch := make(chan struct{})
-	okexV3.Login(func(err error) {
-		close(ch)
-	})
-	<- ch
+	okexV3.Login()
 
-	const instrumentId = "EOS-USD-190329"
+	const instrumentId = "EOS-USD-190628"
 
 	okexV3.GetAccountWithWs(goex.EOS, false, OnAccount)
 	okexV3.GetPositionWithWs(instrumentId, OnPosition)
@@ -85,11 +77,7 @@ func TestOKExV3_Authenticated_Futures(t *testing.T) {
 }
 
 func TestOKExV3_Authenticated_Swap(t *testing.T) {
-	ch := make(chan struct{})
-	okexV3.Login(func(err error) {
-		close(ch)
-	})
-	<- ch
+	okexV3.Login()
 
 	const instrumentId = "EOS-USD-SWAP"
 

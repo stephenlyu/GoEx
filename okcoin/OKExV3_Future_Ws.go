@@ -150,18 +150,42 @@ func (okFuture *OKExV3) isSwap(instrumentId string) bool {
 	return strings.HasSuffix(instrumentId, "SWAP")
 }
 
-func (okFuture *OKExV3) Login(handle func(error)) error {
-	okFuture.createWsConn()
-	okFuture.wsLoginHandle = handle
-
+func (okFuture *OKExV3) getLoginData() interface{} {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	message := timestamp + "GET/users/self/verify"
 	sign, _ := GetParamHmacSHA256Base64Sign(okFuture.apiSecretKey, message)
 
-	return okFuture.ws.Subscribe(map[string]interface{}{
+	return map[string]interface{}{
 		"op":   "login",
 		"args": []interface{}{okFuture.apiKey, okFuture.passphrase, timestamp, sign},
-	})
+	}
+}
+
+func (okFuture *OKExV3) doLogin() error {
+	ch := make(chan error)
+
+	onDone := func(err error) {
+		ch <- err
+	}
+
+	okFuture.wsLoginHandle = onDone
+
+	data := okFuture.getLoginData()
+	log.Printf("%+v", data)
+	err := okFuture.ws.SendMessage(data)
+	log.Printf("111111 %+v", err)
+	if err != nil {
+		return err
+	}
+
+	err = <- ch
+	okFuture.wsLoginHandle = nil
+	return err
+}
+
+func (okFuture *OKExV3) Login() error {
+	okFuture.createWsConn()
+	return okFuture.ws.Login(okFuture.doLogin)
 }
 
 func (okFuture *OKExV3) GetDepthWithWs(instrumentId string, handle func(*Depth)) error {
@@ -250,7 +274,6 @@ func (okFuture *OKExV3) GetAccountWithWs(currency Currency, isSwap bool, handle 
 		key = fmt.Sprintf("futures/account")
 	}
 
-	println(channel)
 	okFuture.wsAccountHandleMap[key] = handle
 	return okFuture.ws.Subscribe(map[string]interface{}{
 		"op":   "subscribe",

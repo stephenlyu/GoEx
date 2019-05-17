@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 	"io/ioutil"
+	"sync/atomic"
 )
 
 type WsConn struct {
@@ -16,9 +17,12 @@ type WsConn struct {
 	close                    chan int
 	isClose                  bool
 	subs                     []interface{}
+	loginFunc                func() error
 
-	errorCh 				chan error
-	errorHandler 			func(error)
+	errorCh                  chan error
+	errorHandler             func(error)
+
+	reconnecting 			 int32
 }
 
 const (
@@ -48,21 +52,51 @@ func NewWsConn(wsurl string) *WsConn {
 
 func (ws *WsConn) ReConnect() {
 
-	doReconnect := func() {
+	tryReconnect := func() error {
 		ws.Close()
 		log.Println("start reconnect websocket:", ws.url)
 		wsConn, _, err := websocket.DefaultDialer.Dial(ws.url, nil)
 		if err != nil {
 			log.Println("reconnect fail ???")
+			return err
 		} else {
 			ws.Conn = wsConn
 			ws.actived = time.Now()
+
+			if ws.loginFunc != nil {
+				err := ws.doLogin()
+				if err != nil {
+					log.Printf("login fail, error: %+v", err)
+					return err
+				}
+			}
+
 			//re subscribe
 			for _, sub := range ws.subs {
 				log.Println("subscribe:", sub)
-				ws.WriteJSON(sub)
+				err := ws.WriteJSON(sub)
+				if err != nil {
+					log.Printf("subscribe %s fail, error: %+v", sub, err)
+					return err
+				}
 			}
 		}
+		return nil
+	}
+
+	doReconnect := func() {
+		if !atomic.CompareAndSwapInt32(&ws.reconnecting, 0, 1) {
+			return
+		}
+
+		for {
+			err := tryReconnect()
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		atomic.StoreInt32(&ws.reconnecting, 0)
 	}
 
 	var errTimes int
@@ -73,7 +107,7 @@ func (ws *WsConn) ReConnect() {
 			select {
 			case <-timer.C:
 				if time.Now().Sub(ws.actived) >= ws.checkConnectIntervalTime + 5 * time.Second {
-					doReconnect()
+					go doReconnect()
 					errTimes = 0
 				}
 				timer.Reset(ws.checkConnectIntervalTime)
@@ -86,7 +120,7 @@ func (ws *WsConn) ReConnect() {
 					}
 					errTimes++
 					if errTimes > 10 {
-						doReconnect()
+						go doReconnect()
 						errTimes = 0
 					}
 				}
@@ -140,11 +174,29 @@ func (ws *WsConn) Subscribe(subEvent interface{}) error {
 	return nil
 }
 
+func (ws *WsConn) SendMessage(data interface{}) error {
+	return ws.WriteJSON(data)
+}
+
+func (ws *WsConn) doLogin() error {
+	return ws.loginFunc()
+}
+
+func (ws *WsConn) Login(f func () error) error {
+	ws.loginFunc = f
+	return ws.doLogin()
+}
+
 func (ws *WsConn) ReceiveMessage(handle func(msg []byte)) {
 	go func() {
 		for {
 			t, msg, err := ws.ReadMessage()
-			ws.errorCh <- err
+			if !ws.isReconnecting() {
+				ws.errorCh <- err
+			} else if err != nil {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
 			if err != nil {
 				log.Println(err)
 				if ws.isClose {
@@ -173,7 +225,12 @@ func (ws *WsConn) ReceiveMessageEx(handle func(isBin bool, msg []byte)) {
 	go func() {
 		for {
 			t, msg, err := ws.ReadMessage()
-			ws.errorCh <- err
+			if !ws.isReconnecting() {
+				ws.errorCh <- err
+			} else if err != nil {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
 			if err != nil {
 				log.Println(err)
 				if ws.isClose {
@@ -220,4 +277,8 @@ func (ws *WsConn) CloseWs() {
 
 func (ws *WsConn) SetErrorHandler(handler func (error)) {
 	ws.errorHandler = handler
+}
+
+func (ws *WsConn) isReconnecting() bool {
+	return atomic.LoadInt32(&ws.reconnecting) == 1
 }
