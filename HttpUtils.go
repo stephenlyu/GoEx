@@ -136,7 +136,7 @@ func HttpGet4(client *http.Client, reqUrl string, headers map[string]string, res
 	}
 	respData, err := NewHttpRequest(client, "GET", reqUrl, "", headers)
 	if err != nil {
-		print(err.Error())
+		println(reqUrl + err.Error())
 		return err
 	}
 	err = json.Unmarshal(respData, result)
