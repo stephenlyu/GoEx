@@ -42,6 +42,13 @@ const (
 )
 
 const (
+	V3_TYPE_BUY_OPEN = "1"
+	V3_TYPE_SELL_OPEN = "2"
+	V3_TYPE_SELL_CLOSE = "3"
+	V3_TYPE_BUY_CLOSE = "4"
+)
+
+const (
 	V3_ORDER_TYPE_NORMAL = 0
 	V3_ORDER_TYPE_POST_ONLY = 1
 	V3_ORDER_TYPE_FOK = 2
@@ -482,10 +489,18 @@ func (ok *OKExV3) PlaceFutureOrders(req BatchPlaceOrderReq) ([]BatchPlaceOrderRe
 	return ret.Data, nil
 }
 
-func (ok *OKExV3) FutureCancelOrders(instrumentId string, orderIds []string) error {
-	bytes, _ := json.Marshal(map[string]interface{} {
-		"order_ids": orderIds,
-	})
+func (ok *OKExV3) FutureCancelOrders(instrumentId string, orderIds, clientOids []string) error {
+	p := map[string]interface{} {
+	}
+	if len(orderIds) > 0 {
+		p["order_ids"] = orderIds
+	} else if len(clientOids) > 0 {
+		p["client_oids"] = clientOids
+	} else {
+		return errors.New("bad params")
+	}
+
+	bytes, _ := json.Marshal(p)
 
 	reqUrl := fmt.Sprintf(FUTURE_V3_CANCEL_ORDERS, instrumentId)
 
@@ -493,18 +508,23 @@ func (ok *OKExV3) FutureCancelOrders(instrumentId string, orderIds []string) err
 
 	reqPath := FUTURE_V3_API_BASE_URL + reqUrl
 	body, err := HttpPostJson(ok.client, reqPath, string(bytes), header)
+	if err != nil {
+		return err
+	}
 
 	var resp struct {
 		Result bool 		`json:"result"`
 		OrderIds []string 	`json:"order_ids"`
+		ClientOids []string `json:"client_oids"`
 		InstrumentId string `json:"instrument_id"`
+		ErrorMessage string `json:"error_message"`
 	}
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		return err
 	}
 	if !resp.Result {
-		return errors.New(string(body))
+		return errors.New(resp.ErrorMessage)
 	}
 
 	return nil

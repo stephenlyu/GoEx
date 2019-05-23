@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	"strconv"
+	"os"
 )
 
 var (
@@ -32,7 +33,12 @@ func init() {
 		Passphrase string `json:"passphrase"`
 	}
 
-	bytes, err := ioutil.ReadFile("key.json")
+	var configFile = os.Getenv("CONFIG")
+	if configFile == "" {
+		configFile = "key.json"
+	}
+
+	bytes, err := ioutil.ReadFile(configFile)
 	chk(err)
 	var key Key
 	err = json.Unmarshal(bytes, &key)
@@ -90,7 +96,7 @@ func TestOKExV3_GetCurrencyAccount(t *testing.T) {
 }
 
 func TestOKExV3_PlaceFutureOrder(t *testing.T) {
-	code := "EOS-USD-190329"
+	code := "EOS-USD-190628"
 	clientOid := getId()
 	println(clientOid)
 	orderId, err := okexV3.PlaceFutureOrder(clientOid, code, "3.6", "1", 1, V3_ORDER_TYPE_POST_ONLY, 0, 10)
@@ -103,7 +109,7 @@ func TestOKExV3_PlaceFutureOrder(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.FutureCancelOrder("EOS-USD-190329", "2229360331400192")
+	err := okexV3.FutureCancelOrder("EOS-USD-190628", "2706131533665280")
 	assert.Nil(t, err)
 }
 
@@ -113,12 +119,13 @@ func getId() string {
 
 func TestOKExV3_PlaceFutureOrders(t *testing.T) {
 	req := BatchPlaceOrderReq{
-		InstrumentId: "EOS-USD-190329",
+		InstrumentId: "EOS-USD-190628",
 		Leverage: 10,
 		OrdersData: []OrderItem{
 			{
 				ClientOid: getId(),
-				Type: "1",
+				Type: V3_TYPE_BUY_OPEN,
+				OrderType: strconv.Itoa(V3_ORDER_TYPE_NORMAL),
 				Price: "2",
 				Size: "1",
 				MatchPrice: "0",
@@ -132,12 +139,12 @@ func TestOKExV3_PlaceFutureOrders(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrders(t *testing.T) {
-	err := okexV3.FutureCancelOrders("EOS-USD-190329", []string{"2465877328667648"})
+	err := okexV3.FutureCancelOrders("EOS-USD-190628", nil, []string{"8a43cedd001c4b36843d4c802c176782"})
 	assert.Nil(t, err)
 }
 
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3.GetInstrumentOrders("EOS-USD-190329", "7", "", "", "")
+	orders, err := okexV3.GetInstrumentOrders("BTC-USD-190628", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -219,7 +226,7 @@ func TestOKExV3Swap_PlaceFutureOrder(t *testing.T) {
 	code := "EOS-USD-SWAP"
 	clientOid := getId()
 	println(clientOid)
-	orderId, err := okexV3Swap.PlaceFutureOrder(clientOid, code, "3.45", "1", 1, V3_SWAP_ORDER_TYPE_POST_ONLY, 0, 10)
+	orderId, err := okexV3Swap.PlaceFutureOrder(clientOid, code, "5", "1", 4, V3_SWAP_ORDER_TYPE_NORMAL, 1, 10)
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -265,7 +272,7 @@ func TestOKExV3Swap_FutureCancelOrders(t *testing.T) {
 }
 
 func TestOKExV3Swap_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3Swap.GetInstrumentOrders("ETH-USD-SWAP", "7", "", "", "")
+	orders, err := okexV3Swap.GetInstrumentOrders("BTC-USD-SWAP", "7", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -310,18 +317,18 @@ func TestQueryAccount(t *testing.T) {
 }
 
 func TestOKExV3_WalletTransfer(t *testing.T) {
-	currency := "ETH"
-	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 0.001, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
-	assert.Nil(t, err)
-	output(resp)
-
-	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 4.81851096, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_FUTURE, "", "")
+	currency := "USDT"
+	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 0.3464083564, WALLET_ACCOUNT_FUTURE, WALLET_ACCOUNT_WALLET, "", "")
 	//assert.Nil(t, err)
 	//output(resp)
+
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 1700, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SPOT, "", "")
+	assert.Nil(t, err)
+	output(resp)
 }
 
 func TestOKExV3_GetWallet(t *testing.T) {
-	currency := "BTC"
+	currency := "USDT"
 	ret, err := okexV3.GetWallet(goex.Currency{Symbol: currency})
 	assert.Nil(t, err)
 	output(ret)
@@ -335,11 +342,14 @@ func TestOKExV3_GetWithdrawFee(t *testing.T) {
 }
 
 func TestOKExV3_Withdraw(t *testing.T) {
-	ret, err := okexV3.GetWithdrawFee(goex.BTC.Symbol)
+	currency := goex.EOS
+	ret, err := okexV3.GetWithdrawFee(currency.Symbol)
 	assert.Nil(t, err)
+	output(ret)
 	fee, _ := ret[0].MinFee.Float64()
+	//{"amount":3193.9991152142,"currency":"EOS","destination":4,"fee":0.1,"to_address":"tokenpanda11","trade_pwd":"tokenpanda2018"}
 
-	err, resp := okexV3.Withdraw(goex.BTC, 0.01, WithdrawDestinationOuter, "3JELrbJKjokmdWHJcXNFPp7WhX4awZHXHY", "tokenpanda2018", fee)
+	err, resp := okexV3.Withdraw(currency, 3193.99911521, WithdrawDestinationOuter, "tokenpanda11", "tokenpanda2018", fee)
 	assert.Nil(t, err)
 	output(resp)
 }
@@ -347,26 +357,25 @@ func TestOKExV3_Withdraw(t *testing.T) {
 func TestOKExV3_GetWalletLedger(t *testing.T) {
 	var ledgers []WalletLedger
 	page := 1
+	currency := goex.EOS
 	for {
 		fmt.Printf("page %d..\n", page)
-		resp, err := okexV3.GetWalletLedger(goex.ETH, strconv.Itoa(page), "", "100", "")
+		resp, err := okexV3.GetWalletLedger(goex.EOS, strconv.Itoa(page), "", "100", "")
 		assert.Nil(t, err)
 		ledgers = append(ledgers, resp...)
-		fmt.Println(len(resp))
 		if len(resp) < 100 {
 			break
 		}
 		page++
 		time.Sleep(time.Millisecond * 400)
-		break
 	}
 	bytes, err := json.MarshalIndent(ledgers, "", "  ")
 	assert.Nil(t, err)
-	ioutil.WriteFile("eos-wallet-ledgers.json", bytes, 0666)
+	ioutil.WriteFile(currency.Symbol + "-wallet-ledgers.json", bytes, 0666)
 }
 
 func TestOKExV3_GetDepositHistory(t *testing.T) {
-	currency := "BTC"
+	currency := "EOS"
 	ret, err := okexV3.GetDepositHistory(currency)
 	assert.Nil(t, err)
 	output(ret)
