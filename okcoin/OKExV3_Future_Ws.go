@@ -41,6 +41,7 @@ func (okFuture *OKExV3) createWsConn() {
 
 			okFuture.ws = NewWsConn("wss://real.okex.com:10442/ws/v3")
 			okFuture.ws.Heartbeat(func() interface{} { return "ping"}, 20*time.Second)
+			okFuture.ws.SetErrorHandler(okFuture.errorHandle)
 			okFuture.ws.ReConnect()
 			okFuture.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
 				if isBin {
@@ -528,6 +529,10 @@ func (okFuture *OKExV3) parseSwapOrder(msg []byte) (string, []FutureOrder) {
 
 func (okFuture *OKExV3) CloseWs() {
 	okFuture.ws.CloseWs()
+}
+
+func (this *OKExV3) SetErrorHandler(handle func(error)) {
+	this.errorHandle = handle
 }
 
 type DepthManager struct {

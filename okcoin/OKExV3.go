@@ -126,6 +126,7 @@ type OKExV3 struct {
 	wsAccountHandleMap  map[string]func(bool, *FutureAccount)
 	wsOrderHandleMap  map[string]func([]FutureOrder)
 	depthManagers	 map[string]*DepthManager
+	errorHandle      func(error)
 }
 
 func NewOKExV3(client *http.Client, api_key, secret_key, passphrase string) *OKExV3 {
