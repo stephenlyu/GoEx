@@ -64,6 +64,7 @@ type V3Instrument struct {
 	TickSize string 		`json:"tick_size"`
 	TradeIncrement string 	`json:"trade_increment"`
 	UnderlyingIndex string 	`json:"underlying_index"`
+	Alias string 			`json:"alias"`
 }
 
 type V3Position struct {
