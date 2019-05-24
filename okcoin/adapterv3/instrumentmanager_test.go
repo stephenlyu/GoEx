@@ -33,7 +33,8 @@ func TestInstrumentManager_GetInstrumentId(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(code, instrumentId)
+		code1, _ := mgr.GetCode(instrumentId)
+		fmt.Println(code, instrumentId, code1)
 	}
 }
 

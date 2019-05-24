@@ -6,9 +6,7 @@ import (
 	"github.com/stephenlyu/tds/util"
 	"fmt"
 	"strings"
-	"sort"
 	"sync"
-	"github.com/stephenlyu/tds/date"
 	"time"
 )
 
@@ -23,7 +21,6 @@ type InstrumentManager struct {
 
 	lock sync.RWMutex
 	nextSyncTimestamp uint64
-	tryTimes int
 	codeInstrumentIdMap map[string]string
 	instrumentIdCodeMap map[string]string
 }
@@ -31,6 +28,7 @@ type InstrumentManager struct {
 func NewInstrumentManager() *InstrumentManager {
 	return &InstrumentManager{
 		api: okcoin.NewOKExV3(http.DefaultClient, "", "", ""),
+		codeInstrumentIdMap: make(map[string]string),
 	}
 }
 
@@ -61,69 +59,52 @@ func (this *InstrumentManager) ensureMap() error {
 	}
 
 	// 建立Currency -> InstrumentIds映射
-	currencyInstruments := make(map[string][]string)
+	currencyInstruments := make(map[string][]okcoin.V3Instrument)
 	for _, ins := range instruments {
 		parts := strings.Split(ins.InstrumentId, "-")
 		currency := parts[0]
-		currencyInstruments[currency] = append(currencyInstruments[currency], ins.InstrumentId)
+		currencyInstruments[currency] = append(currencyInstruments[currency], ins)
 	}
 
 	m := make(map[string]string)
-	getDate := func(instrumentId string) string {
-		return strings.Split(instrumentId, "-")[2]
-	}
-	var missingCode bool
-	for currency, ids := range currencyInstruments {
-		sort.SliceStable(ids, func(i,j int) bool {
-			return ids[i] < ids[j]
-		})
-		if len(ids) == 3 {
-			m[currency + "TFUT.OKEX"] = ids[0]
-			m[currency + "NFUT.OKEX"] = ids[1]
-			m[currency + "QFUT.OKEX"] = ids[2]
-		} else if len(ids) == 2 {
-			now := date.GetNowString()
-			yearPrefix := now[:2]
 
-			d1, _ := date.DayString2Timestamp(yearPrefix + getDate(ids[0]))
-			d2, _ := date.DayString2Timestamp(yearPrefix + getDate(ids[1]))
-			if d2 - d1 == WEEK_MILLS {
-				m[currency + "TFUT.OKEX"] = ids[0]
-				m[currency + "NFUT.OKEX"] = ids[1]
-				m[currency + "QFUT.OKEX"] = ""
-			} else {
-				m[currency + "TFUT.OKEX"] = ids[0]
-				m[currency + "NFUT.OKEX"] = ""
-				m[currency + "QFUT.OKEX"] = ids[1]
-			}
+	var missingCode bool
+	for currency, instruments := range currencyInstruments {
+		if len(instruments) != 3 {
 			missingCode = true
 		}
-	}
 
-	rm := make(map[string]string)
-	for c, i := range m {
-		rm[i] = c
+		for _, ins := range instruments {
+			switch ins.Alias {
+			case "quarter":
+				m[currency + "QFUT.OKEX"] = ins.InstrumentId
+			case "this_week":
+				m[currency + "TFUT.OKEX"] = ins.InstrumentId
+			case "next_week":
+				m[currency + "NFUT.OKEX"] = ins.InstrumentId
+			}
+		}
 	}
 
 	this.lock.Lock()
 	var changed = false
 	for k, v := range m {
 		if this.codeInstrumentIdMap[k] != v {
+			this.codeInstrumentIdMap[k] = v
 			changed = true
 			break
 		}
 	}
-	this.tryTimes++
-	if changed || this.tryTimes > 60 {
+	if changed {
 		this.codeInstrumentIdMap = m
-		this.instrumentIdCodeMap = rm
+		this.instrumentIdCodeMap = make(map[string]string)
+		for c, i := range this.codeInstrumentIdMap {
+			this.instrumentIdCodeMap[i] = c
+		}
 		// 周合约交割后，会出现一个只有两个合约的阶段，这个阶段，需要持续更新，直到新的合约产生
 		if !missingCode {
 			this.nextSyncTimestamp = NextSyncTimestamp(util.Tick())
-			this.tryTimes = 0
 		}
-	} else {
-		this.tryTimes++
 	}
 	this.lock.Unlock()
 	return nil
