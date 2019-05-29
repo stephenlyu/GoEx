@@ -139,7 +139,7 @@ func TestOKExV3_PlaceFutureOrders(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrders(t *testing.T) {
-	err := okexV3.FutureCancelOrders("EOS-USD-190628", nil, []string{"8a43cedd001c4b36843d4c802c176782"})
+	err := okexV3.FutureCancelOrders("EOS-USD-190628", nil, []string{"8a43cedd001c4b36843d4c802c176782", "3d99117119dd441db38b44034df1b99c"})
 	assert.Nil(t, err)
 }
 
@@ -150,23 +150,23 @@ func TestOKExV3_GetInstrumentOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("EOS-USD-190628", "2517531327024128")
+	order, err := okexV3.GetInstrumentOrder("EOS-USD-190628", "25117531327024128")
 	assert.Nil(t, err)
 	output(order)
 }
 
 func TestOKExV3_GetLedger(t *testing.T) {
 	var ledgers []FutureLedger
-	page := 1
+	from := ""
 	for {
-		resp, err := okexV3.GetLedger(goex.EOS, strconv.Itoa(page), "", "100")
+		resp, err := okexV3.GetLedger(goex.EOS, from, "", "100")
 		assert.Nil(t, err)
 		if len(resp) == 0 {
 			break
 		} else {
 			ledgers = append(ledgers, resp...)
 		}
-		page++
+		from = resp[len(resp) - 1].LedgerId
 		time.Sleep(time.Millisecond * 500)
 	}
 	bytes, err := json.MarshalIndent(ledgers, "", "  ")
@@ -285,17 +285,17 @@ func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
 
 func TestOKExV3Swap_GetLedger(t *testing.T) {
 	var ledgers []V3FutureLedger
-	page := 1
+	from := ""
 	for {
-		fmt.Printf("page %d..\n", page)
-		resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", strconv.Itoa(page), "", "100")
+		println("from:" + from)
+		resp, err := okexV3Swap.GetLedger("EOS-USD-SWAP", from, "", "100")
 		assert.Nil(t, err)
 		if len(resp) == 0 {
 			break
 		} else {
 			ledgers = append(ledgers, resp...)
 		}
-		page++
+		from = resp[len(resp) - 1].LedgerId
 		time.Sleep(time.Millisecond * 400)
 	}
 	bytes, err := json.MarshalIndent(ledgers, "", "  ")
@@ -356,17 +356,17 @@ func TestOKExV3_Withdraw(t *testing.T) {
 
 func TestOKExV3_GetWalletLedger(t *testing.T) {
 	var ledgers []WalletLedger
-	page := 1
+	from := ""
 	currency := goex.EOS
 	for {
-		fmt.Printf("page %d..\n", page)
-		resp, err := okexV3.GetWalletLedger(goex.EOS, strconv.Itoa(page), "", "100", "")
+		fmt.Printf("from: %s\n", from)
+		resp, err := okexV3.GetWalletLedger(goex.EOS, from, "", "100", "")
 		assert.Nil(t, err)
 		ledgers = append(ledgers, resp...)
 		if len(resp) < 100 {
 			break
 		}
-		page++
+		from = resp[len(resp) - 1].LedgerId.String()
 		time.Sleep(time.Millisecond * 400)
 	}
 	bytes, err := json.MarshalIndent(ledgers, "", "  ")
