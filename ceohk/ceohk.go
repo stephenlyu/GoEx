@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/shopspring/decimal"
+	"strings"
 )
 
 const (
@@ -25,6 +26,7 @@ func NewCEOHK() *CEOHK {
 }
 
 func (ok *CEOHK) GetTicker(market string) (*TickerDecimal, error) {
+	market = strings.ToLower(market)
 	url := API_BASE_URL + TICKER
 	resp, err := ok.client.Get(fmt.Sprintf(url, market))
 	if err != nil {
