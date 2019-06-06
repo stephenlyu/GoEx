@@ -430,7 +430,7 @@ func (this *ZBG) GetAccount(page int, pageSize int) ([]SubAccountDecimal, error)
 	return ret, nil
 }
 
-func (this *ZBG) PlaceOrder(amount float64, _type int, marketName string, price float64) (string, error) {
+func (this *ZBG) PlaceOrder(amount decimal.Decimal, _type int, marketName string, price decimal.Decimal) (string, error) {
 	marketId := this.getMarketIdByName(marketName)
 	params := map[string]interface{} {
 		"amount": amount,

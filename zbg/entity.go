@@ -3,6 +3,7 @@ package zbg
 import (
 	"github.com/shopspring/decimal"
 	"github.com/stephenlyu/GoEx"
+	"strings"
 )
 
 type Market struct {
@@ -77,7 +78,7 @@ func (this *OrderInfo) ToOrderDecimal(marketName string) *goex.OrderDecimal {
 		OrderID2: this.EntrustId,
 		Timestamp: this.CreateTime.IntPart(),
 		Status: status,
-		Currency: goex.NewCurrencyPair2(marketName),
+		Currency: goex.NewCurrencyPair2(strings.ToUpper(marketName)),
 		Side: side,
 	}
 }

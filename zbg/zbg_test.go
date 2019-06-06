@@ -7,6 +7,7 @@ import (
 	"os"
 	"io/ioutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/shopspring/decimal"
 )
 
 var zbg *ZBG
@@ -84,7 +85,7 @@ func TestZBG_GetAccount(t *testing.T) {
 
 func TestZBG_PlaceOrder(t *testing.T) {
 	code := "sht_usdt"
-	orderId, err := zbg.PlaceOrder(10, ORDER_TYPE_BUY, code, 0.06)
+	orderId, err := zbg.PlaceOrder(decimal.NewFromFloat(10), ORDER_TYPE_BUY, code, decimal.NewFromFloat(0.03))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -95,7 +96,7 @@ func TestZBG_PlaceOrder(t *testing.T) {
 
 func TestZBG_CancelOrder(t *testing.T) {
 	code := "sht_usdt"
-	err := zbg.CancelOrder(code, "E6542270567591006208")
+	err := zbg.CancelOrder(code, "E6542313405284438016")
 	assert.Nil(t, err)
 }
 
