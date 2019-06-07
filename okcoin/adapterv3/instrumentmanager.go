@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/stephenlyu/tds/entity"
 )
 
 //
@@ -117,6 +118,14 @@ func (this *InstrumentManager) GetInstrumentId(code string) (string, error) {
 	}
 
 	instrumentId, ok := this.codeInstrumentIdMap[code]
+	if !ok {
+		security := entity.ParseSecurityUnsafe(code)
+		if security.GetCode() == "QFUT" {
+			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sNFUT.OKEX", security.GetCategory())]
+		} else if security.GetCode() == "NFUT" {
+			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sTFUT.OKEX", security.GetCategory())]
+		}
+	}
 	if !ok {
 		return "", fmt.Errorf("No instrument id for %s", code)
 	}
