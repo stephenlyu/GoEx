@@ -52,7 +52,16 @@ func (this *OKExQuoter) Destroy() {
 	this.okex.CloseWs()
 }
 
+func (this *OKExQuoter) checkInstrumentCodeChanged(instrumentId string) {
+	security, _ := this.instrumentIdSecurityMap[instrumentId]
+	newInstrumentId := FromSecurity(security)
+	if instrumentId != newInstrumentId {
+		panic("Quit for delivery")
+	}
+}
+
 func (this *OKExQuoter) onDepth(depth *goex.Depth) {
+	this.checkInstrumentCodeChanged(depth.InstrumentId)
 	security, _ := this.instrumentIdSecurityMap[depth.InstrumentId]
 
 	thisTick := this.tickMap[security.String()]
@@ -109,6 +118,7 @@ func (this *OKExQuoter) onTrade(instrumentId string, trades []goex.Trade) {
 	if len(trades) == 0 {
 		return
 	}
+	this.checkInstrumentCodeChanged(instrumentId)
 
 	security, _ := this.instrumentIdSecurityMap[instrumentId]
 	thisTick := this.tickMap[security.String()]
@@ -169,6 +179,7 @@ func (this *OKExQuoter) onTicker(instrumentId string, tickers []goex.Ticker) {
 	if len(tickers) == 0 {
 		return
 	}
+	this.checkInstrumentCodeChanged(instrumentId)
 
 	ticker := tickers[0]
 
