@@ -420,7 +420,7 @@ func (this *ZBG) GetAccount(page int, pageSize int) ([]SubAccountDecimal, error)
 			continue
 		}
 		ret = append(ret, SubAccountDecimal{
-			Currency: Currency{Symbol: currency},
+			Currency: Currency{Symbol: strings.ToUpper(currency)},
 			AvailableAmount: o.Amount,
 			FrozenAmount: o.Freeze,
 			Amount: o.Amount.Add(o.Freeze),

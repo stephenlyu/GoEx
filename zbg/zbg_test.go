@@ -80,6 +80,7 @@ func TestZBG_GetTrades(t *testing.T) {
 func TestZBG_GetAccount(t *testing.T) {
 	ret, err := zbg.GetAccount(0, 0)
 	chk(err)
+	fmt.Println(len(ret))
 	output(ret)
 }
 
