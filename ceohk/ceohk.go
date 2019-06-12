@@ -40,7 +40,6 @@ func (ok *CEOHK) GetTicker(market string) (*TickerDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var data struct {
 		Code decimal.Decimal
 		Data struct {
@@ -56,6 +55,7 @@ func (ok *CEOHK) GetTicker(market string) (*TickerDecimal, error) {
 
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		err = fmt.Errorf("body: %s", string(body))
 		return nil, err
 	}
 
