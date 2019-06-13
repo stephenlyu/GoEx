@@ -86,7 +86,7 @@ func TestZBG_GetAccount(t *testing.T) {
 
 func TestZBG_PlaceOrder(t *testing.T) {
 	code := "sht_usdt"
-	orderId, err := zbg.PlaceOrder(decimal.NewFromFloat(10), ORDER_TYPE_BUY, code, decimal.NewFromFloat(0.03))
+	orderId, err := zbg.PlaceOrder(decimal.NewFromFloat(21.1804), ORDER_TYPE_BUY, code, decimal.NewFromFloat(0.0547))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -102,10 +102,37 @@ func TestZBG_CancelOrder(t *testing.T) {
 }
 
 func TestZBG_QueryPendingOrders(t *testing.T) {
+	code := "sht_qc"
+	orders, err := zbg.QueryPendingOrders(code)
+	assert.Nil(t, err)
+	fmt.Println(len(orders))
+	output(orders)
+}
+
+func TestZBG_QueryPagedPendingOrders(t *testing.T) {
+	code := "sht_qc"
+	orders, err := zbg.QueryPagedPendingOrders(code, 0, 100)
+	assert.Nil(t, err)
+	fmt.Println(len(orders))
+	output(orders)
+}
+
+func TestZBG_QueryDoneOrders(t *testing.T) {
+	code := "sht_usdt"
+	orders, err := zbg.QueryDoneOrders(code)
+	assert.Nil(t, err)
+	output(orders)
+}
+
+func TestZBG_CancelAll(t *testing.T) {
 	code := "sht_usdt"
 	orders, err := zbg.QueryPendingOrders(code)
 	assert.Nil(t, err)
 	output(orders)
+
+	for _, o := range orders {
+		zbg.CancelOrder(code, o.OrderID2)
+	}
 }
 
 func TestZBG_QueryOrder(t *testing.T) {

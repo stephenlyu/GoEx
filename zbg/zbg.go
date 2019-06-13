@@ -27,6 +27,8 @@ const (
 	ADD_ENTRUST = "/exchange/entrust/controller/website/EntrustController/addEntrust"
 	CANCEL_ENTRUST = "/exchange/entrust/controller/website/EntrustController/cancelEntrust"
 	QUERY_PENDING_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustRecordFromCache?marketId=%s"
+	QUERY_PAGED_PENDING_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustRecordFromCacheWithPage?marketId=%s&pageIndex=%d&pageSize=%d"
+	QUERY_DONE_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustList?marketId=%s&pageSize=100"
 	QUERY_ORDER = "/exchange/entrust/controller/website/EntrustController/getEntrustById?marketId=%s&entrustId=%s"
 	TICKER = "/api/data/v1/ticker?marketName=%s"
 	DEPTH = "/api/data/v1/entrusts?marketName=%s&dataSize=%d"
@@ -276,6 +278,9 @@ func (ok *ZBG) GetDepth(market string, dataSize int) (*DepthDecimal, error) {
 	for i, o := range r.Asks {
 		depth.AskList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
 	}
+	sort.Slice(depth.AskList, func(i,j int) bool {
+		return depth.AskList[i].Price.LessThan(depth.AskList[j].Price)
+	})
 
 	depth.BidList = make([]DepthRecordDecimal, len(r.Bids), len(r.Bids))
 	for i, o := range r.Bids {
@@ -542,6 +547,99 @@ func (this *ZBG) QueryPendingOrders(marketName string) ([]OrderDecimal, error) {
 	var ret = make([]OrderDecimal, len(resp.Datas))
 	for i := range resp.Datas {
 		ret[i] = *resp.Datas[i].ToOrderDecimal(marketName)
+	}
+
+	return ret, nil
+}
+
+func (this *ZBG) QueryPagedPendingOrders(marketName string, pageIndex, pageSize int) ([]OrderDecimal, error) {
+	if pageIndex == 0 {
+		pageIndex = 1
+	}
+	if pageSize == 0 {
+		pageSize = 20
+	}
+
+	marketName = strings.ToUpper(marketName)
+	marketId := this.getMarketIdByName(marketName)
+	if marketId == "" {
+		return nil, fmt.Errorf("unknown market %s", marketName)
+	}
+	header := this.signGet(map[string]string{
+		"marketId": marketId,
+		"pageIndex": strconv.Itoa(pageIndex),
+		"pageSize": strconv.Itoa(pageSize),
+	})
+
+	url := fmt.Sprintf(API_BASE_URL + QUERY_PAGED_PENDING_ORDERS, marketId, pageIndex, pageSize)
+
+	var resp struct {
+		ResMsg struct {
+				   Message string
+				   Code decimal.Decimal
+	   	}
+		Datas struct {
+				  EntrustList []OrderInfo
+				  PageSize int
+				  TotalRow int
+				  PageNum int
+				  TotalPage int
+			  }
+	}
+
+	err := HttpGet4(this.client, url, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.ResMsg.Code.IntPart() != 1 {
+		return nil, fmt.Errorf("error code: %s", resp.ResMsg.Code.String())
+	}
+
+	var ret = make([]OrderDecimal, len(resp.Datas.EntrustList))
+	for i := range resp.Datas.EntrustList {
+		ret[i] = *resp.Datas.EntrustList[i].ToOrderDecimal(marketName)
+	}
+
+	return ret, nil
+}
+
+func (this *ZBG) QueryDoneOrders(marketName string) ([]OrderDecimal, error) {
+	marketName = strings.ToUpper(marketName)
+	marketId := this.getMarketIdByName(marketName)
+	if marketId == "" {
+		return nil, fmt.Errorf("unknown market %s", marketName)
+	}
+	header := this.signGet(map[string]string{"marketId": marketId, "pageSize": "100"})
+
+	url := fmt.Sprintf(API_BASE_URL + QUERY_DONE_ORDERS, marketId)
+
+	var resp struct {
+		ResMsg struct {
+		    Message string
+		    Code decimal.Decimal
+	    }
+		Datas struct {
+			EntrustList []OrderInfo
+			PageSize int
+			TotalRow int
+			PageNum int
+			TotalPage int
+	    }
+	}
+
+	err := HttpGet4(this.client, url, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.ResMsg.Code.IntPart() != 1 {
+		return nil, fmt.Errorf("error code: %s", resp.ResMsg.Code.String())
+	}
+
+	var ret = make([]OrderDecimal, len(resp.Datas.EntrustList))
+	for i := range resp.Datas.EntrustList {
+		ret[i] = *resp.Datas.EntrustList[i].ToOrderDecimal(marketName)
 	}
 
 	return ret, nil
