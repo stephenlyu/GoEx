@@ -532,7 +532,7 @@ func (ok *OKExV3Spot) GetInstrumentOrders(instrumentId string, status, from, to,
 	reqUrl := fmt.Sprintf(SPOT_V3_INSTRUMENT_ORDERS, instrumentId)
 	var params []string
 	if status != "" {
-		params = append(params, "status=" + status)
+		params = append(params, "state=" + status)
 	}
 	if from != "" {
 		params = append(params, "from=" + from)
