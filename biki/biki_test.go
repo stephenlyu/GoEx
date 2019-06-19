@@ -91,20 +91,32 @@ func TestBiki_PlaceOrder(t *testing.T) {
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
 	code := "sht_usdt"
-	err := biki.CancelOrder(code, "8603629")
+	err := biki.CancelOrder(code, "100000")
 	assert.Nil(t, err)
 }
 
 func TestOKExV3_GetPendingOrders(t *testing.T) {
 	code := "sht_usdt"
-	orders, err := biki.QueryPendingOrders(code, 0, 0)
+	orders, err := biki.QueryPendingOrders(code, 0, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
 
 func TestOKExV3_GetOrder(t *testing.T) {
 	code := "sht_usdt"
-	order, err := biki.QueryOrder(code, "8603703")
+	order, err := biki.QueryOrder(code, "8914002")
 	assert.Nil(t, err)
 	output(order)
+}
+
+func TestZBG_CancelAll(t *testing.T) {
+	code := "sht_usdt"
+	orders, err := biki.QueryPendingOrders(code, 1, 100)
+	assert.Nil(t, err)
+	output(orders)
+
+	for _, o := range orders {
+		err = biki.CancelOrder(code, o.OrderID2)
+		fmt.Println(err)
+	}
 }

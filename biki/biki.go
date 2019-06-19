@@ -397,7 +397,7 @@ func (this *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, sym
 		Msg string
 		Code decimal.Decimal
 		Data struct {
-		   OrderId string		`json:"order_id"`
+		   OrderId decimal.Decimal		`json:"order_id"`
 	   }
 	}
 
@@ -410,7 +410,7 @@ func (this *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, sym
 		return "", fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	return resp.Data.OrderId, nil
+	return resp.Data.OrderId.String(), nil
 }
 
 func (this *Biki) CancelOrder(symbol string, orderId string) error {
@@ -451,16 +451,16 @@ func (this *Biki) CancelOrder(symbol string, orderId string) error {
 }
 
 func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-	param := this.sign(map[string]string {
+	param := map[string]string {
 		"symbol": this.transSymbol(symbol),
-	})
-
+	}
 	if page > 0 {
 		param["page"] = strconv.Itoa(page)
 	}
 	if pageSize > 0 {
 		param["pageSize"] = strconv.Itoa(pageSize)
 	}
+	param = this.sign(param)
 
 	url := fmt.Sprintf(API_BASE_URL + NEW_ORDER + "?" + this.buildQueryString(param))
 
