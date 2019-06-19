@@ -80,7 +80,7 @@ func TestBiki_GetAccount(t *testing.T) {
 
 func TestBiki_PlaceOrder(t *testing.T) {
 	code := "SHT_USDT"
-	orderId, err := biki.PlaceOrder(decimal.NewFromFloat32(20), ORDER_BUY, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.051))
+	orderId, err := biki.PlaceOrder(decimal.NewFromFloat32(20), ORDER_BUY, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.041))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -91,7 +91,7 @@ func TestBiki_PlaceOrder(t *testing.T) {
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
 	code := "sht_usdt"
-	err := biki.CancelOrder(code, "8532256")
+	err := biki.CancelOrder(code, "8603629")
 	assert.Nil(t, err)
 }
 
@@ -104,7 +104,7 @@ func TestOKExV3_GetPendingOrders(t *testing.T) {
 
 func TestOKExV3_GetOrder(t *testing.T) {
 	code := "sht_usdt"
-	order, err := biki.QueryOrder(code, "8532256")
+	order, err := biki.QueryOrder(code, "8603703")
 	assert.Nil(t, err)
 	output(order)
 }

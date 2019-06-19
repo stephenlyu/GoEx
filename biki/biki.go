@@ -23,7 +23,7 @@ const (
 )
 
 const (
-	API_BASE_URL    = "https://api.biki.com"
+	API_BASE_URL    = "https://openapi.biki.com"
 	COMMON_SYMBOLS = "/open/api/common/symbols"
 	GET_TICKER = "/open/api/get_ticker?symbol=%s"
 	GET_MARKET_DEPH = "/open/api/market_dept?symbol=%s&type=step0"
@@ -113,6 +113,11 @@ func (ok *Biki) GetSymbols() ([]Symbol, error) {
 
 	if data.Code.IntPart() != 0 {
 		return nil, fmt.Errorf("error code: %s", data.Code.String())
+	}
+
+	for i := range data.Data {
+		s := &data.Data[i]
+		s.Symbol = strings.ToUpper(fmt.Sprintf("%s_%s", s.BaseCoin, s.CountCoin))
 	}
 
 	return data.Data, nil
@@ -420,7 +425,8 @@ func (this *Biki) CancelOrder(symbol string, orderId string) error {
 	data := this.buildQueryString(params)
 	println(data)
 	url := API_BASE_URL + CANCEL_ORDER
-	body, err := HttpPostForm3(this.client, url, data, nil)
+	println(url)
+	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 
 	if err != nil {
 		return err
