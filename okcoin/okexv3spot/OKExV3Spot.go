@@ -303,7 +303,7 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	var ret *struct {
 		OrderId string `json:"order_id"`
 		ClientOid string `json:"client_oid"`
-		ErrorCode int 	`json:"error_code"`
+		ErrorCode string 	`json:"error_code"`
 		ErrorMessage string `json:"error_message"`
 		Result bool `json:"result"`
 	}
@@ -312,8 +312,8 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 		return "", err
 	}
 
-	if ret.ErrorCode != 0 {
-		return "", fmt.Errorf("error code: %d", ret.ErrorCode)
+	if ret.ErrorCode != "" {
+		return "", fmt.Errorf("error code: %s", ret.ErrorCode)
 	}
 
 	return ret.OrderId, nil
