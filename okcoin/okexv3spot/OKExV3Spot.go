@@ -294,7 +294,6 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	header := ok.buildHeader("POST", SPOT_V3_ORDERS, data)
 
 	placeOrderUrl := SPOT_V3_API_BASE_URL + SPOT_V3_ORDERS
-	println(placeOrderUrl)
 	body, err := HttpPostJson(ok.client, placeOrderUrl, data, header)
 
 	if err != nil {
@@ -308,7 +307,6 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 		ErrorMessage string `json:"error_message"`
 		Result bool `json:"result"`
 	}
-	println(string(body))
 	err = json.Unmarshal(body, &ret)
 	if err != nil {
 		return "", err
