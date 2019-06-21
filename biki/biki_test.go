@@ -80,7 +80,7 @@ func TestBiki_GetAccount(t *testing.T) {
 
 func TestBiki_PlaceOrder(t *testing.T) {
 	code := "SHT_USDT"
-	orderId, err := biki.PlaceOrder(decimal.NewFromFloat32(20), ORDER_BUY, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.041))
+	orderId, err := biki.PlaceOrder(decimal.NewFromFloat32(200), ORDER_BUY, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.052))
 	assert.Nil(t, err)
 	output(orderId)
 

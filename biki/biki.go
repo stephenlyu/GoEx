@@ -383,15 +383,12 @@ func (this *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, sym
 	params = this.sign(params)
 
 	data := this.buildQueryString(params)
-	println(data)
 	url := API_BASE_URL + CREATE_ORDER
 	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 
 	if err != nil {
 		return "", err
 	}
-
-	println(string(body))
 
 	var resp struct {
 		Msg string
@@ -423,15 +420,12 @@ func (this *Biki) CancelOrder(symbol string, orderId string) error {
 	params = this.sign(params)
 
 	data := this.buildQueryString(params)
-	println(data)
 	url := API_BASE_URL + CANCEL_ORDER
-	println(url)
 	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 
 	if err != nil {
 		return err
 	}
-	println(string(body))
 
 	var resp struct {
 		Msg string
