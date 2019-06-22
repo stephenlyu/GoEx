@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"errors"
 	"strconv"
+	"sync"
 )
 
 const (
@@ -51,6 +52,16 @@ type Appex struct {
 
 	accountId int64
 	symbolNameMap map[string]string
+
+	ws                *WsConn
+	createWsLock      sync.Mutex
+	wsLoginHandle func(err error)
+	wsDepthHandleMap  map[string]func(*DepthDecimal)
+	wsTradeHandleMap map[string]func(string, []TradeDecimal)
+	wsAccountHandleMap  map[string]func(*SubAccountDecimal)
+	wsOrderHandleMap  map[string]func([]OrderDecimal)
+	wsSymbolMap map[string]string
+	errorHandle      func(error)
 }
 
 func NewAppex(ApiKey string, SecretKey string) *Appex {
