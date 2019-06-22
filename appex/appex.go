@@ -95,7 +95,7 @@ func (this *Appex) getPairByName(name string) string {
 	}
 
 	for _, o := range l {
-		this.symbolNameMap[strings.ToUpper(o.Symbol)] = fmt.Sprintf("%s_%s", o.BaseCurrency, o.QuoteCurrency)
+		this.symbolNameMap[strings.ToUpper(this.transSymbol(o.Symbol))] = fmt.Sprintf("%s_%s", o.BaseCurrency, o.QuoteCurrency)
 	}
 	c, ok = this.symbolNameMap[name]
 	if !ok {
@@ -133,6 +133,13 @@ func (this *Appex) GetSymbols() ([]Symbol, error) {
 
 	if data.Status != "ok" {
 		return nil, fmt.Errorf("bad status: %s", data.Status)
+	}
+
+	for i := range data.Data {
+		s := &data.Data[i]
+		s.BaseCurrency = strings.ToUpper(s.BaseCurrency)
+		s.QuoteCurrency = strings.ToUpper(s.QuoteCurrency)
+		s.Symbol = fmt.Sprintf("%s_%s", s.BaseCurrency, s.QuoteCurrency)
 	}
 
 	return data.Data, nil

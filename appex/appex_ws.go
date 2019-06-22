@@ -41,7 +41,7 @@ func (this *Appex) createWsConn() {
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 			this.wsSymbolMap = make(map[string]string)
 
-			this.ws = NewWsConn("wss://www.appex.pro/ws/v1")
+			this.ws = NewWsConn("wss://www.appex.pro/api/ws")
 			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.ReConnect()
 			this.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
@@ -68,13 +68,13 @@ func (this *Appex) createWsConn() {
 				case _DEPTH_CH_PATTERN.Match([]byte(data.Ch)):
 					symbol := strings.Split(data.Ch, ".")[1]
 					depth := this.parseDepth(msg)
-					pairSymbol := this.getPairByName(symbol)
+					pairSymbol := this.wsSymbolMap[symbol]
 					depth.Pair = NewCurrencyPair2(pairSymbol)
 					this.wsDepthHandleMap[data.Ch](depth)
 				case _TRADE_CH_PATTERN.Match([]byte(data.Ch)):
 					symbol := strings.Split(data.Ch, ".")[1]
 					depth := this.parseTrade(msg)
-					pairSymbol := this.getPairByName(symbol)
+					pairSymbol := this.wsSymbolMap[symbol]
 					this.wsTradeHandleMap[data.Ch](pairSymbol, depth)
 				}
 			})

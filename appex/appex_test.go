@@ -126,7 +126,7 @@ func TestAppex_Freq(t *testing.T) {
 }
 
 func TestAppex_GetOrder(t *testing.T) {
-	order, err := appex.QueryOrder("37800595691")
+	order, err := appex.QueryOrder("37878513295")
 	assert.Nil(t, err)
 	output(order)
 }
