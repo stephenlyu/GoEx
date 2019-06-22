@@ -35,7 +35,7 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	switch this.State {
 	case "submitted":
 		status = goex.ORDER_UNFINISH
-	case "canceled":
+	case "canceled", "partial-canceled":
 		status = goex.ORDER_CANCEL
 	case "filled":
 		status = goex.ORDER_FINISH
