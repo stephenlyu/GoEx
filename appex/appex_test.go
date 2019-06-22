@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 var appex *Appex
@@ -101,19 +102,30 @@ func TestAppex_PlaceOrder(t *testing.T) {
 	output(order)
 }
 
-func TestOKExV3_FutureCancelOrder(t *testing.T) {
+func TestAppex_CancelOrder(t *testing.T) {
 	err := appex.CancelOrder("37800595691")
 	assert.Nil(t, err)
 }
 
-func TestOKExV3_GetPendingOrders(t *testing.T) {
+func TestAppex_GetPendingOrders(t *testing.T) {
 	code := "sht_usdt"
 	orders, err := appex.QueryPendingOrders(code, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
 
-func TestOKExV3_GetOrder(t *testing.T) {
+func TestAppex_Freq(t *testing.T) {
+	code := "sht_usdt"
+	for i := 0; i < 100; i++ {
+		_, err := appex.QueryPendingOrders(code, 100)
+		fmt.Println(err)
+		if err != nil {
+			time.Sleep(time.Second)
+		}
+	}
+}
+
+func TestAppex_GetOrder(t *testing.T) {
 	order, err := appex.QueryOrder("37800595691")
 	assert.Nil(t, err)
 	output(order)

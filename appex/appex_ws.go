@@ -41,11 +41,12 @@ func (this *Appex) createWsConn() {
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 			this.wsSymbolMap = make(map[string]string)
 
-			this.ws = NewWsConn("wss://www.appex.pro/api/ws/v3")
+			this.ws = NewWsConn("wss://www.appex.pro/ws/v1")
 			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.ReConnect()
 			this.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
 				msg, _ = GzipDecodeV3(msg)
+				//println(string(msg))
 
 				var data struct {
 					Ping int64
