@@ -337,7 +337,6 @@ func (ok *OKExV3Spot) CancelOrder(instrumentId, orderId, clientOid string) error
 	header := ok.buildHeader("POST", reqUrl, data)
 
 	reqPath := SPOT_V3_API_BASE_URL + reqUrl
-	println(reqPath)
 	body, err := HttpPostJson(ok.client, reqPath, data, header)
 	if err != nil {
 		if strings.Contains(err.Error(), "33027") {
