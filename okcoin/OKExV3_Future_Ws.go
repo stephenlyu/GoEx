@@ -172,9 +172,7 @@ func (okFuture *OKExV3) doLogin() error {
 	okFuture.wsLoginHandle = onDone
 
 	data := okFuture.getLoginData()
-	log.Printf("%+v", data)
 	err := okFuture.ws.SendMessage(data)
-	log.Printf("111111 %+v", err)
 	if err != nil {
 		return err
 	}
