@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/shopspring/decimal"
+	"github.com/stephenlyu/GoEx"
+	"time"
 )
 
 var zbg *ZBG
@@ -65,7 +67,7 @@ func TestZBG_GetTicker(t *testing.T) {
 
 func TestZBG_GetDepth(t *testing.T) {
 	api := NewZBG("", "")
-	ret, err := api.GetDepth("ETC_USDT", 5)
+	ret, err := api.GetDepth("SHT_USDT", 5)
 	chk(err)
 	output(ret)
 }
@@ -110,7 +112,7 @@ func TestZBG_QueryPendingOrders(t *testing.T) {
 }
 
 func TestZBG_QueryPagedPendingOrders(t *testing.T) {
-	code := "sht_qc"
+	code := "sht_usdt"
 	orders, err := zbg.QueryPagedPendingOrders(code, 0, 100)
 	assert.Nil(t, err)
 	fmt.Println(len(orders))
@@ -119,7 +121,7 @@ func TestZBG_QueryPagedPendingOrders(t *testing.T) {
 
 func TestZBG_QueryDoneOrders(t *testing.T) {
 	code := "sht_usdt"
-	orders, err := zbg.QueryDoneOrders(code)
+	orders, err := zbg.QueryDoneOrders(code, 0, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -140,4 +142,41 @@ func TestZBG_QueryOrder(t *testing.T) {
 	order, err := zbg.QueryOrder(code, "E6542270567591006208")
 	assert.Nil(t, err)
 	output(order)
+}
+
+func TestZBG_QueryAllDoneOrders(t *testing.T) {
+	code := "sht_zt"
+
+	const pageSize = 100
+
+	queryDoneOrders := func(page int) (orders []goex.OrderDecimal, err error) {
+		for i := 0; i < 3; i++ {
+			orders, err = zbg.QueryDoneOrders(code, page, pageSize)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		return
+	}
+
+	var page = 1
+	var allOrders []goex.OrderDecimal
+
+	for {
+		orders, err := queryDoneOrders(page)
+		assert.Nil(t, err)
+		if len(orders) == 0 {
+			break
+		}
+		fmt.Printf("Get page %d... lastId: %s\n", page, orders[len(orders) - 1].OrderID2)
+		allOrders = append(allOrders, orders...)
+		if len(allOrders) > 1000 {
+			break
+		}
+		page++
+	}
+	bytes, err := json.MarshalIndent(allOrders, "", "  ")
+	assert.Nil(t, err)
+	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
 }

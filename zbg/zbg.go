@@ -28,7 +28,7 @@ const (
 	CANCEL_ENTRUST = "/exchange/entrust/controller/website/EntrustController/cancelEntrust"
 	QUERY_PENDING_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustRecordFromCache?marketId=%s"
 	QUERY_PAGED_PENDING_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustRecordFromCacheWithPage?marketId=%s&pageIndex=%d&pageSize=%d"
-	QUERY_DONE_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustList?marketId=%s&pageSize=100"
+	QUERY_DONE_ORDERS = "/exchange/entrust/controller/website/EntrustController/getUserEntrustList?marketId=%s&pageIndex=%d&pageSize=%d"
 	QUERY_ORDER = "/exchange/entrust/controller/website/EntrustController/getEntrustById?marketId=%s&entrustId=%s"
 	TICKER = "/api/data/v1/ticker?marketName=%s"
 	DEPTH = "/api/data/v1/entrusts?marketName=%s&dataSize=%d"
@@ -604,15 +604,24 @@ func (this *ZBG) QueryPagedPendingOrders(marketName string, pageIndex, pageSize 
 	return ret, nil
 }
 
-func (this *ZBG) QueryDoneOrders(marketName string) ([]OrderDecimal, error) {
+func (this *ZBG) QueryDoneOrders(marketName string, pageIndex, pageSize int) ([]OrderDecimal, error) {
+	if pageIndex == 0 {
+		pageIndex = 1
+	}
+	if pageSize == 0 {
+		pageSize = 20
+	}
 	marketName = strings.ToUpper(marketName)
 	marketId := this.getMarketIdByName(marketName)
 	if marketId == "" {
 		return nil, fmt.Errorf("unknown market %s", marketName)
 	}
-	header := this.signGet(map[string]string{"marketId": marketId, "pageSize": "100"})
+	header := this.signGet(map[string]string{
+		"marketId": marketId,
+		"pageIndex": strconv.Itoa(pageIndex),
+		"pageSize": strconv.Itoa(pageSize)})
 
-	url := fmt.Sprintf(API_BASE_URL + QUERY_DONE_ORDERS, marketId)
+	url := fmt.Sprintf(API_BASE_URL + QUERY_DONE_ORDERS, marketId, pageIndex, pageSize)
 
 	var resp struct {
 		ResMsg struct {
