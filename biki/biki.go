@@ -484,6 +484,46 @@ func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]Order
 	return ret, nil
 }
 
+func (this *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
+	param := map[string]string {
+		"symbol": this.transSymbol(symbol),
+	}
+	if page > 0 {
+		param["page"] = strconv.Itoa(page)
+	}
+	if pageSize > 0 {
+		param["pageSize"] = strconv.Itoa(pageSize)
+	}
+	param = this.sign(param)
+
+	url := fmt.Sprintf(API_BASE_URL + ALL_ORDER + "?" + this.buildQueryString(param))
+
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		Data struct {
+				Count     int
+				OrderList []OrderInfo
+			}
+	}
+
+	err := HttpGet4(this.client, url, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code.IntPart() != 0 {
+		return nil, fmt.Errorf("error code: %s", resp.Code.String())
+	}
+
+	var ret = make([]OrderDecimal, len(resp.Data.OrderList))
+	for i := range resp.Data.OrderList {
+		ret[i] = *resp.Data.OrderList[i].ToOrderDecimal(symbol)
+	}
+
+	return ret, nil
+}
+
 func (this *Biki) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
 	symbol = strings.ToUpper(symbol)
 	param := this.sign(map[string]string {
