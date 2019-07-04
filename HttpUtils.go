@@ -169,6 +169,21 @@ func HttpGet5(client *http.Client, reqUrl string, headers map[string]string, res
 	return nil, respHeader
 }
 
+func HttpGet6(client *http.Client, reqUrl string, headers map[string]string) ([]byte, error) {
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	if _, ok := headers["Content-Type"]; !ok {
+		headers["Content-Type"] = "application/x-www-form-urlencoded"
+	}
+	respData, err := NewHttpRequest(client, "GET", reqUrl, "", headers)
+	if err != nil {
+		println(reqUrl + err.Error())
+		return nil, err
+	}
+	return respData, nil
+}
+
 func HttpPostForm(client *http.Client, reqUrl string, postData url.Values) ([]byte, error) {
 	headers := map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded"}
