@@ -165,6 +165,32 @@ func (ws *WsConn) Heartbeat(heartbeat func() interface{}, interval time.Duration
 	}()
 }
 
+func (ws *WsConn) HeartbeatEx(heartbeat func() (int, string), interval time.Duration) {
+	ws.heartbeatIntervalTime = interval
+	ws.checkConnectIntervalTime = ws.heartbeatIntervalTime
+
+	timer := time.NewTimer(interval)
+	go func() {
+		for {
+			select {
+			case <-timer.C:
+				t, data := heartbeat()
+				err := ws.WriteMessage(t, []byte(data))
+				ws.errorCh <- err
+				if err != nil {
+					log.Println("heartbeat error , ", err)
+					time.Sleep(time.Second)
+				}
+				timer.Reset(interval)
+			case <-ws.close:
+				timer.Stop()
+				log.Println("close websocket connect , exiting heartbeat goroutine.")
+				return
+			}
+		}
+	}()
+}
+
 func (ws *WsConn) Subscribe(subEvent interface{}) error {
 	err := ws.WriteJSON(subEvent)
 	if err != nil {

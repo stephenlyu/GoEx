@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"sync"
 )
 
 const (
@@ -27,8 +28,17 @@ const (
 
 type Binance struct {
 	accessKey,
-	secretKey string
-	httpClient *http.Client
+	secretKey          string
+	httpClient         *http.Client
+
+	wsData             *WsConn
+	wsLock             sync.Mutex
+	wsLoginHandle      func(err error)
+	wsDepthHandleMap   map[string]func(*DepthDecimal)
+	wsTradeHandleMap   map[string]func(string, []TradeDecimal)
+	wsAccountHandleMap map[string]func(*SubAccountDecimal)
+	wsOrderHandleMap   map[string]func([]OrderDecimal)
+	errorHandle        func(error)
 }
 
 func (bn *Binance) buildParamsSigned(postForm *url.Values) error {
@@ -42,7 +52,10 @@ func (bn *Binance) buildParamsSigned(postForm *url.Values) error {
 }
 
 func New(client *http.Client, api_key, secret_key string) *Binance {
-	return &Binance{api_key, secret_key, client}
+	return &Binance{
+		accessKey: api_key,
+		secretKey: secret_key,
+		httpClient: client}
 }
 
 func (bn *Binance) GetExchangeName() string {
