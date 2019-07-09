@@ -27,7 +27,7 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	case 2:
 		status = goex.ORDER_CANCEL
 	case 3:
-		status = goex.ORDER_PART_FINISH
+		status = goex.ORDER_CANCEL
 	}
 
 	var side goex.TradeSide
