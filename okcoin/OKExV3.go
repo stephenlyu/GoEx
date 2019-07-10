@@ -316,16 +316,7 @@ func (this *V3CurrencyInfo) ToFutureSubAccount(currency Currency) *FutureSubAcco
 }
 
 type V3AccountsResponse struct {
-	Info struct {
-		Btc V3CurrencyInfo `json:btc`
-		Ltc V3CurrencyInfo `json:ltc`
-		Etc V3CurrencyInfo `json:"etc"`
-		Eth V3CurrencyInfo `json:"eth"`
-		Bch V3CurrencyInfo `json:"bch"`
-		Xrp V3CurrencyInfo `json:"xrp"`
-		Eos V3CurrencyInfo `json:"eos"`
-		Btg V3CurrencyInfo `json:"btg"`
-	} `json:info`
+	Info map[string]V3CurrencyInfo `json:info`
 	Result     bool `json:"result,bool"`
 	Error_code int  `json:"error_code"`
 }
@@ -345,14 +336,10 @@ func (ok *OKExV3) GetAccount() (*FutureAccount, error) {
 	account := new(FutureAccount)
 	account.FutureSubAccounts = make(map[Currency]FutureSubAccount)
 
-	account.FutureSubAccounts[BTC] = *resp.Info.Btc.ToFutureSubAccount(BTC)
-	account.FutureSubAccounts[LTC] = *resp.Info.Ltc.ToFutureSubAccount(LTC)
-	account.FutureSubAccounts[BCH] = *resp.Info.Bch.ToFutureSubAccount(BCH)
-	account.FutureSubAccounts[ETH] = *resp.Info.Eth.ToFutureSubAccount(ETH)
-	account.FutureSubAccounts[ETC] = *resp.Info.Etc.ToFutureSubAccount(ETC)
-	account.FutureSubAccounts[XRP] = *resp.Info.Xrp.ToFutureSubAccount(XRP)
-	account.FutureSubAccounts[EOS] = *resp.Info.Eos.ToFutureSubAccount(EOS)
-	account.FutureSubAccounts[BTG] = *resp.Info.Btg.ToFutureSubAccount(BTG)
+	for key, info := range resp.Info {
+		currency := NewCurrency(key, "")
+		account.FutureSubAccounts[currency] = *info.ToFutureSubAccount(currency)
+	}
 
 	return account, nil
 }
