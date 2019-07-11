@@ -413,7 +413,6 @@ func (ok *OKExV3) FutureCancelOrder(instrumentId, orderId string) error {
 	if err != nil {
 		return err
 	}
-	print(string(body))
 	if respMap["result"] != nil && !respMap["result"].(bool) {
 		if respMap["error_code"] != nil {
 			return fmt.Errorf("error code: %s", respMap["error_code"].(string))
@@ -755,7 +754,6 @@ func (ok *OKExV3) WalletTransfer(currency Currency, amount float64, from, to int
 	if err != nil {
 		return err, nil
 	}
-	println(string(body))
 	var resp *TransferResp
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
