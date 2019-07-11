@@ -59,6 +59,24 @@ func TestOKExV3_GetInstruments(t *testing.T) {
 	output(instruments)
 }
 
+func TestOKExV3_GetTicker(t *testing.T) {
+	ret, err := okexV3.GetTicker("EOS-USD-190927")
+	chk(err)
+	output(ret)
+}
+
+func TestOKExV3_GetDepth(t *testing.T) {
+	ret, err := okexV3.GetDepth("EOS-USD-190927")
+	chk(err)
+	output(ret)
+}
+
+func TestOKExV3_GetTrades(t *testing.T) {
+	ret, err := okexV3.GetTrades("EOS-USD-190927")
+	chk(err)
+	output(ret)
+}
+
 func TestOKExV3_GetPosition(t *testing.T) {
 	ret, err := okexV3.GetPosition()
 	assert.Nil(t, err)

@@ -16,6 +16,9 @@ import (
 
 const (
 	FUTURE_V3_API_BASE_URL    = "https://www.okex.com"
+	FUTURE_V3_TICKER 		  = "/api/futures/v3/instruments/%s/ticker"
+	FUTURE_V3_TRADES 		  = "/api/futures/v3/instruments/%s/trades"
+	FUTURE_V3_DEPTH 		  = "/api/futures/v3/instruments/%s/book?size=10"
 	FUTURE_V3_INSTRUMENTS 	  = "/api/futures/v3/instruments"
 	FUTURE_V3_POSITION 		  = "/api/futures/v3/position"
 	FUTURE_V3_ACCOUNTS 		  = "/api/futures/v3/accounts"
@@ -179,6 +182,150 @@ func (ok *OKExV3) GetInstruments() ([]V3Instrument, error) {
 		return nil, fmt.Errorf("error: %s", string(body))
 	}
 	return instruments, err
+}
+
+//{
+//"instrument_id":"EOS-USD-190628",
+//"last":"3.708",
+//"best_bid":"3.707",
+//"best_ask":"3.708",
+//"high_24h":"3.799",
+//"low_24h":"3.494",
+//"volume_24h":"24884595",
+//"timestamp":"2019-03-21T03:15:50.144Z"
+//}
+func (this *OKExV3) GetTicker(instrumentId string) (*TickerDecimal, error) {
+	url := FUTURE_V3_API_BASE_URL + FUTURE_V3_TICKER
+	resp, err := this.client.Get(fmt.Sprintf(url, instrumentId))
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+	var data struct {
+		High decimal.Decimal	`json:"high_24h"`
+		Vol decimal.Decimal		`json:"volume_24h"`
+		Last decimal.Decimal
+		Low decimal.Decimal		`json:"low_24h"`
+		Buy decimal.Decimal		`json:"best_bid"`
+		Sell decimal.Decimal	`json:"best_ask"`
+		Timestamp string
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	ticker := new(TickerDecimal)
+	ticker.Date = uint64(V3ParseDate(data.Timestamp))
+	ticker.Buy = data.Buy
+	ticker.Sell = data.Sell
+	ticker.Last = data.Last
+	ticker.High = data.High
+	ticker.Low = data.Low
+	ticker.Vol = data.Vol
+
+	return ticker, nil
+}
+
+func (this *OKExV3) GetDepth(instrumentId string) (*DepthDecimal, error) {
+	url := fmt.Sprintf(FUTURE_V3_API_BASE_URL + FUTURE_V3_DEPTH, instrumentId)
+	resp, err := this.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data struct {
+		 Asks [][]decimal.Decimal
+		 Bids [][]decimal.Decimal
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	r := data
+
+	depth := new(DepthDecimal)
+	depth.Pair = InstrumentId2CurrencyPair(instrumentId)
+
+	depth.AskList = make([]DepthRecordDecimal, len(r.Asks), len(r.Asks))
+	for i, o := range r.Asks {
+		depth.AskList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+	}
+
+	depth.BidList = make([]DepthRecordDecimal, len(r.Bids), len(r.Bids))
+	for i, o := range r.Bids {
+		depth.BidList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+	}
+
+	return depth, nil
+}
+
+//[
+//[
+//{
+//"trade_id":"2522253054345222",
+//"side":"sell",
+//"price":"3.625",
+//"qty":"24",
+//"timestamp":"2019-03-22T02:42:07.323Z"
+//}
+//]
+func (this *OKExV3) GetTrades(instrumentId string) ([]TradeDecimal, error) {
+	url := fmt.Sprintf(FUTURE_V3_API_BASE_URL + FUTURE_V3_TRADES, instrumentId)
+	resp, err := this.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data []struct {
+		Qty decimal.Decimal
+		Price decimal.Decimal
+		Tid decimal.Decimal				`json:"trade_id"`
+		Side string
+		Timestamp string
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
+	}
+	var trades = make([]TradeDecimal, len(data))
+
+	for i, o := range data {
+		t := &trades[i]
+		t.Tid = o.Tid.IntPart()
+		t.Amount = o.Qty
+		t.Price = o.Price
+		t.Type = o.Side
+		t.Date = V3ParseDate(o.Timestamp)
+	}
+
+	return trades, nil
 }
 
 func (ok *OKExV3) GetPosition() ([]FuturePosition, error) {
