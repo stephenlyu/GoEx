@@ -719,10 +719,10 @@ func (ok *OKExV3) GetInstrumentOrders(instrumentId string, status, from, to, lim
 		params = append(params, "status=" + status)
 	}
 	if from != "" {
-		params = append(params, "from=" + from)
+		params = append(params, "before=" + from)
 	}
 	if to != "" {
-		params = append(params, "to=" + to)
+		params = append(params, "after=" + to)
 	}
 	if limit != "" {
 		params = append(params, "limit=" + limit)
