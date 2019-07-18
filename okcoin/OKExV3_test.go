@@ -198,6 +198,24 @@ func TestOKExV3Swap_GetInstruments(t *testing.T) {
 	output(instruments)
 }
 
+func TestOKExV3Swap_GetTicker(t *testing.T) {
+	ret, err := okexV3Swap.GetTicker("EOS-USD-SWAP")
+	chk(err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetDepth(t *testing.T) {
+	ret, err := okexV3Swap.GetDepth("EOS-USD-SWAP")
+	chk(err)
+	output(ret)
+}
+
+func TestOKExV3Swap_GetTrades(t *testing.T) {
+	ret, err := okexV3Swap.GetTrades("EOS-USD-SWAP")
+	chk(err)
+	output(ret)
+}
+
 func TestOKExV3Swap_GetPosition(t *testing.T) {
 	ret, err := okexV3Swap.GetPosition()
 	assert.Nil(t, err)
