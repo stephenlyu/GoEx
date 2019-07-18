@@ -562,6 +562,10 @@ func (ok *OKExV3_SWAP) FutureCancelOrder(instrumentId, orderId string) error {
 	reqPath := SWAP_V3_API_BASE_URL + reqUrl
 	body, err := HttpPostJson(ok.client, reqPath, "", header)
 
+	if err != nil {
+		return err
+	}
+
 	var resp struct {
 		Result string
 		ErrorCode string 	`json:"error_code"`
@@ -572,7 +576,6 @@ func (ok *OKExV3_SWAP) FutureCancelOrder(instrumentId, orderId string) error {
 	if err != nil {
 		return err
 	}
-	print(string(body))
 	if resp.ErrorCode != "" {
 		return fmt.Errorf("error code: %s", resp.ErrorCode)
 	}
