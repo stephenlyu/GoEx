@@ -27,11 +27,7 @@ func TestOKExV3_GetTradeWithWs(t *testing.T) {
 }
 
 func TestOKExV3_Login(t *testing.T) {
-	ch := make(chan struct{})
-	okexV3.Login(func(err error) {
-		close(ch)
-	})
-	<- ch
+	okexV3.Login()
 }
 
 func OnAccount(account *goex.SubAccountDecimal) {
@@ -43,11 +39,7 @@ func OnOrder(orders []goex.OrderDecimal) {
 }
 
 func TestOKExV3_Authenticated_Spot(t *testing.T) {
-	ch := make(chan struct{})
-	okexV3.Login(func(err error) {
-		close(ch)
-	})
-	<- ch
+	okexV3.Login()
 
 	println("login success.")
 

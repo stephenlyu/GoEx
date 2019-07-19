@@ -111,18 +111,41 @@ func (okSpot *OKExV3Spot) createWsConn() {
 	}
 }
 
-func (okSpot *OKExV3Spot) Login(handle func(error)) error {
-	okSpot.createWsConn()
-	okSpot.wsLoginHandle = handle
 
+func (okSpot *OKExV3Spot) getLoginData() interface{} {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	message := timestamp + "GET/users/self/verify"
 	sign, _ := GetParamHmacSHA256Base64Sign(okSpot.apiSecretKey, message)
 
-	return okSpot.ws.Subscribe(map[string]interface{}{
+	return map[string]interface{}{
 		"op":   "login",
 		"args": []interface{}{okSpot.apiKey, okSpot.passphrase, timestamp, sign},
-	})
+	}
+}
+
+func (okSpot *OKExV3Spot) doLogin() error {
+	ch := make(chan error)
+
+	onDone := func(err error) {
+		ch <- err
+	}
+
+	okSpot.wsLoginHandle = onDone
+
+	data := okSpot.getLoginData()
+	err := okSpot.ws.SendMessage(data)
+	if err != nil {
+		return err
+	}
+
+	err = <- ch
+	okSpot.wsLoginHandle = nil
+	return err
+}
+
+func (okSpot *OKExV3Spot) Login() error {
+	okSpot.createWsConn()
+	return okSpot.ws.Login(okSpot.doLogin)
 }
 
 func (okSpot *OKExV3Spot) GetDepthWithWs(instrumentId string, handle func(*DepthDecimal)) error {
