@@ -173,6 +173,12 @@ func TestOKExV3_GetInstrumentOrder(t *testing.T) {
 	output(order)
 }
 
+func TestOKExV3_GetOrderFills(t *testing.T) {
+	orders, err := okexV3.GetOrderFills("ETH-USD-190726", "3201858754386944", "", "", "")
+	assert.Nil(t, err)
+	output(orders)
+}
+
 func TestOKExV3_GetLedger(t *testing.T) {
 	var ledgers []FutureLedger
 	from := ""

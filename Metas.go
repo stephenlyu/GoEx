@@ -258,3 +258,15 @@ type FutureFill struct {
 	Commission int64
 	TransactionTime int64
 }
+
+type FutureFillDecimal struct {
+	FillId string
+	OrderId string
+	ContractName string
+	Side TradeSide
+	Qty decimal.Decimal
+	Price decimal.Decimal
+	Fee decimal.Decimal
+	TransactionTime int64
+	IsMaker bool
+}

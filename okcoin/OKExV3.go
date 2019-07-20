@@ -32,6 +32,7 @@ const (
 	FUTURE_V3_CANCEL_ORDER		= "/api/futures/v3/cancel_order/%s/%s"
 	FUTURE_V3_INSTRUMENT_ORDERS = "/api/futures/v3/orders/%s"
 	FUTURE_V3_ORDER_INFO 		= "/api/futures/v3/orders/%s/%s"
+	FUTURE_V3_FILLS 			= "/api/futures/v3/fills"
 	WALLET_V3_TRANSFER 			= "/api/account/v3/transfer"
 	WALLET_V3_INFO 				= "/api/account/v3/wallet/%s"
 	V3_WITHDRAW_FEE				= "/api/account/v3/withdrawal/fee"
@@ -712,6 +713,90 @@ func (this *V3OrderInfo) ToFutureOrder() *FutureOrder {
 	return o
 }
 
+func (ok *OKExV3) GetInstrumentOrder(instrumentId string, orderId string) (*FutureOrder, error) {
+	reqUrl := fmt.Sprintf(FUTURE_V3_ORDER_INFO, instrumentId, orderId)
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var resp *V3OrderInfo
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp.ToFutureOrder(), nil
+}
+
+type V3Fill struct {
+	TradeId string 			`json:"trade_id"`
+	InstrumentId string 	`json:"instrument_id"`
+	Price decimal.Decimal
+	OrderQty decimal.Decimal 	`json:"order_qty"`
+	OrderId string			`json:"order_id"`
+	CreatedAt string 		`json:"created_at"`
+	ExecType string 		`json:"exec_type"`
+	Fee decimal.Decimal
+	Side string
+}
+
+func (this *V3Fill) ToFutureFill() *FutureFillDecimal {
+	if this.TradeId == "" {
+		return nil
+	}
+	o := new(FutureFillDecimal)
+	o.FillId = this.TradeId
+	o.ContractName = this.InstrumentId
+	o.Price = this.Price
+	o.Qty = this.OrderQty
+	o.OrderId = this.OrderId
+	o.TransactionTime = V3ParseDate(this.CreatedAt)
+	o.Fee = this.Fee
+	if this.Side == "buy" {
+		o.Side = BUY
+	} else {
+		o.Side = SELL
+	}
+	if this.ExecType == "M" {
+		o.IsMaker = true
+	}
+	return o
+}
+
+func (ok *OKExV3) GetOrderFills(instrumentId, orderId string, from, to, limit string) ([]FutureFillDecimal, error) {
+	reqUrl := FUTURE_V3_FILLS
+	var params = []string {
+		"instrument_id=" + instrumentId,
+		"order_id=" + orderId,
+	}
+	if from != "" {
+		params = append(params, "before=" + from)
+	}
+	if to != "" {
+		params = append(params, "after=" + to)
+	}
+	if limit != "" {
+		params = append(params, "limit=" + limit)
+	}
+	if len(params) > 0 {
+		reqUrl += "?" + strings.Join(params, "&")
+	}
+
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var fills []V3Fill
+
+	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &fills)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]FutureFillDecimal, len(fills))
+	for i, o := range fills {
+		ret[i] = *o.ToFutureFill()
+	}
+
+	return ret, nil
+}
+
 func (ok *OKExV3) GetInstrumentOrders(instrumentId string, status, from, to, limit string) ([]FutureOrder, error) {
 	reqUrl := fmt.Sprintf(FUTURE_V3_INSTRUMENT_ORDERS, instrumentId)
 	var params []string
@@ -753,19 +838,6 @@ func (ok *OKExV3) GetInstrumentOrders(instrumentId string, status, from, to, lim
 	}
 
 	return ret, nil
-}
-
-func (ok *OKExV3) GetInstrumentOrder(instrumentId string, orderId string) (*FutureOrder, error) {
-	reqUrl := fmt.Sprintf(FUTURE_V3_ORDER_INFO, instrumentId, orderId)
-	header := ok.buildHeader("GET", reqUrl, "")
-
-	var resp *V3OrderInfo
-
-	err := HttpGet4(ok.client, FUTURE_V3_API_BASE_URL + reqUrl, header, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.ToFutureOrder(), nil
 }
 
 type FutureLedger struct {
