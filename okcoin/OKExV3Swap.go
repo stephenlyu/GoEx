@@ -32,6 +32,7 @@ const (
 	SWAP_V3_CANCEL_ORDER		= "/api/swap/v3/cancel_order/%s/%s"
 	SWAP_V3_INSTRUMENT_ORDERS = "/api/swap/v3/orders/%s"
 	SWAP_V3_ORDER_INFO 		= "/api/swap/v3/orders/%s/%s"
+	SWAP_V3_FILLS 			= "/api/swap/v3/fills"
 )
 
 const (
@@ -764,6 +765,77 @@ func (ok *OKExV3_SWAP) GetInstrumentOrder(instrumentId string, orderId string) (
 		return nil, err
 	}
 	return resp.ToFutureOrder(), nil
+}
+
+type V3_SwapFill struct {
+	TradeId      string 			`json:"trade_id"`
+	InstrumentId string 	`json:"instrument_id"`
+	Price        decimal.Decimal
+	OrderQty     decimal.Decimal 	`json:"order_qty"`
+	OrderId      string			`json:"order_id"`
+	Timestamp    string 		`json:"timestamp"`
+	ExecType     string 		`json:"exec_type"`
+	Fee          decimal.Decimal
+	Side         string
+}
+
+func (this *V3_SwapFill) ToFutureFill() *FutureFillDecimal {
+	if this.TradeId == "" {
+		return nil
+	}
+	o := new(FutureFillDecimal)
+	o.FillId = this.TradeId
+	o.ContractName = this.InstrumentId
+	o.Price = this.Price
+	o.Qty = this.OrderQty
+	o.OrderId = this.OrderId
+	o.TransactionTime = V3ParseDate(this.Timestamp)
+	o.Fee = this.Fee
+	if this.Side == "buy" {
+		o.Side = BUY
+	} else {
+		o.Side = SELL
+	}
+	if this.ExecType == "M" {
+		o.IsMaker = true
+	}
+	return o
+}
+
+func (ok *OKExV3_SWAP) GetOrderFills(instrumentId, orderId string, from, to, limit string) ([]FutureFillDecimal, error) {
+	reqUrl := SWAP_V3_FILLS
+	var params = []string {
+		"instrument_id=" + instrumentId,
+		"order_id=" + orderId,
+	}
+	if from != "" {
+		params = append(params, "before=" + from)
+	}
+	if to != "" {
+		params = append(params, "after=" + to)
+	}
+	if limit != "" {
+		params = append(params, "limit=" + limit)
+	}
+	if len(params) > 0 {
+		reqUrl += "?" + strings.Join(params, "&")
+	}
+
+	header := ok.buildHeader("GET", reqUrl, "")
+
+	var fills []V3_SwapFill
+
+	err := HttpGet4(ok.client, SWAP_V3_API_BASE_URL + reqUrl, header, &fills)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]FutureFillDecimal, len(fills))
+	for i, o := range fills {
+		ret[i] = *o.ToFutureFill()
+	}
+
+	return ret, nil
 }
 
 type V3FutureLedger struct {

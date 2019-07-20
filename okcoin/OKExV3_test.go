@@ -325,6 +325,12 @@ func TestOKExV3Swap_GetInstrumentOrder(t *testing.T) {
 	output(order)
 }
 
+func TestOKExV3Swap_GetOrderFills(t *testing.T) {
+	orders, err := okexV3Swap.GetOrderFills("BTC-USD-SWAP", "282148016310394880", "", "", "")
+	assert.Nil(t, err)
+	output(orders)
+}
+
 func TestOKExV3Swap_GetLedger(t *testing.T) {
 	var ledgers []V3FutureLedger
 	from := ""
