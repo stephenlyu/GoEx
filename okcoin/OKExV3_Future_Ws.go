@@ -39,7 +39,7 @@ func (okFuture *OKExV3) createWsConn() {
 			okFuture.wsOrderHandleMap = make(map[string]func([]FutureOrder))
 			okFuture.depthManagers = make(map[string]*DepthManager)
 
-			okFuture.ws = NewWsConn("wss://real.okex.com:10442/ws/v3")
+			okFuture.ws = NewWsConn("wss://real.okex.com:8443/ws/v3")
 			okFuture.ws.Heartbeat(func() interface{} { return "ping"}, 20*time.Second)
 			okFuture.ws.SetErrorHandler(okFuture.errorHandle)
 			okFuture.ws.ReConnect()

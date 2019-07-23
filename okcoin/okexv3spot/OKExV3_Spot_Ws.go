@@ -36,7 +36,7 @@ func (okSpot *OKExV3Spot) createWsConn() {
 			okSpot.wsOrderHandleMap = make(map[string]func([]OrderDecimal))
 			okSpot.depthManagers = make(map[string]*DepthManager)
 
-			okSpot.ws = NewWsConn("wss://real.okex.com:10442/ws/v3")
+			okSpot.ws = NewWsConn("wss://real.okex.com:8443/ws/v3")
 			okSpot.ws.SetErrorHandler(okSpot.errorHandle)
 			okSpot.ws.Heartbeat(func() interface{} { return "ping"}, 20*time.Second)
 			okSpot.ws.ReConnect()
