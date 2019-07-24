@@ -123,8 +123,6 @@ func (builder *APIBuilder) Build(exName string) (api API) {
 		_api = zb.New(builder.client, builder.apiKey, builder.secretkey)
 	case COINEX:
 		_api = coinex.New(builder.client, builder.apiKey, builder.secretkey)
-	case FCOIN:
-		_api = fcoin.NewFCoin(builder.client, builder.apiKey, builder.secretkey)
 	case COIN58:
 		_api = coin58.New58Coin(builder.client, builder.apiKey, builder.secretkey)
 	case BIGONE:

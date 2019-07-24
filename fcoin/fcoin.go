@@ -4,28 +4,18 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	. "github.com/stephenlyu/GoEx"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-)
-
-const (
-	DEPTH_API       = "market/depth/%s/%s"
-	TRADE_URL       = "orders"
-	GET_ACCOUNT_API = "accounts/balance"
-	GET_ORDER_API   = "orders/%s"
-	//GET_ORDERS_LIST_API             = ""
-	GET_UNFINISHED_ORDERS_API = "getUnfinishedOrdersIgnoreTradeType"
-	PLACE_ORDER_API           = "order"
-	WITHDRAW_API              = "withdraw"
-	CANCELWITHDRAW_API        = "cancelWithdraw"
-	SERVER_TIME               = "public/server-time"
+	"encoding/json"
+	"sync"
+	"io/ioutil"
+	"github.com/shopspring/decimal"
+	"strconv"
 )
 
 type FCoinTicker struct {
@@ -39,21 +29,56 @@ type FCoin struct {
 	baseUrl,
 	accessKey,
 	secretKey string
-	timeoffset int64
+	timeoffset   int64
+	tradeSymbols []TradeSymbol
+
+	ws                *WsConn
+	createWsLock      sync.Mutex
+	wsLoginHandle func(err error)
+	wsDepthHandleMap  map[string]func(*DepthDecimal)
+	wsTradeHandleMap map[string]func(string, []TradeDecimal)
+	wsAccountHandleMap  map[string]func(*SubAccountDecimal)
+	wsOrderHandleMap  map[string]func([]OrderDecimal)
+	wsSymbolMap map[string]string
+	errorHandle      func(error)
+}
+
+type TradeSymbol struct {
+	Name          string `json:"name"`
+	BaseCurrency  string `json:"base_currency"`
+	QuoteCurrency string `json:"quote_currency"`
+	PriceDecimal  int    `json:"price_decimal"`
+	AmountDecimal int    `json:"amount_decimal"`
+	Tradable      bool   `json:"tradable"`
+}
+
+type Asset struct {
+	Currency  Currency
+	Avaliable float64
+	Frozen    float64
+	Finances  float64
+	Lock      float64
+	Total     float64
 }
 
 func NewFCoin(client *http.Client, apikey, secretkey string) *FCoin {
 	fc := &FCoin{baseUrl: "https://api.fcoin.com/v2/", accessKey: apikey, secretKey: secretkey, httpClient: client}
 	fc.setTimeOffset()
+	var err error
+	fc.tradeSymbols, err = fc.GetTradeSymbols()
+	if len(fc.tradeSymbols) == 0 || err != nil {
+		panic("trade symbol is empty, pls check connection...")
+	}
+
 	return fc
 }
 
-func (ft *FCoin) GetExchangeName() string {
+func (fc *FCoin) GetExchangeName() string {
 	return FCOIN
 }
 
-func (ft *FCoin) setTimeOffset() error {
-	respmap, err := HttpGet(ft.httpClient, ft.baseUrl+"public/server-time")
+func (fc *FCoin) setTimeOffset() error {
+	respmap, err := HttpGet(fc.httpClient, fc.baseUrl+"public/server-time")
 	if err != nil {
 		return err
 	}
@@ -61,75 +86,80 @@ func (ft *FCoin) setTimeOffset() error {
 	st := time.Unix(stime/1000, 0)
 	lt := time.Now()
 	offset := st.Sub(lt).Seconds()
-	ft.timeoffset = int64(offset)
+	fc.timeoffset = int64(offset)
 	return nil
 }
 
-func (ft *FCoin) GetTicker(currencyPair CurrencyPair) (*Ticker, error) {
-	respmap, err := HttpGet(ft.httpClient, ft.baseUrl+fmt.Sprintf("market/ticker/%s",
-		strings.ToLower(currencyPair.ToSymbol(""))))
+func (fc *FCoin) GetTicker(currencyPair CurrencyPair) (*TickerDecimal, error) {
+	reqUrl := fc.baseUrl + fmt.Sprintf("market/ticker/%s", strings.ToLower(currencyPair.ToSymbol("")))
+
+	var resp struct {
+		Status int
+		Msg string
+		Data struct {
+			 Ticker []decimal.Decimal
+			 }
+	}
+
+	err := HttpGet4(fc.httpClient, reqUrl, nil, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	////log.Println("ticker respmap:", respmap)
-	if respmap["status"].(float64) != 0 {
-		return nil, errors.New(respmap["err-msg"].(string))
+	if resp.Status != 0 {
+		return nil, errors.New(resp.Msg)
 	}
 
-	//
-	tick, ok := respmap["data"].(map[string]interface{})
-	if !ok {
-		return nil, API_ERR
-	}
+	t := resp.Data.Ticker
 
-	tickmap, ok := tick["ticker"].([]interface{})
-	if !ok {
-		return nil, API_ERR
-	}
-
-	ticker := new(Ticker)
+	ticker := new(TickerDecimal)
 	ticker.Pair = currencyPair
-	ticker.Date = uint64(time.Now().Nanosecond() / 1000)
-	ticker.Last = ToFloat64(tickmap[0])
-	ticker.Vol = ToFloat64(tickmap[9])
-	ticker.Low = ToFloat64(tickmap[8])
-	ticker.High = ToFloat64(tickmap[7])
-	ticker.Buy = ToFloat64(tickmap[2])
-	ticker.Sell = ToFloat64(tickmap[4])
-	//ticker.SellAmount = ToFloat64(tickmap[5])
-	//ticker.BuyAmount = ToFloat64(tickmap[3])
-
+	ticker.Date = uint64(time.Now().UnixNano() / 1000000)
+	ticker.Last = t[0]
+	ticker.Vol = t[9]
+	ticker.Low = t[8]
+	ticker.High = t[7]
+	ticker.Buy = t[2]
+	ticker.Sell = t[4]
 	return ticker, nil
-
 }
 
-func (ft *FCoin) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
-	respmap, err := HttpGet(ft.httpClient, ft.baseUrl+fmt.Sprintf("market/depth/L20/%s", strings.ToLower(currency.ToSymbol(""))))
+func (fc *FCoin) GetDepth(size int, currency CurrencyPair) (*DepthDecimal, error) {
+	var uri string
+	if size <= 20 {
+		uri = fmt.Sprintf("market/depth/L20/%s", strings.ToLower(currency.ToSymbol("")))
+	} else {
+		uri = fmt.Sprintf("market/depth/L150/%s", strings.ToLower(currency.ToSymbol("")))
+	}
+
+	var resp struct {
+		Status int
+		Msg string
+		Data struct {
+			Asks []decimal.Decimal
+			Bids []decimal.Decimal
+			 }
+	}
+
+	err := HttpGet4(fc.httpClient, fc.baseUrl+uri, nil, &resp)
 	if err != nil {
 		return nil, err
 	}
 
-	if respmap["status"].(float64) != 0 {
-		return nil, errors.New(respmap["err-msg"].(string))
+	if resp.Status != 0 {
+		return nil, errors.New(resp.Msg)
 	}
 
-	datamap := respmap["data"].(map[string]interface{})
+	bids := resp.Data.Bids
+	asks := resp.Data.Asks
 
-	bids, ok1 := datamap["bids"].([]interface{})
-	asks, ok2 := datamap["asks"].([]interface{})
-
-	if !ok1 || !ok2 {
-		return nil, errors.New("depth error")
-	}
-
-	depth := new(Depth)
+	depth := new(DepthDecimal)
 	depth.Pair = currency
 
 	n := 0
 	for i := 0; i < len(bids); {
-		depth.BidList = append(depth.BidList, DepthRecord{ToFloat64(bids[i]), ToFloat64(bids[i+1])})
+		depth.BidList = append(depth.BidList, DepthRecordDecimal{bids[i], bids[i+1]})
 		i += 2
 		n++
 		if n == size {
@@ -139,7 +169,7 @@ func (ft *FCoin) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 
 	n = 0
 	for i := 0; i < len(asks); {
-		depth.AskList = append(depth.AskList, DepthRecord{ToFloat64(asks[i]), ToFloat64(asks[i+1])})
+		depth.AskList = append(depth.AskList, DepthRecordDecimal{asks[i], asks[i+1]})
 		i += 2
 		n++
 		if n == size {
@@ -147,19 +177,21 @@ func (ft *FCoin) GetDepth(size int, currency CurrencyPair) (*Depth, error) {
 		}
 	}
 
-	//sort.Sort(sort.Reverse(depth.AskList))
-
 	return depth, nil
 }
-func (ft *FCoin) doAuthenticatedRequest(method, uri string, params url.Values) (interface{}, error) {
 
-	timestamp := time.Now().Unix()*1000 + ft.timeoffset*1000
-	sign := ft.buildSigned(method, ft.baseUrl+uri, timestamp, params)
+func (fc *FCoin) getAuthenticatedHeader(method, uri string, params url.Values) map[string]string {
+	timestamp := time.Now().Unix()*1000 + fc.timeoffset*1000
+	sign := fc.buildSigned(method, fc.baseUrl+uri, timestamp, params)
 
-	header := map[string]string{
-		"FC-ACCESS-KEY":       ft.accessKey,
+	return map[string]string{
+		"FC-ACCESS-KEY":       fc.accessKey,
 		"FC-ACCESS-SIGNATURE": sign,
 		"FC-ACCESS-TIMESTAMP": fmt.Sprint(timestamp)}
+}
+
+func (fc *FCoin) doAuthenticatedRequest(method, uri string, params url.Values) (interface{}, error) {
+	header := fc.getAuthenticatedHeader(method, uri, params)
 
 	var (
 		respmap map[string]interface{}
@@ -168,7 +200,7 @@ func (ft *FCoin) doAuthenticatedRequest(method, uri string, params url.Values) (
 
 	switch method {
 	case "GET":
-		respmap, err = HttpGet2(ft.httpClient, ft.baseUrl+uri+"?"+params.Encode(), header)
+		respmap, err = HttpGet2(fc.httpClient, fc.baseUrl+uri+"?"+params.Encode(), header)
 		if err != nil {
 			return nil, err
 		}
@@ -179,14 +211,13 @@ func (ft *FCoin) doAuthenticatedRequest(method, uri string, params url.Values) (
 			parammap[k] = v[0]
 		}
 
-		respbody, err := HttpPostForm4(ft.httpClient, ft.baseUrl+uri, parammap, header)
+		respbody, err := HttpPostForm4(fc.httpClient, fc.baseUrl+uri, parammap, header)
 		if err != nil {
 			return nil, err
 		}
 
 		json.Unmarshal(respbody, &respmap)
 	}
-	log.Println(respmap)
 	if ToInt(respmap["status"]) != 0 {
 		return nil, errors.New(respmap["msg"].(string))
 	}
@@ -194,8 +225,13 @@ func (ft *FCoin) doAuthenticatedRequest(method, uri string, params url.Values) (
 	return respmap["data"], err
 }
 
-func (ft *FCoin) buildSigned(httpmethod string, apiurl string, timestamp int64, para url.Values) string {
-	param := ""
+func (fc *FCoin) buildSigned(httpmethod string, apiurl string, timestamp int64, para url.Values) string {
+
+	var (
+		param = ""
+		err   error
+	)
+
 	if para != nil {
 		param = para.Encode()
 	}
@@ -209,21 +245,23 @@ func (ft *FCoin) buildSigned(httpmethod string, apiurl string, timestamp int64, 
 		signStr += param
 	}
 
-	log.Println(signStr)
+	signStr2, err := url.QueryUnescape(signStr) // 不需要编码
+	if err != nil {
+		signStr2 = signStr
+	}
 
-	sign := base64.StdEncoding.EncodeToString([]byte(signStr))
+	sign := base64.StdEncoding.EncodeToString([]byte(signStr2))
 
-	mac := hmac.New(sha1.New, []byte(ft.secretKey))
+	mac := hmac.New(sha1.New, []byte(fc.secretKey))
 
 	mac.Write([]byte(sign))
 	sum := mac.Sum(nil)
 
 	s := base64.StdEncoding.EncodeToString(sum)
-	log.Println(s)
 	return s
 }
 
-func (ft *FCoin) placeOrder(orderType, orderSide, amount, price string, pair CurrencyPair) (*Order, error) {
+func (fc *FCoin) PlaceOrder(orderType, orderSide, amount, price string, pair CurrencyPair) (string, error) {
 	params := url.Values{}
 
 	params.Set("side", orderSide)
@@ -239,131 +277,194 @@ func (ft *FCoin) placeOrder(orderType, orderSide, amount, price string, pair Cur
 		params.Set("type", "market")
 	}
 
-	r, err := ft.doAuthenticatedRequest("POST", "orders", params)
+	r, err := fc.doAuthenticatedRequest("POST", "orders", params)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	side := SELL
-	if orderSide == "buy" {
-		side = BUY
-	}
-
-	return &Order{
-		Currency: pair,
-		OrderID2: r.(string),
-		Amount:   ToFloat64(amount),
-		Price:    ToFloat64(price),
-		Side:     TradeSide(side),
-		Status:   ORDER_UNFINISH}, nil
+	return r.(string), nil
 }
 
-func (ft *FCoin) LimitBuy(amount, price string, currency CurrencyPair) (*Order, error) {
-	return ft.placeOrder("limit", "buy", amount, price, currency)
+func (fc *FCoin) LimitBuy(amount, price string, currency CurrencyPair) (string, error) {
+	return fc.PlaceOrder("limit", "buy", amount, price, currency)
 }
 
-func (ft *FCoin) LimitSell(amount, price string, currency CurrencyPair) (*Order, error) {
-	return ft.placeOrder("limit", "sell", amount, price, currency)
+func (fc *FCoin) LimitSell(amount, price string, currency CurrencyPair) (string, error) {
+	return fc.PlaceOrder("limit", "sell", amount, price, currency)
 }
 
-func (ft *FCoin) MarketBuy(amount, price string, currency CurrencyPair) (*Order, error) {
-	return ft.placeOrder("market", "buy", amount, price, currency)
+func (fc *FCoin) MarketBuy(amount, price string, currency CurrencyPair) (string, error) {
+	return fc.PlaceOrder("market", "buy", amount, price, currency)
 }
 
-func (ft *FCoin) MarketSell(amount, price string, currency CurrencyPair) (*Order, error) {
-	return ft.placeOrder("market", "sell", amount, price, currency)
+func (fc *FCoin) MarketSell(amount, price string, currency CurrencyPair) (string, error) {
+	return fc.PlaceOrder("market", "sell", amount, price, currency)
 }
 
-func (ft *FCoin) CancelOrder(orderId string, currency CurrencyPair) (bool, error) {
+func (fc *FCoin) CancelOrder(orderId string, currency CurrencyPair) (error) {
 	uri := fmt.Sprintf("orders/%s/submit-cancel", orderId)
-	_, err := ft.doAuthenticatedRequest("POST", uri, url.Values{})
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	_, err := fc.doAuthenticatedRequest("POST", uri, url.Values{})
+	return err
 }
 
-func (ft *FCoin) toOrder(o map[string]interface{}, pair CurrencyPair) *Order {
+type OrderInfo struct {
+	Id string
+	Symbol string
+	Type string
+	Side string
+	Price decimal.Decimal
+	Amount decimal.Decimal
+	State string
+	ExecutedValue decimal.Decimal 	`json:"executed_value"`
+	FillFees decimal.Decimal 		`json:"fill_fees"`
+	FilledAmount decimal.Decimal	`json:"filled_amount"`
+	CreateAt int64 					`json:"created_at"`
+	Source string 					`json:"source"`
+}
+func (this *OrderInfo) ToOrderDecimal(pair CurrencyPair) *OrderDecimal {
 	side := SELL
-	if o["side"].(string) == "buy" {
+	if this.Side == "buy" {
 		side = BUY
 	}
 
 	orderStatus := ORDER_UNFINISH
-	switch o["state"].(string) {
+	switch this.State {
 	case "partial_filled":
 		orderStatus = ORDER_PART_FINISH
 	case "filled":
 		orderStatus = ORDER_FINISH
+	case "pending_cancel":
+		orderStatus = ORDER_CANCEL_ING
 	case "canceled", "partial_canceled":
 		orderStatus = ORDER_CANCEL
 	}
-
-	return &Order{
+	return &OrderDecimal{
 		Currency:   pair,
 		Side:       TradeSide(side),
-		OrderID2:   o["id"].(string),
-		Amount:     ToFloat64(o["amount"]),
-		Price:      ToFloat64(o["price"]),
-		DealAmount: ToFloat64(o["filled_amount"]),
+		OrderID2:   this.Id,
+		Amount:     this.Amount,
+		Price:      this.Price,
+		DealAmount: this.FilledAmount,
 		Status:     TradeStatus(orderStatus),
-		Fee:        ToFloat64(o["fill_fees"]),
-		OrderTime:  ToInt(o["created_at"])}
+		Fee:        this.FillFees,
+		Timestamp:  this.CreateAt,
+	}
 }
 
-func (ft *FCoin) GetOneOrder(orderId string, currency CurrencyPair) (*Order, error) {
+func (fc *FCoin) GetOneOrder(orderId string, currency CurrencyPair) (*OrderDecimal, error) {
 	uri := fmt.Sprintf("orders/%s", orderId)
-	r, err := ft.doAuthenticatedRequest("GET", uri, url.Values{})
+	header := fc.getAuthenticatedHeader("GET", uri, url.Values{})
+
+	var resp struct {
+		Status int
+		Msg string
+		Data *OrderInfo
+	}
+
+	err := HttpGet4(fc.httpClient, fc.baseUrl + uri, header, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return ft.toOrder(r.(map[string]interface{}), currency), nil
+	if resp.Status != 0 {
+		return nil, errors.New(resp.Msg)
+	}
 
+	return resp.Data.ToOrderDecimal(currency), nil
 }
 
-func (ft *FCoin) GetOrdersList() {
-	//path := API_URL + fmt.Sprintf(CANCEL_ORDER_API, strings.ToLower(currency.ToSymbol("")))
-
-}
-
-func (ft *FCoin) GetUnfinishOrders(currency CurrencyPair) ([]Order, error) {
+func (fc *FCoin) GetUnfinishedOrders(currency CurrencyPair, from, to int64, limit int) ([]OrderDecimal, error) {
+	if limit == 0 {
+		limit = 100
+	}
 	params := url.Values{}
 	params.Set("symbol", strings.ToLower(currency.AdaptUsdToUsdt().ToSymbol("")))
-	params.Set("states", "submitted")
-	//params.Set("before", "1")
-	//params.Set("after", "0")
-	params.Set("limit", "100")
+	params.Set("states", "submitted,partial_filled")
+	if from > 0 {
+		params.Set("after", strconv.FormatInt(from, 10))
+	}
+	if to > 0 {
+		params.Set("before", strconv.FormatInt(to, 10))
+	}
+	params.Set("limit", strconv.Itoa(limit))
+	header := fc.getAuthenticatedHeader("GET", "orders", params)
 
-	r, err := ft.doAuthenticatedRequest("GET", "orders", params)
+	var resp struct {
+		Status int
+		Msg string
+		Data []OrderInfo
+	}
+
+	err := HttpGet4(fc.httpClient, fc.baseUrl + "orders?" + params.Encode(), header, &resp)
+
 	if err != nil {
 		return nil, err
 	}
 
-	var ords []Order
+	if resp.Status != 0 {
+		return nil, errors.New(resp.Msg)
+	}
 
-	for _, ord := range r.([]interface{}) {
-		ords = append(ords, *ft.toOrder(ord.(map[string]interface{}), currency))
+	var ords []OrderDecimal
+
+	for _, ord := range resp.Data {
+		ords = append(ords, *ord.ToOrderDecimal(currency))
 	}
 
 	return ords, nil
 }
 
-func (ft *FCoin) GetOrderHistorys(currency CurrencyPair, currentPage, pageSize int) ([]Order, error) {
-	panic("not implement")
-}
+func (fc *FCoin) GetFinishedOrders(currency CurrencyPair, from, to int64, limit int) ([]OrderDecimal, error) {
+	if limit == 0 {
+		limit = 100
+	}
+	params := url.Values{}
+	params.Set("symbol", strings.ToLower(currency.AdaptUsdToUsdt().ToSymbol("")))
+	params.Set("states", "partial_canceled,filled,canceled")
+	if from > 0 {
+		params.Set("after", strconv.FormatInt(from, 10))
+	}
+	if to > 0 {
+		params.Set("before", strconv.FormatInt(to, 10))
+	}
+	params.Set("limit", strconv.Itoa(limit))
 
-func (ft *FCoin) GetAccount() (*Account, error) {
+	header := fc.getAuthenticatedHeader("GET", "orders", params)
 
-	r, err := ft.doAuthenticatedRequest("GET", "accounts/balance", url.Values{})
+	var resp struct {
+		Status int
+		Msg string
+		Data []OrderInfo
+	}
+
+	err := HttpGet4(fc.httpClient, fc.baseUrl + "orders?" + params.Encode(), header, &resp)
+
 	if err != nil {
 		return nil, err
 	}
 
+	if resp.Status != 0 {
+		return nil, errors.New(resp.Msg)
+	}
+
+	var ords []OrderDecimal
+
+	for _, ord := range resp.Data {
+		ords = append(ords, *ord.ToOrderDecimal(currency))
+	}
+
+	return ords, nil
+}
+
+func (fc *FCoin) GetAccount() (*Account, error) {
+	r, err := fc.doAuthenticatedRequest("GET", "accounts/balance", url.Values{})
+	if err != nil {
+		return nil, err
+	}
 	acc := new(Account)
 	acc.SubAccounts = make(map[Currency]SubAccount)
-	acc.Exchange = ft.GetExchangeName()
+	acc.Exchange = fc.GetExchangeName()
 
 	balances := r.([]interface{})
 	for _, v := range balances {
@@ -375,16 +476,135 @@ func (ft *FCoin) GetAccount() (*Account, error) {
 			ForzenAmount: ToFloat64(vv["frozen"]),
 		}
 	}
-
 	return acc, nil
-
 }
 
-func (ft *FCoin) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
+func (fc *FCoin) GetAssets() ([]Asset, error) {
+	r, err := fc.doAuthenticatedRequest("GET", "assets/accounts/balance", url.Values{})
+	if err != nil {
+		return nil, err
+	}
+	assets := make([]Asset, 0)
+	balances := r.([]interface{})
+	for _, v := range balances {
+		vv := v.(map[string]interface{})
+		currency := NewCurrency(vv["currency"].(string), "")
+		assets = append(assets, Asset{
+			Currency:  currency,
+			Avaliable: ToFloat64(vv["available"]),
+			Frozen:    ToFloat64(vv["frozen"]),
+			Finances:  ToFloat64(vv["demand_deposit"]),
+			Lock:      ToFloat64(vv["lock_deposit"]),
+			Total:     ToFloat64(vv["balance"]),
+		})
+	}
+	return assets, nil
+}
+
+// from, to: assets, spot
+func (fc *FCoin) AssetTransfer(currency Currency, amount, from, to string) (bool, error) {
+	params := url.Values{}
+	params.Set("currency", strings.ToLower(currency.String()))
+	params.Set("amount", amount)
+	_, err := fc.doAuthenticatedRequest("POST", fmt.Sprintf("assets/accounts/%s-to-%s", from, to), params)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (fc *FCoin) GetKlineRecords(currency CurrencyPair, period, size, since int) ([]Kline, error) {
 	panic("not implement")
 }
 
 //非个人，整个交易所的交易记录
-func (ft *FCoin) GetTrades(currencyPair CurrencyPair, since int64) ([]Trade, error) {
-	panic("not implement")
+func (fc *FCoin) GetTrades(currencyPair CurrencyPair, since int64) ([]TradeDecimal, error) {
+	url := fmt.Sprintf(fc.baseUrl + "market/trades/%s", strings.ToLower(currencyPair.ToSymbol("")))
+	println(url)
+	resp, err := fc.httpClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data struct {
+		Data []struct {
+			Amount decimal.Decimal
+			Price decimal.Decimal
+			Id decimal.Decimal
+			Ts int64
+			Side string
+		}
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, err
+	}
+	var trades = make([]TradeDecimal, len(data.Data))
+
+	for i, o := range data.Data {
+		t := &trades[i]
+		t.Tid = o.Id.IntPart()
+		t.Amount = o.Amount
+		t.Price = o.Price
+		t.Type = o.Side
+		t.Date = o.Ts
+	}
+
+	return trades, nil
+}
+
+//交易符号
+func (fc *FCoin) GetTradeSymbols() ([]TradeSymbol, error) {
+	respmap, err := HttpGet(fc.httpClient, fc.baseUrl+"public/symbols")
+	if err != nil {
+		return nil, err
+	}
+
+	if respmap["status"].(float64) != 0 {
+		return nil, errors.New(respmap["msg"].(string))
+	}
+
+	datamap := respmap["data"].([]interface{})
+
+	tradeSymbols := make([]TradeSymbol, 0)
+	for _, v := range datamap {
+		vv := v.(map[string]interface{})
+		var symbol TradeSymbol
+		symbol.Name = vv["name"].(string)
+		symbol.BaseCurrency = vv["base_currency"].(string)
+		symbol.QuoteCurrency = vv["quote_currency"].(string)
+		symbol.PriceDecimal = int(vv["price_decimal"].(float64))
+		symbol.AmountDecimal = int(vv["amount_decimal"].(float64))
+		symbol.Tradable = vv["tradable"].(bool)
+		if symbol.Tradable {
+			tradeSymbols = append(tradeSymbols, symbol)
+		}
+	}
+	return tradeSymbols, nil
+}
+
+func (fc *FCoin) GetTradeSymbol(currencyPair CurrencyPair) (*TradeSymbol, error) {
+	if len(fc.tradeSymbols) == 0 {
+		var err error
+		fc.tradeSymbols, err = fc.GetTradeSymbols()
+		if err != nil {
+			return nil, err
+		}
+	}
+	for k, v := range fc.tradeSymbols {
+		if v.Name == strings.ToLower(currencyPair.ToSymbol("")) {
+			return &fc.tradeSymbols[k], nil
+		}
+	}
+	return nil, errors.New("symbol not found")
 }
