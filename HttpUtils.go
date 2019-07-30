@@ -202,7 +202,7 @@ func HttpPostForm3(client *http.Client, reqUrl string, postData string, headers 
 	return NewHttpRequest(client, "POST", reqUrl, postData, headers)
 }
 
-func HttpPostForm4(client *http.Client, reqUrl string, postData map[string]string, headers map[string]string) ([]byte, error) {
+func HttpPostForm4(client *http.Client, reqUrl string, postData interface{}, headers map[string]string) ([]byte, error) {
 	if headers == nil {
 		headers = map[string]string{}
 	}
