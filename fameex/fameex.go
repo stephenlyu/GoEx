@@ -437,7 +437,7 @@ func (this *Fameex) PlaceOrder(symbol string, side int, price, volume decimal.De
 	return data.TaskId, nil
 }
 
-func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, error) {
+func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []error, error) {
 	pair := NewCurrencyPair2(symbol)
 	params := map[string]string {}
 	queryString := this.sign("POST", BATCH_PLACE_ORDERS, params)
@@ -450,28 +450,42 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, er
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	println(string(bytes))
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var data struct {
 		Code int
-		TaskIds []string
+		Data []struct {
+			OrderId   string
+			OrderCode int
+		}
 	}
 
 	err = json.Unmarshal(bytes, &data)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if data.Code != 200 {
-		return nil, fmt.Errorf("error_code: %d", data.Code)
+		return nil, nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
-	return data.TaskIds, nil
+	var orderIds = make([]string, len(reqList))
+	var errorList = make([]error, len(reqList))
+	for i, r := range data.Data {
+		if r.OrderCode == 200 {
+			orderIds[i] = r.OrderId
+		} else {
+			errorList[i] = fmt.Errorf("error_code: %d", r.OrderCode)
+		}
+	}
+
+	return orderIds, errorList, nil
 }
 
 func (this *Fameex) CancelOrder(symbol string, orderId string) error {
@@ -524,12 +538,13 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 	postData := map[string]interface{} {
 		"coin1": pair.CurrencyA.Symbol,
 		"coin2": pair.CurrencyB.Symbol,
-		"taskIds": orderIds,
+		"orderIds": orderIds,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
 		return err, errorList
 	}
+	println(string(bytes))
 
 	if err != nil {
 		return err, errorList
@@ -537,7 +552,10 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 
 	var data struct {
 		Code int
-		TaskIds []string
+		Data []struct {
+			OrderId   string
+			OrderCode int
+		}
 	}
 
 	err = json.Unmarshal(bytes, &data)
@@ -545,7 +563,11 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 		return err, errorList
 	}
 
-	// TODO: 处理错误
+	for i, r := range data.Data {
+		if r.OrderCode != 200 && r.OrderCode != 21010 {
+			errorList[i] = fmt.Errorf("error_code: %d", r.OrderCode)
+		}
+	}
 
 	return nil, errorList
 }

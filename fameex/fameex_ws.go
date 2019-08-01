@@ -31,7 +31,7 @@ func (this *Fameex) createWsConn() {
 			}, 20*time.Second)
 			this.ws.ReConnect()
 			this.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
-				println(string(msg))
+				//println(string(msg))
 
 				var data struct {
 					Type string
@@ -162,7 +162,7 @@ func (this *Fameex) parseTrade(msg []byte) (string, []TradeDecimal) {
 			Price: r.Price,
 			Amount: r.Count,
 			Type: side,
-			Date: r.Time,
+			Date: r.Time / 1000000,
 		},
 	}
 }

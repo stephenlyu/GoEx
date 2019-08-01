@@ -103,8 +103,9 @@ func TestFameex_PlaceOrders(t *testing.T) {
 		},
 	}
 
-	orderIds, err := fameex.PlaceOrders(code, reqList)
+	orderIds, errorList, err := fameex.PlaceOrders(code, reqList)
 	assert.Nil(t, err)
+	fmt.Println(errorList)
 	output(orderIds)
 }
 
@@ -115,9 +116,10 @@ func TestFameex_CancelOrder(t *testing.T) {
 }
 
 func TestFameex_BatchCancelOrders(t *testing.T) {
-	code := "OMG_USDT"
-	err, _ := fameex.BatchCancelOrders(code, []string{"10375999844981932032"})
+	code := "OMG_ETH"
+	err, errorList := fameex.BatchCancelOrders(code, []string{"10375999844981932032", "11376792929122910208"})
 	assert.Nil(t, err)
+	fmt.Println(errorList)
 }
 
 func TestFameex_GetPendingOrders(t *testing.T) {
