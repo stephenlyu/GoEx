@@ -452,7 +452,6 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []
 	if err != nil {
 		return nil, nil, err
 	}
-	println(string(bytes))
 
 	if err != nil {
 		return nil, nil, err
@@ -544,7 +543,6 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 	if err != nil {
 		return err, errorList
 	}
-	println(string(bytes))
 
 	if err != nil {
 		return err, errorList
@@ -639,7 +637,6 @@ func (this *Fameex) QueryOrder(orderId string) (*OrderDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	println(string(bytes))
 
 	var data struct {
 		Code int
