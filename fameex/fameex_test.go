@@ -123,7 +123,7 @@ func TestFameex_BatchCancelOrders(t *testing.T) {
 }
 
 func TestFameex_GetPendingOrders(t *testing.T) {
-	code := "OMG_ETH"
+	code := "BTC_USDT"
 	orders, err := fameex.QueryPendingOrders(code, 1, 10)
 	assert.Nil(t, err)
 	output(orders)

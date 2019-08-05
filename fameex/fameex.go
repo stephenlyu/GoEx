@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"log"
 )
 
 const (
@@ -173,6 +174,7 @@ func (this *Fameex) GetSymbols() ([]Symbol, error) {
 	}
 
 	if resp.Code != 200 {
+		log.Printf("Fameex.GetSymbols error code: %d\n", resp.Code)
 		return nil, fmt.Errorf("error_code: %d", resp.Code)
 	}
 
@@ -226,6 +228,7 @@ func (this *Fameex) GetTicker(symbol string) (*TickerDecimal, error) {
 	}
 
 	if resp.Code != 200 {
+		log.Printf("Fameex.GetTicker error code: %d\n", resp.Code)
 		return nil, fmt.Errorf("error_code: %d", resp.Code)
 	}
 
@@ -274,6 +277,7 @@ func (this *Fameex) GetDepth(symbol string) (*DepthDecimal, error) {
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.GetDepth error code: %d\n", data.Code)
 		return nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
@@ -331,6 +335,7 @@ func (this *Fameex) GetTrades(symbol string) ([]TradeDecimal, error) {
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.GetTrades error code: %d\n", data.Code)
 		return nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
@@ -378,7 +383,7 @@ func (this *Fameex) GetAccounts() ([]SubAccountDecimal, error) {
 	}
 
 	if resp.Code != 200 {
-		return nil, fmt.Errorf("error_code: %d", resp.Code)
+		return nil, fmt.Errorf("error_code: %d\n", resp.Code)
 	}
 
 	if len(resp.Data) == 0 {
@@ -431,6 +436,7 @@ func (this *Fameex) PlaceOrder(symbol string, side int, price, volume decimal.De
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.PlaceOrder error code: %d\n", data.Code)
 		return "", fmt.Errorf("error_code: %d", data.Code)
 	}
 
@@ -471,6 +477,7 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.PlaceOrders error code: %d\n", data.Code)
 		return nil, nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
@@ -480,6 +487,7 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []
 		if r.OrderCode == 200 {
 			orderIds[i] = r.OrderId
 		} else {
+			log.Printf("Fameex.PlaceOrders error code: %d\n", r.OrderCode)
 			errorList[i] = fmt.Errorf("error_code: %d", r.OrderCode)
 		}
 	}
@@ -522,6 +530,7 @@ func (this *Fameex) CancelOrder(symbol string, orderId string) error {
 	case 2404:
 		return nil			// 找不到订单，当成成功
 	default:
+		log.Printf("Fameex.CancelOrder error code: %d\n", data.Code)
 		return fmt.Errorf("error_code: %d", data.Code)
 	}
 }
@@ -563,6 +572,7 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 
 	for i, r := range data.Data {
 		if r.OrderCode != 200 && r.OrderCode != 21010 {
+			log.Printf("Fameex.BatchCancelOrders error code: %d\n", r.OrderCode)
 			errorList[i] = fmt.Errorf("error_code: %d", r.OrderCode)
 		}
 	}
@@ -614,6 +624,7 @@ func (this *Fameex) QueryPendingOrders(symbol string, page, pageSize int) ([]Ord
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.QueryPendingOrders error code: %d", data.Code)
 		return nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
@@ -649,6 +660,7 @@ func (this *Fameex) QueryOrder(orderId string) (*OrderDecimal, error) {
 	}
 
 	if data.Code != 200 {
+		log.Printf("Fameex.QueryOrder error code: %d\n", data.Code)
 		return nil, fmt.Errorf("error_code: %d", data.Code)
 	}
 
