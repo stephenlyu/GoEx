@@ -205,6 +205,19 @@ type FutureAccount struct {
 	FutureSubAccounts map[Currency]FutureSubAccount
 }
 
+type FutureSubAccountDecimal struct {
+	Currency      Currency
+	AccountRights decimal.Decimal
+	KeepDeposit   decimal.Decimal
+	ProfitReal    decimal.Decimal
+	ProfitUnreal  decimal.Decimal
+	RiskRate      decimal.Decimal
+}
+
+type FutureAccountDecimal struct {
+	FutureSubAccounts map[Currency]FutureSubAccountDecimal
+}
+
 type FutureOrder struct {
 	Price        float64
 	Amount       float64
@@ -220,6 +233,22 @@ type FutureOrder struct {
 	Side      	 TradeSide
 	LeverRate    int     //倍数
 	Fee          float64 //手续费
+	ContractName string
+}
+
+type FutureOrderDecimal struct {
+	Price        decimal.Decimal
+	Amount       decimal.Decimal
+	AvgPrice     decimal.Decimal
+	DealAmount   decimal.Decimal
+	OrderID  	 string
+	ClientOrderID string
+	OrderTime    int64
+	Status       TradeStatus
+	OType        int     //1：开多 2：开空 3：平多 4： 平空
+	Side      	 TradeSide
+	LeverRate    int     //倍数
+	Fee          decimal.Decimal //手续费
 	ContractName string
 }
 
