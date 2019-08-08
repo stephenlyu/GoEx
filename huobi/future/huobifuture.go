@@ -38,21 +38,22 @@ const (
 )
 
 type HuobiFuture struct {
-	ApiKey string
-	SecretKey string
-	client *http.Client
+	ApiKey             string
+	SecretKey          string
+	client             *http.Client
 
-	symbols map[string]*ContractInfo
+	symbols            map[string]*ContractInfo
 
-	ws                *WsConn
-	createWsLock      sync.Mutex
-	wsLoginHandle func(err error)
-	wsDepthHandleMap  map[string]func(*DepthDecimal)
-	wsTradeHandleMap map[string]func(string, []TradeDecimal)
-	wsOrderHandle  	func([]OrderDecimal)
-	errorHandle      func(error)
+	publicWs           *WsConn
+	createPublicWsLock sync.Mutex
+	wsDepthHandleMap   map[string]func(*DepthDecimal)
+	wsTradeHandleMap   map[string]func(string, []TradeDecimal)
+	errorHandle        func(error)
 
-	lock sync.Mutex
+	wsLoginHandle      func(err error)
+	wsOrderHandle      func([]OrderDecimal)
+
+	lock               sync.Mutex
 }
 
 func NewHuobiFuture(client *http.Client, ApiKey, SecretKey string) *HuobiFuture {
