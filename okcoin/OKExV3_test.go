@@ -108,7 +108,7 @@ func TestOKExV3_GetAccount(t *testing.T) {
 }
 
 func TestOKExV3_GetCurrencyAccount(t *testing.T) {
-	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "BTC"})
+	ret, err := okexV3.GetCurrencyAccount(goex.Currency{Symbol: "EOS"})
 	assert.Nil(t, err)
 	output(ret)
 }
@@ -375,15 +375,27 @@ func TestOKExV3_WalletTransfer(t *testing.T) {
 	output(resp)
 }
 
+func TestOKExV3_WalletTransfer_SubAccount(t *testing.T) {
+	currency := "ETH"
+
+	//err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 0.1, WALLET_ACCOUNT_WALLET, WALLET_ACCOUNT_SUB, "ethyongxu", "")
+	//assert.Nil(t, err)
+	//output(resp)
+
+	err, resp := okexV3.WalletTransfer(goex.Currency{Symbol: currency}, 0.1, WALLET_ACCOUNT_SUB, WALLET_ACCOUNT_WALLET, "ethyongxu", "")
+	assert.Nil(t, err)
+	output(resp)
+}
+
 func TestOKExV3_GetWallet(t *testing.T) {
-	currency := "USDT"
+	currency := "ETH"
 	ret, err := okexV3.GetWallet(goex.Currency{Symbol: currency})
 	assert.Nil(t, err)
 	output(ret)
 }
 
 func TestOKExV3_GetWithdrawFee(t *testing.T) {
-	currency := "BTC"
+	currency := "EOS"
 	ret, err := okexV3.GetWithdrawFee(currency)
 	assert.Nil(t, err)
 	output(ret)
@@ -430,7 +442,7 @@ func TestOKExV3_GetDepositHistory(t *testing.T) {
 }
 
 func TestOKExV3_GetWithdrawHistory(t *testing.T) {
-	currency := "BTC"
+	currency := "EOS"
 	ret, err := okexV3.GetWithdrawHistory(currency)
 	assert.Nil(t, err)
 	output(ret)
