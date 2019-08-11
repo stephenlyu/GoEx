@@ -28,6 +28,7 @@ const (
 	DEPTH = "/market/depth"
 	TRADE = "/market/trade"
 	ACCOUNTS = "/api/v1/contract_account_info"
+	POSITIONS = "/api/v1/contract_position_info"
 	PLACE_ORDER = "/api/v1/contract_order"
 	BATCH_PLACE_ORDERS = "/api/v1/contract_batchorder"
 	BATCH_CANCEL = "/api/v1/contract_cancel"
@@ -50,8 +51,11 @@ type HuobiFuture struct {
 	wsTradeHandleMap   map[string]func(string, []TradeDecimal)
 	errorHandle        func(error)
 
+	privateWs           *WsConn
+	createPrivateWsLock sync.Mutex
 	wsLoginHandle      func(err error)
-	wsOrderHandle      func([]OrderDecimal)
+	wsOrderHandle      func([]FutureOrderDecimal)
+	privateErrorHandle func(error)
 
 	lock               sync.Mutex
 }
@@ -325,6 +329,42 @@ func (this *HuobiFuture) GetAccounts() (*FutureAccountDecimal, error) {
 	return ret, nil
 }
 
+func (this *HuobiFuture) GetPosition(symbol string) ([]PositionInfo, error) {
+	params := map[string]string {}
+	queryString := this.sign("POST", POSITIONS, params)
+
+	reqUrl := API_BASE_URL + POSITIONS + "?" + queryString
+	postData := map[string]interface{} {
+		"symbol": strings.ToUpper(symbol),
+	}
+	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var data struct {
+		Status string
+		ErrCode int 			`json:"err_code"`
+		Data []PositionInfo
+	}
+
+	err = json.Unmarshal(bytes, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	if data.Status != "ok" {
+		log.Printf("HuobiFuture.GetPosition error code: %d\n", data.ErrCode)
+		return nil, fmt.Errorf("error_code: %d", data.ErrCode)
+	}
+
+	return data.Data, nil
+}
+
 func (this *HuobiFuture) PlaceOrder(req OrderReq) (string, error) {
 	params := map[string]string {}
 	queryString := this.sign("POST", PLACE_ORDER, params)
@@ -334,11 +374,13 @@ func (this *HuobiFuture) PlaceOrder(req OrderReq) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	println(string(bytes))
 	var data struct {
 		Status string
 		ErrCode int 			`json:"err_code"`
-		OrderId string 		`json:"order_id"`
+		Data struct {
+				 OrderId decimal.Decimal 		`json:"order_id"`
+			 }
 	}
 
 	err = json.Unmarshal(bytes, &data)
@@ -351,7 +393,7 @@ func (this *HuobiFuture) PlaceOrder(req OrderReq) (string, error) {
 		return "", fmt.Errorf("error_code: %d", data.ErrCode)
 	}
 
-	return data.OrderId, nil
+	return data.Data.OrderId.String(), nil
 }
 
 func (this *HuobiFuture) PlaceOrders(reqList []OrderReq) ([]string, []error, error) {

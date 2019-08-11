@@ -74,6 +74,12 @@ func TestHuobiFuture_GetAccounts(t *testing.T) {
 	output(ret)
 }
 
+func TestHuobiFuture_GetPosition(t *testing.T) {
+	ret, err := huobi.GetPosition("ETH")
+	chk(err)
+	output(ret)
+}
+
 func newId() int64 {
 	return time.Now().UnixNano()
 }
@@ -82,7 +88,7 @@ func TestHuobiFuture_PlaceOrder(t *testing.T) {
 	req := OrderReq{
 		ContractCode: "ETH190927",
 		ClientOid: newId(),
-		Price: decimal.NewFromFloat(220),
+		Price: decimal.NewFromFloat(200),
 		Volume: 1,
 		Direction: DirectionBuy,
 		Offset: OffsetOpen,
@@ -117,7 +123,7 @@ func TestHuobiFuture_PlaceOrders(t *testing.T) {
 
 func TestHuobiFuture_CancelOrder(t *testing.T) {
 	code := "ETH"
-	err, errList := huobi.BatchCancelOrders(code, []string{"6145283534", "6145283533"})
+	err, errList := huobi.BatchCancelOrders(code, []string{"6145283541", "6145283540"})
 	assert.Nil(t, err)
 	for _, err := range errList {
 		assert.Nil(t, err)

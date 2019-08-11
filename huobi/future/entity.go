@@ -110,3 +110,19 @@ func (this *OrderInfo) ToOrderDecimal() *goex.FutureOrderDecimal {
 		ContractName: this.ContractCode,
 	}
 }
+
+type PositionInfo struct {
+	Symbol 			 string
+	ContractType 	 string 		`json:"contract_type"`
+	ContractCode 	 string 		`json:"contract_code"`
+	Volume 			 decimal.Decimal
+	Available 		 decimal.Decimal
+	Frozen 			 decimal.Decimal `json:"cost_open"`
+	CostOpen 		 decimal.Decimal
+	CostHold 		 decimal.Decimal `json:"cost_hold"`
+	ProfitUnreal 	 decimal.Decimal `json:"profit_unreal"`
+	ProfitRate 		 decimal.Decimal `json:"profit_rate"`
+	PositionMargin   decimal.Decimal `json:"position_margin"`
+	LeverRate 		 decimal.Decimal `json:"lever_rate"`
+	Direction    	 string 		 `json:"direction"`
+}
