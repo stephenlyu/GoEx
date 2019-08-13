@@ -492,7 +492,7 @@ func (this *HuobiFuture) BatchCancelOrders(symbol string, orderIds []string) (er
 	}
 
 	for _, r := range data.Data.Errors {
-		if r.ErrCode == 1071 {
+		if r.ErrCode == 1071 || r.ErrCode == 1061 || r.ErrCode == 1063 {
 			continue
 		}
 		log.Printf("HuobiFuture.BatchCancelOrders error code: %d\n", r.ErrCode)
@@ -636,6 +636,9 @@ func (this *HuobiFuture) QueryOrder(symbol string, orderId, clientOid string) (*
 
 	if data.Status != "ok" {
 		log.Printf("HuobiFuture.QueryOrder error code: %d\n", data.ErrCode)
+		if data.ErrCode == 1017 {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("error_code: %d", data.ErrCode)
 	}
 

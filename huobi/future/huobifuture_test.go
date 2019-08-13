@@ -123,7 +123,7 @@ func TestHuobiFuture_PlaceOrders(t *testing.T) {
 
 func TestHuobiFuture_CancelOrder(t *testing.T) {
 	code := "ETH"
-	err, errList := huobi.BatchCancelOrders(code, []string{"6145283541", "6145283540"})
+	err, errList := huobi.BatchCancelOrders(code, []string{"614528353"})
 	assert.Nil(t, err)
 	for _, err := range errList {
 		assert.Nil(t, err)
@@ -145,7 +145,7 @@ func TestHuobiFuture_GetHisOrders(t *testing.T) {
 }
 
 func TestHuobiFuture_GetOrderById(t *testing.T) {
-	order, err := huobi.QueryOrder("ETH", "6145283530", "")
+	order, err := huobi.QueryOrder("ETH", "614528350", "")
 	assert.Nil(t, err)
 	output(order)
 }
