@@ -30,7 +30,7 @@ const (
 
 type OrderReq struct {
 	ContractCode string 		`json:"contract_code"`
-	ClientOid int64 			`json:"client_order_id"`
+	ClientOid int64 			`json:"client_order_id,omitempty"`
 	Price decimal.Decimal		`json:"price"`
 	Volume int64 				`json:"volume"`
 	Direction string			`json:"direction"`
