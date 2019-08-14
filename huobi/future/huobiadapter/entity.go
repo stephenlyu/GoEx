@@ -38,11 +38,16 @@ func SymbolFromSecurity(security *entity.Security) string {
 	case "NFUT":
 		return fmt.Sprintf("%s_NW", security.GetCategory())
 	default:
-		if CODE_PATTERN.Match([]byte(security.Code)) {
-			return fmt.Sprintf("%s-USD-%s", security.Category, security.GetCode())
+		symbol, err := DEFAULT_INSTRUMENT_MANAGER.GetSymbol(security.GetCategory() + security.GetCode())
+		if err != nil {
+			log.Printf("error: %+v", err)
+			panic(err)
+		}
+		if symbol != "" {
+			return symbol
 		}
 
-		panic("Unknown contract type")
+		panic("Unknown security")
 	}
 	return ""
 }
