@@ -492,7 +492,8 @@ func (this *HuobiFuture) BatchCancelOrders(symbol string, orderIds []string) (er
 	}
 
 	for _, r := range data.Data.Errors {
-		if r.ErrCode == 1071 || r.ErrCode == 1061 || r.ErrCode == 1063 {
+		// 重复撤单也当成功处理
+		if r.ErrCode == 1071 || r.ErrCode == 1061 || r.ErrCode == 1062 || r.ErrCode == 1063 {
 			continue
 		}
 		log.Printf("HuobiFuture.BatchCancelOrders error code: %d\n", r.ErrCode)
