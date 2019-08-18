@@ -22,7 +22,7 @@ func (this *Fameex) createWsConn() {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.ws = NewWsConn("wss://test.fameex.com/push")
+			this.ws = NewWsConn("wss://pre.fameex.com/push")
 			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.Heartbeat(func() interface{} {
 				return map[string]string{

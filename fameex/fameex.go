@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	HOST = "testapi.fameex.com"
+	HOST = "preapi.fameex.com"
 	API_BASE_URL = "https://" + HOST
 	SYMBOL = "/v1/common/symbols"
 	TICKER = "/market/history/kline24h"
