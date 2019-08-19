@@ -85,6 +85,29 @@ func TestFullCoin_PlaceOrder(t *testing.T) {
 	output(orderId)
 }
 
+func TestFullCoin_BactchPlaceOrder(t *testing.T) {
+	code := "PDRR_USDT"
+	reqList := []OrderReq {
+		{
+			Side: SIDE_BUY,
+			Type: decimal.New(TYPE_LIMIT, 0),
+			Volume: decimal.NewFromFloat32(10),
+			Price: decimal.NewFromFloat(0.012),
+		},
+		{
+			Side: SIDE_BUY,
+			Type: decimal.New(TYPE_LIMIT, 0),
+			Volume: decimal.NewFromFloat32(0.00001),
+			Price: decimal.NewFromFloat(0.012),
+		},
+	}
+
+	orderIds, errList, err := fullCoin.BatchPlaceOrder(code, reqList)
+	assert.Nil(t, err)
+	output(orderIds)
+	fmt.Println(errList)
+}
+
 func TestFullCoin_CancelOrder(t *testing.T) {
 	err := fullCoin.CancelOrder("PDRR_USDT", "6999")
 	assert.Nil(t, err)
@@ -92,9 +115,10 @@ func TestFullCoin_CancelOrder(t *testing.T) {
 
 func TestFullCoin_GetPendingOrders(t *testing.T) {
 	code := "PDRR_USDT"
-	orders, err := fullCoin.QueryPendingOrders(code, 1, 100)
+	orders, err := fullCoin.QueryPendingOrders(code, 1, 1000)
 	assert.Nil(t, err)
-	output(orders)
+	//output(orders)
+	fmt.Println(len(orders))
 }
 
 func TestFullCoin_GetOrder(t *testing.T) {
@@ -103,14 +127,7 @@ func TestFullCoin_GetOrder(t *testing.T) {
 	output(order)
 }
 
-func TestZBG_CancelAll(t *testing.T) {
-	code := "sht_usdt"
-	orders, err := fullCoin.QueryPendingOrders(code, 1, 100)
+func TestFullCoin_CancelAll(t *testing.T) {
+	err := fullCoin.CancelAllOrders("PDRR_USDT")
 	assert.Nil(t, err)
-	output(orders)
-
-	for _, o := range orders {
-		err = fullCoin.CancelOrder(code, o.OrderID2)
-		fmt.Println(err)
-	}
 }

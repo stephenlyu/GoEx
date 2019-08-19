@@ -32,6 +32,7 @@ const (
 	TRADE = "/open/api/get_trades?symbol=%s"
 	ACCOUNTS = "/open/api/user/account"
 	PLACE_ORDER = "/open/api/create_order"
+	MASS_REPLACE = "/open/api/mass_replace"
 	CANCEL_ORDER = "/open/api/cancel_order"
 	CANCEL_ALL = "/open/api/cancel_order_all"
 	OPEN_ORDERS = "/open/api/v2/new_order"
@@ -422,6 +423,62 @@ func (this *FullCoin) PlaceOrder(volume decimal.Decimal, side string, _type int,
 	return resp.Data.OrderId.String(), nil
 }
 
+func (this *FullCoin) BatchPlaceOrder(symbol string, reqList []OrderReq) (orderIds []string, errList []error, err error) {
+	orderIds = make([]string, len(reqList))
+	errList = make([]error, len(reqList))
+	symbol = this.transSymbol(symbol)
+
+	reqJson, _ := json.Marshal(reqList)
+
+	params := map[string]string {
+		"symbol": symbol,
+		"mass_place": string(reqJson),
+	}
+
+	queryString := this.sign(params)
+
+	header := map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+	}
+
+	url := API_BASE_URL + MASS_REPLACE
+	body, err := HttpPostForm3(this.client, url, queryString, header)
+
+	if err != nil {
+		return
+	}
+
+	var resp struct {
+		Code decimal.Decimal
+		Data struct {
+				MassPlace []struct {
+					Code decimal.Decimal
+					OrderId interface{} 		`json:"order_id"`
+				}	`json:"mass_place"`
+			 }
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return
+	}
+
+	if !resp.Code.IsZero() {
+		err = fmt.Errorf("error_code: %s", resp.Code)
+		return
+	}
+
+	for i, r := range resp.Data.MassPlace {
+		if r.Code.IsZero() {
+			orderIds[i] = strconv.FormatInt(int64(r.OrderId.(float64)), 10)
+		} else {
+			errList[i] = fmt.Errorf("error_code: %s", r.Code)
+		}
+	}
+
+	return
+}
+
 func (this *FullCoin) CancelOrder(symbol, orderId string) error {
 	symbol = this.transSymbol(symbol)
 	params := map[string]string {
@@ -435,7 +492,6 @@ func (this *FullCoin) CancelOrder(symbol, orderId string) error {
 		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
 	}
 
-	println(queryString)
 	url := API_BASE_URL + CANCEL_ORDER
 	body, err := HttpPostForm3(this.client, url, queryString, header)
 
@@ -456,6 +512,41 @@ func (this *FullCoin) CancelOrder(symbol, orderId string) error {
 		if resp.Code.IntPart() == 8 || resp.Code.IntPart() == 22 {
 			return nil
 		}
+		return fmt.Errorf("error_code: %s", resp.Code)
+	}
+
+	return nil
+}
+
+func (this *FullCoin) CancelAllOrders(symbol string) error {
+	symbol = this.transSymbol(symbol)
+	params := map[string]string {
+		"symbol": symbol,
+	}
+
+	queryString := this.sign(params)
+
+	header := map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+	}
+
+	url := API_BASE_URL + CANCEL_ALL
+	body, err := HttpPostForm3(this.client, url, queryString, header)
+
+	if err != nil {
+		return err
+	}
+
+	var resp struct {
+		Code decimal.Decimal
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Code.IsZero() {
 		return fmt.Errorf("error_code: %s", resp.Code)
 	}
 

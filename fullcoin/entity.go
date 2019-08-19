@@ -13,6 +13,14 @@ type Symbol struct {
 	AmountPrecision int 	`json:"amount_precision"`
 }
 
+//{side:"BUY",type:"1",volume:"0.01",price:"6400",fee_is_user_exchange_coin:"0"}
+type OrderReq struct {
+	Side string 			`json:"side"`
+	Type decimal.Decimal	`json:"type"`
+	Volume decimal.Decimal	`json:"volume"`
+	Price decimal.Decimal	`json:"price"`
+	FeeIsUserExchangeCoin decimal.Decimal `json:"fee_is_user_exchange_coin"`
+}
 
 type OrderInfo struct {
 	Id decimal.Decimal
