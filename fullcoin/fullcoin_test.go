@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
-	"time"
 )
 
 var fullCoin *FullCoin
@@ -61,7 +60,7 @@ func TestFullCoin_GetTicker(t *testing.T) {
 
 func TestFullCoin_GetDepth(t *testing.T) {
 	api := NewFullCoin("", "")
-	ret, err := api.GetDepth("ETC_USDT")
+	ret, err := api.GetDepth("PDRR_USDT")
 	chk(err)
 	output(ret)
 }
@@ -80,53 +79,38 @@ func TestFullCoin_GetAccounts(t *testing.T) {
 }
 
 func TestFullCoin_PlaceOrder(t *testing.T) {
-	code := "SHT_USDT"
-	orderId, err := fullCoin.PlaceOrder(decimal.NewFromFloat32(10), SIDE_BUY, TYPE_LIMIT, code, decimal.NewFromFloat(0.05))
+	code := "PDRR_USDT"
+	orderId, err := fullCoin.PlaceOrder(decimal.NewFromFloat32(10), SIDE_BUY, TYPE_LIMIT, code, decimal.NewFromFloat(0.015))
 	assert.Nil(t, err)
 	output(orderId)
-
-	order, err := fullCoin.QueryOrder(orderId)
-	assert.Nil(t, err)
-	output(order)
 }
 
 func TestFullCoin_CancelOrder(t *testing.T) {
-	err := fullCoin.CancelOrder("37800595691")
+	err := fullCoin.CancelOrder("PDRR_USDT", "6999")
 	assert.Nil(t, err)
 }
 
 func TestFullCoin_GetPendingOrders(t *testing.T) {
-	code := "sht_usdt"
-	orders, err := fullCoin.QueryPendingOrders(code, 100)
+	code := "PDRR_USDT"
+	orders, err := fullCoin.QueryPendingOrders(code, 1, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
 
-func TestFullCoin_Freq(t *testing.T) {
-	code := "sht_usdt"
-	for i := 0; i < 100; i++ {
-		_, err := fullCoin.QueryPendingOrders(code, 100)
-		fmt.Println(err)
-		if err != nil {
-			time.Sleep(time.Second)
-		}
-	}
-}
-
 func TestFullCoin_GetOrder(t *testing.T) {
-	order, err := fullCoin.QueryOrder("37909617008")
+	order, err := fullCoin.QueryOrder("PDRR_USDT", "69999")
 	assert.Nil(t, err)
 	output(order)
 }
 
 func TestZBG_CancelAll(t *testing.T) {
 	code := "sht_usdt"
-	orders, err := fullCoin.QueryPendingOrders(code, 100)
+	orders, err := fullCoin.QueryPendingOrders(code, 1, 100)
 	assert.Nil(t, err)
 	output(orders)
 
 	for _, o := range orders {
-		err = fullCoin.CancelOrder(o.OrderID2)
+		err = fullCoin.CancelOrder(code, o.OrderID2)
 		fmt.Println(err)
 	}
 }

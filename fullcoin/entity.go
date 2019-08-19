@@ -16,57 +16,57 @@ type Symbol struct {
 
 type OrderInfo struct {
 	Id decimal.Decimal
+	Side string
 	Symbol string
 	Price decimal.Decimal
-	CreateAt decimal.Decimal		`json:"created-at"`
-	Type string 					`json:"type"`
-	Amount decimal.Decimal
-	FilledAmount decimal.Decimal	`json:"field-amount"`
-	FilledCashAmount decimal.Decimal`json:"field-cash-amount"`
-	FilledFees decimal.Decimal		`json:"field-fees"`
-	Source string
-	State string
+	CreateAt decimal.Decimal		`json:"created_at"`
+	Type int
+	AvgPrice decimal.Decimal		`json:"avg_price"`
+	Amount decimal.Decimal			`json:"volume"`
+	FilledAmount decimal.Decimal	`json:"deal_volume"`
+	Status int
 }
 
 func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	var status goex.TradeStatus
-	switch this.State {
-	case "submitted":
+	switch this.Status {
+	case 0, 1:
 		status = goex.ORDER_UNFINISH
-	case "canceled", "partial-canceled":
+	case 4:
 		status = goex.ORDER_CANCEL
-	case "filled":
+	case 2:
 		status = goex.ORDER_FINISH
-	case "partial-filled":
+	case 3:
 		status = goex.ORDER_PART_FINISH
-	case "cancelling":
+	case 5:
 		status = goex.ORDER_CANCEL_ING
 	}
 
 	var side goex.TradeSide
-	switch this.Type {
-	case "buy-market":
-		side = goex.BUY_MARKET
-	case "buy-limit":
-		side = goex.BUY
-	case "sell-market":
-		side = goex.SELL_MARKET
-	case "sell-limit":
-		side = goex.SELL
-	}
-
-	var avgPrice decimal.Decimal
-	if this.FilledAmount.IsPositive() {
-		avgPrice = this.FilledCashAmount.Div(this.FilledAmount)
+	switch this.Side {
+	case SIDE_BUY:
+		switch this.Type {
+		case TYPE_LIMIT:
+			side = goex.BUY
+		case TYPE_MARKET:
+			side = goex.BUY_MARKET
+		}
+	case SIDE_SELL:
+		switch this.Type {
+		case TYPE_LIMIT:
+			side = goex.SELL
+		case TYPE_MARKET:
+			side = goex.SELL_MARKET
+		}
 	}
 
 	return &goex.OrderDecimal{
 		Price: this.Price,
 		Amount: this.Amount,
-		AvgPrice: avgPrice,
+		AvgPrice: this.AvgPrice,
 		DealAmount: this.FilledAmount,
 		Notinal: this.Price.Mul(this.Amount),
-		DealNotional: this.FilledCashAmount,
+		DealNotional: this.AvgPrice.Mul(this.FilledAmount),
 		OrderID2: this.Id.String(),
 		Timestamp: this.CreateAt.IntPart(),
 		Status: status,

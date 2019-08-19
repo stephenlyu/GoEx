@@ -11,17 +11,16 @@ import (
 	. "github.com/stephenlyu/GoEx"
 	"sort"
 	"net/url"
-	"errors"
 	"strconv"
 	"sync"
 )
 
 const (
-	SIDE_BUY = "buy"
-	SIDE_SELL = "sell"
+	SIDE_BUY = "BUY"
+	SIDE_SELL = "SELL"
 
-	TYPE_LIMIT = "limit"
-	TYPE_MARKET = "market"
+	TYPE_LIMIT = 1
+	TYPE_MARKET = 2
 )
 
 const (
@@ -37,11 +36,6 @@ const (
 	CANCEL_ALL = "/open/api/cancel_order_all"
 	OPEN_ORDERS = "/open/api/v2/new_order"
 	QUERY_ORDER = "/open/api/order_info"
-)
-
-var (
-	ErrOrderStateError = errors.New("order-orderstate-error")
-	ErrNotExist = errors.New("not exist")
 )
 
 type FullCoin struct {
@@ -301,8 +295,7 @@ func (this *FullCoin) GetTrades(symbol string) ([]TradeDecimal, error) {
 
 func (this *FullCoin) signData(data string) string {
 	message := data + this.SecretKey
-	println(message)
-	sign, _ := GetParamMD5SignBase64(this.SecretKey, message)
+	sign, _ := GetParamMD5Sign(this.SecretKey, message)
 
 	return sign
 }
@@ -317,7 +310,7 @@ func (this *FullCoin) buildQueryString(params map[string]string) string {
 
 func (this *FullCoin) sign(param map[string]string) string {
 	now := time.Now()
-	param["aki_key"] = this.ApiKey
+	param["api_key"] = this.ApiKey
 	param["time"] = strconv.FormatInt(now.UnixNano()/1000000, 10)
 	var keys []string
 	for k := range param {
@@ -333,7 +326,6 @@ func (this *FullCoin) sign(param map[string]string) string {
 	}
 	data := strings.Join(parts, "")
 
-	println(data)
 	sign := this.signData(data)
 	param["sign"] = sign
 
@@ -345,7 +337,6 @@ func (this *FullCoin) GetAccounts() ([]SubAccountDecimal, error) {
 	queryString := this.sign(params)
 
 	url := API_BASE_URL + ACCOUNTS + "?" + queryString
-	println(url)
 	var resp struct {
 		Code decimal.Decimal
 		Data struct {
@@ -354,7 +345,7 @@ func (this *FullCoin) GetAccounts() ([]SubAccountDecimal, error) {
 					 Coin string
 					 Normal decimal.Decimal
 					 Locked decimal.Decimal
-				 }
+				 }	`json:"coin_list"`
 			 }
 	}
 
@@ -389,166 +380,109 @@ func (this *FullCoin) GetAccounts() ([]SubAccountDecimal, error) {
 	return ret, nil
 }
 
-func (this *FullCoin) PlaceOrder(volume decimal.Decimal, side string, _type string, symbol string, price decimal.Decimal) (string, error) {
+func (this *FullCoin) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
 	symbol = this.transSymbol(symbol)
 
-	var orderType string
-	if side == SIDE_BUY {
-		if _type == TYPE_LIMIT {
-			orderType = "buy-limit"
-		} else {
-			orderType = "buy-market"
-		}
-	} else {
-		if _type == TYPE_LIMIT {
-			orderType = "sell-limit"
-		} else {
-			orderType = "sell-market"
-		}
-	}
-
 	params := map[string]string {
-		"account-id": strconv.FormatInt(this.accountId, 10),
 		"symbol": symbol,
-		"type": orderType,
-		"amount": volume.String(),
+		"side": side,
+		"type": strconv.Itoa(_type),
+		"volume": volume.String(),
 		"price": price.String(),
-		"source": "api",
 	}
 
-	queryString := this.sign(map[string]string{})
+	queryString := this.sign(params)
 
-	data, _ := json.Marshal(params)
+	header := map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+	}
 
-	url := API_BASE_URL + PLACE_ORDER + "?" + queryString
-	body, err := HttpPostJson(this.client, url, string(data), map[string]string{})
+	url := API_BASE_URL + PLACE_ORDER
+	body, err := HttpPostForm3(this.client, url, queryString, header)
 
 	if err != nil {
 		return "", err
 	}
 	var resp struct {
-		Status string
-		ErrCode string	`json:"err-code"`
-		Data string
-	}
-
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.Status != "ok" {
-		return "", fmt.Errorf("bad status: %s", resp.ErrCode)
-	}
-
-	return resp.Data, nil
-}
-
-func (this *FullCoin) CancelOrder(orderId string) error {
-	var path string
-	//path := fmt.Sprintf(CANCEL_ORDER, orderId)
-	queryString := this.sign(map[string]string{})
-
-	url := API_BASE_URL + path + "?" + queryString
-	body, err := HttpPostJson(this.client, url, "", map[string]string{})
-
-	if err != nil {
-		return err
-	}
-
-	var resp struct {
-		Status string
-		ErrCode string		`json:"err-code"`
-	}
-
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return err
-	}
-
-	if resp.Status != "ok" {
-		if resp.ErrCode == "order-orderstate-error" {
-			return ErrOrderStateError
-		}
-
-		return fmt.Errorf("bad status: %s", resp.ErrCode)
-	}
-
-	return nil
-}
-
-func (this *FullCoin) CancelOrders(orderIds []string) (error, []error) {
-	params := map[string]interface{} {
-		"order-ids": orderIds,
-	}
-
-	queryString := this.sign(map[string]string{})
-
-	data, _ := json.Marshal(params)
-
-	url := API_BASE_URL + CANCEL_ALL + "?" + queryString
-	body, err := HttpPostJson(this.client, url, string(data), map[string]string{})
-
-	var errorList = make([]error, len(orderIds))
-
-	if err != nil {
-		return err, errorList
-	}
-
-	var resp struct {
-		Status string
-		ErrCode string		`json:"err-code"`
+		Code decimal.Decimal
 		Data struct {
-			Success []string
-			Failed []struct {
-				ErrMsg string 		`json:"err-msg"`
-				OrderId string 		`json:"order-id"`
-				ErrorCode string 	`json:"err-code"`
-			}
+			OrderId decimal.Decimal 	`json:"order_id"`
 			 }
 	}
 
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		return err, errorList
+		return "", err
 	}
 
-	if resp.Status != "ok" {
-		return fmt.Errorf("bad status: %s", resp.ErrCode), errorList
+	if !resp.Code.IsZero() {
+		return "", fmt.Errorf("error_code: %s", resp.Code)
 	}
 
-	m := make(map[string]error)
-	for _, orderId := range resp.Data.Success {
-		m[orderId] = err
-	}
-	for _, r := range resp.Data.Failed {
-		m[r.OrderId] = errors.New(r.ErrorCode)
-	}
-
-	for i, orderId := range orderIds {
-		errorList[i] = m[orderId]
-	}
-
-	return nil, errorList
+	return resp.Data.OrderId.String(), nil
 }
 
-func (this *FullCoin) QueryPendingOrders(symbol string, size int) ([]OrderDecimal, error) {
+func (this *FullCoin) CancelOrder(symbol, orderId string) error {
+	symbol = this.transSymbol(symbol)
+	params := map[string]string {
+		"symbol": symbol,
+		"order_id": orderId,
+	}
+
+	queryString := this.sign(params)
+
+	header := map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+	}
+
+	println(queryString)
+	url := API_BASE_URL + CANCEL_ORDER
+	body, err := HttpPostForm3(this.client, url, queryString, header)
+
+	if err != nil {
+		return err
+	}
+
+	var resp struct {
+		Code decimal.Decimal
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Code.IsZero() {
+		if resp.Code.IntPart() == 8 || resp.Code.IntPart() == 22 {
+			return nil
+		}
+		return fmt.Errorf("error_code: %s", resp.Code)
+	}
+
+	return nil
+}
+
+func (this *FullCoin) QueryPendingOrders(symbol string, page, size int) ([]OrderDecimal, error) {
+	if page == 0 {
+		page = 1
+	}
 	if size == 0 {
 		size = 10
 	}
 	param := map[string]string {
-		"account-id": strconv.FormatInt(this.accountId, 10),
 		"symbol": this.transSymbol(symbol),
-		"size": strconv.Itoa(size),
+		"page": strconv.Itoa(page),
+		"pageSize": strconv.Itoa(size),
 	}
 	queryString := this.sign(param)
 
 	url := API_BASE_URL + OPEN_ORDERS + "?" + queryString
 
 	var resp struct {
-		Status string
-		ErrCode string
-		Data []OrderInfo
+		Code decimal.Decimal
+		Data struct {
+				 ResultList []OrderInfo
+			 }
 	}
 
 	err := HttpGet4(this.client, url, nil, &resp)
@@ -556,47 +490,49 @@ func (this *FullCoin) QueryPendingOrders(symbol string, size int) ([]OrderDecima
 		return nil, err
 	}
 
-	if resp.Status != "ok" {
-		return nil, fmt.Errorf("bad status: %s", resp.ErrCode)
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error_code: %s", resp.Code)
 	}
 
-	var ret = make([]OrderDecimal, len(resp.Data))
-	for i := range resp.Data {
-		ret[i] = *resp.Data[i].ToOrderDecimal(symbol)
+	var ret = make([]OrderDecimal, len(resp.Data.ResultList))
+	for i := range resp.Data.ResultList {
+		ret[i] = *resp.Data.ResultList[i].ToOrderDecimal(symbol)
 	}
 
 	return ret, nil
 }
 
-func (this *FullCoin) QueryOrder(orderId string) (*OrderDecimal, error) {
-	var path string
-	//path := fmt.Sprintf(QUERY_ORDER, orderId)
-	queryString := this.sign(map[string]string {})
+func (this *FullCoin) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
+	params := map[string]string {
+		"symbol": this.transSymbol(symbol),
+		"order_id": orderId,
+	}
+	queryString := this.sign(params)
 
-	url := API_BASE_URL + path + "?" + queryString
+	url := API_BASE_URL + QUERY_ORDER + "?" + queryString
 	var resp struct {
-		Status string
-		ErrCode string		`json:"err-code"`
-		Data  *OrderInfo
+		Code decimal.Decimal
+		Data *struct {
+				 OrderInfo *OrderInfo 	`json:"order_info"`
+			 }
 	}
 
-	err := HttpGet4(this.client, url, nil, &resp)
+	header := map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+	}
+
+	err := HttpGet4(this.client, url, header, &resp)
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.Status != "ok" {
-		if resp.ErrCode == "base-record-invalid" {
-			return nil, ErrNotExist
-		}
-		return nil, fmt.Errorf("bad status: %s", resp.ErrCode)
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error_code: %s", resp.Code)
 	}
 
-	if resp.Data == nil {
+	if resp.Data == nil || resp.Data.OrderInfo == nil {
 		return nil, nil
 	}
 
-	symbol := this.getPairByName(resp.Data.Symbol)
-
-	return resp.Data.ToOrderDecimal(symbol), nil
+	return resp.Data.OrderInfo.ToOrderDecimal(symbol), nil
 }
