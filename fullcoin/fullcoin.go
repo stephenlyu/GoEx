@@ -36,6 +36,7 @@ const (
 	CANCEL_ORDER = "/open/api/cancel_order"
 	CANCEL_ALL = "/open/api/cancel_order_all"
 	OPEN_ORDERS = "/open/api/v2/new_order"
+	ALL_ORDERS = "/open/api/v2/all_order"
 	QUERY_ORDER = "/open/api/order_info"
 )
 
@@ -588,6 +589,52 @@ func (this *FullCoin) QueryPendingOrders(symbol string, page, size int) ([]Order
 	var ret = make([]OrderDecimal, len(resp.Data.ResultList))
 	for i := range resp.Data.ResultList {
 		ret[i] = *resp.Data.ResultList[i].ToOrderDecimal(symbol)
+	}
+
+	return ret, nil
+}
+
+func (this *FullCoin) QueryAllOrders(symbol, startDate, endDate string, page, size int) ([]OrderDecimal, error) {
+	if page == 0 {
+		page = 1
+	}
+	if size == 0 {
+		size = 10
+	}
+	param := map[string]string {
+		"symbol": this.transSymbol(symbol),
+		"page": strconv.Itoa(page),
+		"pageSize": strconv.Itoa(size),
+	}
+	if startDate != "" {
+		param["startDate"] = startDate
+	}
+	if endDate != "" {
+		param["endDate"] = endDate
+	}
+	queryString := this.sign(param)
+
+	url := API_BASE_URL + ALL_ORDERS + "?" + queryString
+
+	var resp struct {
+		Code decimal.Decimal
+		Data struct {
+				 OrderList []OrderInfo
+			 }
+	}
+
+	err := HttpGet4(this.client, url, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error_code: %s", resp.Code)
+	}
+
+	var ret = make([]OrderDecimal, len(resp.Data.OrderList))
+	for i := range resp.Data.OrderList {
+		ret[i] = *resp.Data.OrderList[i].ToOrderDecimal(symbol)
 	}
 
 	return ret, nil

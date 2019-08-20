@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stephenlyu/GoEx"
+	"time"
 )
 
 var fullCoin *FullCoin
@@ -121,6 +123,14 @@ func TestFullCoin_GetPendingOrders(t *testing.T) {
 	fmt.Println(len(orders))
 }
 
+func TestFullCoin_GetAllOrders(t *testing.T) {
+	code := "PDRR_USDT"
+	orders, err := fullCoin.QueryAllOrders(code, "", "", 1, 1000)
+	assert.Nil(t, err)
+	//output(orders)
+	fmt.Println(len(orders))
+}
+
 func TestFullCoin_GetOrder(t *testing.T) {
 	order, err := fullCoin.QueryOrder("PDRR_USDT", "69999")
 	assert.Nil(t, err)
@@ -130,4 +140,38 @@ func TestFullCoin_GetOrder(t *testing.T) {
 func TestFullCoin_CancelAll(t *testing.T) {
 	err := fullCoin.CancelAllOrders("PDRR_USDT")
 	assert.Nil(t, err)
+}
+
+func TestFullCoin_QueryAllDoneOrders(t *testing.T) {
+	code := "PDRR_USDT"
+
+	const pageSize = 1000
+
+	queryDoneOrders := func(page int) (orders []goex.OrderDecimal, err error) {
+		for i := 0; i < 3; i++ {
+			orders, err = fullCoin.QueryAllOrders(code, "", "", page, pageSize)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		return
+	}
+
+	var page = 1
+	var allOrders []goex.OrderDecimal
+
+	for {
+		orders, err := queryDoneOrders(page)
+		assert.Nil(t, err)
+		if len(orders) == 0 {
+			break
+		}
+		fmt.Printf("Get page %d... lastId: %s\n", page, orders[len(orders) - 1].OrderID2)
+		allOrders = append(allOrders, orders...)
+		page++
+	}
+	bytes, err := json.MarshalIndent(allOrders, "", "  ")
+	assert.Nil(t, err)
+	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
 }
