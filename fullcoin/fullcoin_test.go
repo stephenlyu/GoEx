@@ -94,13 +94,13 @@ func TestFullCoin_BactchPlaceOrder(t *testing.T) {
 			Side: SIDE_BUY,
 			Type: decimal.New(TYPE_LIMIT, 0),
 			Volume: decimal.NewFromFloat32(10),
-			Price: decimal.NewFromFloat(0.012),
+			Price: decimal.NewFromFloat(0.008),
 		},
 		{
 			Side: SIDE_BUY,
 			Type: decimal.New(TYPE_LIMIT, 0),
-			Volume: decimal.NewFromFloat32(0.00001),
-			Price: decimal.NewFromFloat(0.012),
+			Volume: decimal.NewFromFloat32(10),
+			Price: decimal.NewFromFloat(0.0081),
 		},
 	}
 
@@ -132,7 +132,7 @@ func TestFullCoin_GetAllOrders(t *testing.T) {
 }
 
 func TestFullCoin_GetOrder(t *testing.T) {
-	order, err := fullCoin.QueryOrder("PDRR_USDT", "69999")
+	order, err := fullCoin.QueryOrder("PDRR_USDT", "179081")
 	assert.Nil(t, err)
 	output(order)
 }
@@ -149,7 +149,7 @@ func TestFullCoin_QueryAllDoneOrders(t *testing.T) {
 
 	queryDoneOrders := func(page int) (orders []goex.OrderDecimal, err error) {
 		for i := 0; i < 3; i++ {
-			orders, err = fullCoin.QueryAllOrders(code, "", "", page, pageSize)
+			orders, err = fullCoin.QueryAllOrders(code, "2019-08-20 18:50:00", "2019-08-20 23:00:00", page, pageSize)
 			if err == nil {
 				break
 			}

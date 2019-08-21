@@ -32,7 +32,7 @@ const (
 	TRADE = "/open/api/get_trades?symbol=%s"
 	ACCOUNTS = "/open/api/user/account"
 	PLACE_ORDER = "/open/api/create_order"
-	MASS_REPLACE = "/open/api/mass_replace"
+	MASS_REPLACE = "/open/api/mass_replaceV2"
 	CANCEL_ORDER = "/open/api/cancel_order"
 	CANCEL_ALL = "/open/api/cancel_order_all"
 	OPEN_ORDERS = "/open/api/v2/new_order"
@@ -441,13 +441,14 @@ func (this *FullCoin) BatchPlaceOrder(symbol string, reqList []OrderReq) (orderI
 	header := map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
 	}
-
+	//println(API_BASE_URL + MASS_REPLACE, queryString)
 	url := API_BASE_URL + MASS_REPLACE
 	body, err := HttpPostForm3(this.client, url, queryString, header)
 
 	if err != nil {
 		return
 	}
+	//println(string(body))
 
 	var resp struct {
 		Code decimal.Decimal
@@ -469,12 +470,15 @@ func (this *FullCoin) BatchPlaceOrder(symbol string, reqList []OrderReq) (orderI
 		return
 	}
 
-	for i, r := range resp.Data.MassPlace {
-		if r.Code.IsZero() {
-			orderIds[i] = strconv.FormatInt(int64(r.OrderId.(float64)), 10)
-		} else {
-			errList[i] = fmt.Errorf("error_code: %s", r.Code)
-		}
+	r := resp.Data.MassPlace[0]
+	if !r.Code.IsZero() {
+		err = fmt.Errorf("error_code: %s", r.Code)
+		return
+	}
+	l := r.OrderId.([]interface{})
+
+	for i, o := range l {
+		orderIds[i] = strconv.FormatInt(int64(o.(float64)), 10)
 	}
 
 	return
