@@ -510,7 +510,7 @@ func (this *FullCoin) CancelOrder(symbol, orderId string) error {
 	}
 
 	if !resp.Code.IsZero() {
-		if resp.Code.IntPart() == 8 || resp.Code.IntPart() == 22 {
+		if resp.Code.IntPart() == 22 {
 			return nil
 		}
 		return fmt.Errorf("error_code: %s", resp.Code)
