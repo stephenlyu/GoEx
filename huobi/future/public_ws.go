@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"regexp"
+	"time"
 )
 var (
 	_DEPTH_CH_PATTERN, _ = regexp.Compile("market\\.([a-zA-Z0-9_]+)\\.depth\\.step0")
@@ -143,6 +144,7 @@ func (this *HuobiFuture) parseTrade(msg []byte) []TradeDecimal {
 
 func (this *HuobiFuture) parseDepth(msg []byte) *DepthDecimal {
 	var data *struct {
+		Ts int64
 		Tick struct {
 				 Asks [][]decimal.Decimal
 				 Bids [][]decimal.Decimal
@@ -154,6 +156,8 @@ func (this *HuobiFuture) parseDepth(msg []byte) *DepthDecimal {
 	r := &data.Tick
 
 	depth := new(DepthDecimal)
+
+	depth.UTime = time.Unix(data.Ts/1000, data.Ts%1000 * int64(time.Millisecond))
 	
 	depth.AskList = make([]DepthRecordDecimal, len(r.Asks), len(r.Asks))
 	for i, o := range r.Asks {
