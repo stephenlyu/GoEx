@@ -22,11 +22,11 @@ func (this *Fameex) createWsConn() {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.ws = NewWsConn("wss://pre.fameex.com/push")
+			this.ws = NewWsConn("wss://test.fameex.com/push")
 			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.Heartbeat(func() interface{} {
 				return map[string]string{
-					"Op": "HeartBeat",
+					"op": "heartBeat",
 				}
 			}, 20*time.Second)
 			this.ws.ReConnect()
@@ -44,9 +44,9 @@ func (this *Fameex) createWsConn() {
 				}
 
 				switch data.Type {
-				case "HeartBeat":
+				case "heartBeat":
 					this.ws.UpdateActivedTime()
-				case "Login":
+				case "login":
 					var err error
 					if data.Code != 200 {
 						err = errors.New("Login failure")
@@ -54,16 +54,16 @@ func (this *Fameex) createWsConn() {
 					if this.wsLoginHandle != nil {
 						this.wsLoginHandle(err)
 					}
-				case "transdepth":
+				case "transDepth":
 					depth := this.parseDepth(msg)
 					if depth != nil {
 						symbol := depth.Pair.ToSymbol("_")
 						this.wsDepthHandleMap[symbol](depth)
 					}
-				case "lasttrade":
+				case "lastTrade":
 					symbol, trades := this.parseTrade(msg)
 					this.wsTradeHandleMap[symbol](symbol, trades)
-				case "mytransdepth":
+				case "myTransDepth":
 					if this.wsOrderHandle != nil {
 						this.parseOrder(msg)
 					}
@@ -75,9 +75,9 @@ func (this *Fameex) createWsConn() {
 
 func (this *Fameex) getLoginData() interface{} {
 	return map[string]interface{}{
-		"Op":   "Login",
-		"AccessKeyId": this.ApiKey,
-		"Sign": this.UserId,
+		"op":   "login",
+		"AccessKey": this.ApiKey,
+		"sign": this.UserId,
 	}
 }
 
@@ -123,11 +123,11 @@ func (this *Fameex) GetDepthWithWs(symbol string,
 	this.wsTradeHandleMap[symbol] = tradesHandle
 	this.wsOrderHandle = orderHandle
 	event := map[string]interface{}{
-		"Op":   "Register",
-		"Type": "transdepth",
-		"Base": strings.ToLower(pair.CurrencyA.Symbol),
-		"Quote": strings.ToLower(pair.CurrencyB.Symbol),
-		"Percision": precision,
+		"op":   "register",
+		"type": "transDepth",
+		"base": strings.ToLower(pair.CurrencyA.Symbol),
+		"quote": strings.ToLower(pair.CurrencyB.Symbol),
+		"percision": precision,
 	}
 	return this.ws.Subscribe(event)
 }
@@ -135,12 +135,12 @@ func (this *Fameex) GetDepthWithWs(symbol string,
 func (this *Fameex) parseTrade(msg []byte) (string, []TradeDecimal) {
 	var data *struct {
 		Data struct {
-			Coin1 string
-			Coin2 string
-		   Count decimal.Decimal
-		   Price decimal.Decimal
-		   Time int64
-		   BuyType int
+				 Base    string
+				 Quote   string
+				 Count   decimal.Decimal
+				 Price   decimal.Decimal
+				 Time    int64
+				 BuyType int
 	   }
 	}
 
@@ -148,7 +148,7 @@ func (this *Fameex) parseTrade(msg []byte) (string, []TradeDecimal) {
 
 	r := &data.Data
 
-	symbol := strings.ToUpper(fmt.Sprintf("%s_%s", r.Coin1, r.Coin2))
+	symbol := strings.ToUpper(fmt.Sprintf("%s_%s", r.Base, r.Quote))
 
 	var side string
 	if r.BuyType == SIDE_BUY {
@@ -175,8 +175,8 @@ func (this *Fameex) parseDepth(msg []byte) *DepthDecimal {
 
 	var data *struct {
 		Data struct {
-				 Coin1    string
-				 Coin2    string
+				 Base     string
+				 Quote    string
 				 SellList []Item
 				 BuyList  []Item
 		}
@@ -185,13 +185,13 @@ func (this *Fameex) parseDepth(msg []byte) *DepthDecimal {
 	json.Unmarshal(msg, &data)
 
 	r := &data.Data
-	if r.Coin1 == "" || r.Coin2 == "" {
+	if r.Base == "" || r.Quote == "" {
 		return nil
 	}
 
 	depth := new(DepthDecimal)
 	
-	depth.Pair = NewCurrencyPair2(fmt.Sprintf("%s_%s", r.Coin1, r.Coin2))
+	depth.Pair = NewCurrencyPair2(fmt.Sprintf("%s_%s", r.Base, r.Quote))
 	depth.AskList = make([]DepthRecordDecimal, len(r.SellList), len(r.SellList))
 	for i, o := range r.SellList {
 		depth.AskList[i] = DepthRecordDecimal{Price: o.Price, Amount: o.Count}
@@ -209,10 +209,11 @@ func (this *Fameex) parseOrder(msg []byte) {
 	if this.wsOrderHandle == nil {
 		return
 	}
-
 	var data *struct {
 		Data struct {
-				 OrderId string
+				Base string
+				Quote string
+				OrderId string
 			 }
 	}
 
@@ -221,11 +222,12 @@ func (this *Fameex) parseOrder(msg []byte) {
 	if data.Data.OrderId == "" {
 		return
 	}
-	go func(orderId string) {
+	symbol := strings.ToUpper(fmt.Sprintf("%s_%s", data.Data.Base, data.Data.Quote))
+	go func(symbol, orderId string) {
 		var err error
 		var order *OrderDecimal
 		for i := 0; i < 10; i++ {
-			order, err = this.QueryOrder(orderId)
+			order, err = this.QueryOrder(symbol, orderId)
 			if err == nil {
 				break
 			}
@@ -236,7 +238,7 @@ func (this *Fameex) parseOrder(msg []byte) {
 		} else if order != nil {
 			this.wsOrderHandle([]OrderDecimal{*order})
 		}
-	} (data.Data.OrderId)
+	} (symbol, data.Data.OrderId)
 }
 
 func (this *Fameex) CloseWs() {

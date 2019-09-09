@@ -57,19 +57,19 @@ func TestFameex_GetSymbols(t *testing.T) {
 }
 
 func TestFameex_GetTicker(t *testing.T) {
-	ret, err := fameex.GetTicker("OMG_ETH")
+	ret, err := fameex.GetTicker("BTC_USDT")
 	chk(err)
 	output(ret)
 }
 
 func TestFameex_GetDepth(t *testing.T) {
-	ret, err := fameex.GetDepth("OMG_ETH")
+	ret, err := fameex.GetDepth("BTC_USDT")
 	chk(err)
 	output(ret)
 }
 
 func TestFameex_GetTrades(t *testing.T) {
-	ret, err := fameex.GetTrades("OMG_ETH")
+	ret, err := fameex.GetTrades("BTC_USDT")
 	chk(err)
 	output(ret)
 }
@@ -81,25 +81,25 @@ func TestFameex_GetAccounts(t *testing.T) {
 }
 
 func TestFameex_PlaceOrder(t *testing.T) {
-	code := "OMG_ETH"
-	orderId, err := fameex.PlaceOrder(code, SIDE_BUY, decimal.NewFromFloat(13), decimal.NewFromFloat(5))
+	code := "BTC_USDT"
+	orderId, err := fameex.PlaceOrder(code, SIDE_BUY, decimal.NewFromFloat(98), decimal.NewFromFloat(0.01))
 	assert.Nil(t, err)
 	output(orderId)
 }
 
 func TestFameex_PlaceOrders(t *testing.T) {
-	code := "OMG_ETH"
+	code := "BTC_USDT"
 
 	var reqList []OrderReq = []OrderReq {
 		{
 			Side: SIDE_BUY,
-			Price: decimal.NewFromFloat(12),
-			Amount: decimal.NewFromFloat(5),
+			Price: decimal.NewFromFloat(98.5),
+			Amount: decimal.NewFromFloat(0.01),
 		},
 		{
 			Side: SIDE_SELL,
-			Price: decimal.NewFromFloat(13),
-			Amount: decimal.NewFromFloat(5),
+			Price: decimal.NewFromFloat(98.5),
+			Amount: decimal.NewFromFloat(0.01),
 		},
 	}
 
@@ -111,13 +111,13 @@ func TestFameex_PlaceOrders(t *testing.T) {
 
 func TestFameex_CancelOrder(t *testing.T) {
 	code := "OMG_USDT"
-	err := fameex.CancelOrder(code, "10375999844981932032")
+	err := fameex.CancelOrder(code, "11390673392530882560")
 	assert.Nil(t, err)
 }
 
 func TestFameex_BatchCancelOrders(t *testing.T) {
-	code := "OMG_ETH"
-	err, errorList := fameex.BatchCancelOrders(code, []string{"10375999844981932032", "11376792929122910208"})
+	code := "BTC_USDT"
+	err, errorList := fameex.BatchCancelOrders(code, []string{"11390673392577019904", "10390673055099125760"})
 	assert.Nil(t, err)
 	fmt.Println(errorList)
 }
@@ -141,13 +141,14 @@ func TestFameex_Freq(t *testing.T) {
 }
 
 func TestFameex_GetOrder(t *testing.T) {
-	order, err := fameex.QueryOrder("10376467354315390976")
+	code := "BTC_USDT"
+	order, err := fameex.QueryOrder(code, "11390873839006908416")
 	assert.Nil(t, err)
 	output(order)
 }
 
 func Test_CancelAll(t *testing.T) {
-	code := "OMG_ETH"
+	code := "BTC_USDT"
 	orders, err := fameex.QueryPendingOrders(code, 0, 100)
 	assert.Nil(t, err)
 	output(orders)

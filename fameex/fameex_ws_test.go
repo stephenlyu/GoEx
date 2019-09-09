@@ -18,12 +18,12 @@ func init() {
 func TestFameex_GetDepthWithWs(t *testing.T) {
 	fameex.Login()
 
-	fameex.GetDepthWithWs("OMG_ETH", func(depth *goex.DepthDecimal) {
-		log.Printf("%+v\n", depth)
+	fameex.GetDepthWithWs("BTC_USDT", func(depth *goex.DepthDecimal) {
+		log.Printf("depth: %+v\n", depth)
 	},func(symbol string, trades []goex.TradeDecimal) {
-		log.Printf("%+v\n", trades)
+		log.Printf("trades: %+v\n", trades)
 	}, func (orders []goex.OrderDecimal) {
-		log.Printf("%+v\n", orders)
+		log.Printf("orders: %+v\n", orders)
 	})
 	time.Sleep(10 * time.Minute)
 	fameex.ws.CloseWs()

@@ -21,19 +21,19 @@ const (
 )
 
 const (
-	HOST = "preapi.fameex.com"
+	HOST = "testapi.fameex.com"
 	API_BASE_URL = "https://" + HOST
 	SYMBOL = "/v1/common/symbols"
-	TICKER = "/market/history/kline24h"
-	DEPTH = "/market/depth"
-	TRADE = "/market/history/trade"
-	ACCOUNTS = "/api/account/v3/wallet"
-	PLACE_ORDER = "/api/spot/v3/orders"
-	BATCH_PLACE_ORDERS = "/api/spot/v3/orders_list"
-	CANCEL_ORDER = "/api/spot/v3/cancel_orders"
-	BATCH_CANCEL = "/api/spot/v3/cancel_orders_all_orders"
-	OPEN_ORDERS = "/api/spot/v3/orderlist"
-	QUERY_ORDER = "/api/spot/v3/orderdetail"
+	TICKER = "/v1/market/history/kline24h"
+	DEPTH = "/v1/market/depth"
+	TRADE = "/v1/market/history/trade"
+	ACCOUNTS = "/v1/api/account/wallet"
+	PLACE_ORDER = "/v1/api/spot/orders"
+	BATCH_PLACE_ORDERS = "/v1/api/spot/orders_list"
+	CANCEL_ORDER = "/v1/api/spot/cancel_orders"
+	BATCH_CANCEL = "/v1/api/spot/cancel_orders_all_orders"
+	OPEN_ORDERS = "/v1/api/spot/orderlist"
+	QUERY_ORDER = "/v1/api/spot/orderdetail"
 )
 
 type Fameex struct {
@@ -113,9 +113,9 @@ func (this *Fameex) signData(data string) string {
 }
 
 func (this *Fameex) sign(method, reqUrl string, param map[string]string) string {
-	param["AccessKeyId"] = this.ApiKey
+	param["AccessKey"] = this.ApiKey
 	param["SignatureMethod"] = "HmacSHA256"
-	param["SignatureVersion"] = "v0.6"
+	param["SignatureVersion"] = "v1.0"
 	var keys []string
 	for k := range param {
 		keys = append(keys, k)
@@ -211,11 +211,10 @@ func (this *Fameex) GetTicker(symbol string) (*TickerDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var resp struct {
 		Code int
 		Msg string
-		CoinBase struct {
+		Data struct {
 				 TransactionPrice decimal.Decimal
 				 CoinHour24LowPrice decimal.Decimal
 				 CoinHour24HighPrice decimal.Decimal
@@ -232,7 +231,7 @@ func (this *Fameex) GetTicker(symbol string) (*TickerDecimal, error) {
 		return nil, fmt.Errorf("error_code: %d", resp.Code)
 	}
 
-	r := &resp.CoinBase
+	r := &resp.Data
 
 	ticker := new(TickerDecimal)
 	ticker.Date = uint64(time.Now().UnixNano()/1000000)
@@ -410,8 +409,8 @@ func (this *Fameex) PlaceOrder(symbol string, side int, price, volume decimal.De
 
 	reqUrl := API_BASE_URL + PLACE_ORDER + "?" + queryString
 	postData := map[string]interface{} {
-		"coin1": pair.CurrencyA.Symbol,
-		"coin2": pair.CurrencyB.Symbol,
+		"base": pair.CurrencyA.Symbol,
+		"quote": pair.CurrencyB.Symbol,
 		"buytype": side,
 		"price": price.String(),
 		"count": volume.String(),
@@ -420,14 +419,13 @@ func (this *Fameex) PlaceOrder(symbol string, side int, price, volume decimal.De
 	if err != nil {
 		return "", err
 	}
-
 	if err != nil {
 		return "", err
 	}
 
 	var data struct {
-		Code int
-		TaskId string
+		Code    int
+		OrderId string
 	}
 
 	err = json.Unmarshal(bytes, &data)
@@ -440,7 +438,7 @@ func (this *Fameex) PlaceOrder(symbol string, side int, price, volume decimal.De
 		return "", fmt.Errorf("error_code: %d", data.Code)
 	}
 
-	return data.TaskId, nil
+	return data.OrderId, nil
 }
 
 func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []error, error) {
@@ -450,15 +448,11 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []
 
 	reqUrl := API_BASE_URL + BATCH_PLACE_ORDERS + "?" + queryString
 	postData := map[string]interface{} {
-		"coin1": pair.CurrencyA.Symbol,
-		"coin2": pair.CurrencyB.Symbol,
+		"base": pair.CurrencyA.Symbol,
+		"quote": pair.CurrencyB.Symbol,
 		"orders": reqList,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -502,15 +496,14 @@ func (this *Fameex) CancelOrder(symbol string, orderId string) error {
 
 	reqUrl := API_BASE_URL + CANCEL_ORDER + "?" + queryString
 	postData := map[string]interface{} {
-		"coin1": pair.CurrencyA.Symbol,
-		"coin2": pair.CurrencyB.Symbol,
+		"base": pair.CurrencyA.Symbol,
+		"quote": pair.CurrencyB.Symbol,
 		"orderid": orderId,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
 		return err
 	}
-
 	if err != nil {
 		return err
 	}
@@ -544,15 +537,11 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 
 	reqUrl := API_BASE_URL + BATCH_CANCEL + "?" + queryString
 	postData := map[string]interface{} {
-		"coin1": pair.CurrencyA.Symbol,
-		"coin2": pair.CurrencyB.Symbol,
+		"base": pair.CurrencyA.Symbol,
+		"quote": pair.CurrencyB.Symbol,
 		"orderIds": orderIds,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
-	if err != nil {
-		return err, errorList
-	}
-
 	if err != nil {
 		return err, errorList
 	}
@@ -571,7 +560,7 @@ func (this *Fameex) BatchCancelOrders(symbol string, orderIds []string) (error, 
 	}
 
 	for i, r := range data.Data {
-		if r.OrderCode != 200 && r.OrderCode != 21010 {
+		if r.OrderCode != 200 && r.OrderCode != 21010 && r.OrderCode != 21011 {
 			log.Printf("Fameex.BatchCancelOrders error code: %d\n", r.OrderCode)
 			errorList[i] = fmt.Errorf("error_code: %d", r.OrderCode)
 		}
@@ -592,15 +581,15 @@ func (this *Fameex) QueryPendingOrders(symbol string, page, pageSize int) ([]Ord
 
 	reqUrl := API_BASE_URL + OPEN_ORDERS+ "?" + queryString
 	postData := map[string]interface{} {
-		"type": "2",
-		"buyClass": "-1",
-		"direction": "-1",
-		"coin1": parts[0],
-		"coin2": parts[1],
+		"type": 2,
+		"buyClass": -1,
+		"buyType": -1,
+		"base": parts[0],
+		"quote": parts[1],
 		"pageNum": page,
 		"pageSize": pageSize,
-		"startTime": "0",
-		"endTime": "0",
+		"startTime": 0,
+		"endTime": 0,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
@@ -636,19 +625,21 @@ func (this *Fameex) QueryPendingOrders(symbol string, page, pageSize int) ([]Ord
 	return ret, nil
 }
 
-func (this *Fameex) QueryOrder(orderId string) (*OrderDecimal, error) {
+func (this *Fameex) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
 	params := map[string]string {}
 	queryString := this.sign("POST", QUERY_ORDER, params)
+	parts := strings.Split(symbol, "_")
 
 	reqUrl := API_BASE_URL + QUERY_ORDER + "?" + queryString
 	postData := map[string]interface{} {
+		"base": parts[0],
+		"quote": parts[1],
 		"orderid": orderId,
 	}
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
 		return nil, err
 	}
-
 	var data struct {
 		Code int
 		Data *OrderInfo
