@@ -555,6 +555,10 @@ func (ok *OKExV3) FutureCancelOrder(instrumentId, orderId string) error {
 
 	reqPath := FUTURE_V3_API_BASE_URL + reqUrl
 	body, err := HttpPostJson(ok.client, reqPath, "", header)
+	if err != nil {
+		fmt.Println("FutureCancelOrder fail, error: ", err)
+		return err
+	}
 
 	respMap := make(map[string]interface{})
 	err = json.Unmarshal(body, &respMap)
