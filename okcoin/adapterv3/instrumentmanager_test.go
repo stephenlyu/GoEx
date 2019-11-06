@@ -28,7 +28,8 @@ func TestNextSyncTimestamp(t *testing.T) {
 
 func TestInstrumentManager_GetInstrumentId(t *testing.T) {
 	mgr := NewInstrumentManager()
-	for _, code := range []string {"EOSQFUT.OKEX", "EOSNFUT.OKEX", "EOSTFUT.OKEX"} {
+	for _, code := range []string {"EOSQFUT.OKEX", "EOSNFUT.OKEX", "EOSTFUT.OKEX",
+		"EOSQFUTUSDT.OKEX", "EOSNFUTUSDT.OKEX", "EOSTFUTUSDT.OKEX" } {
 		instrumentId, err := mgr.GetInstrumentId(code)
 		if err != nil {
 			panic(err)

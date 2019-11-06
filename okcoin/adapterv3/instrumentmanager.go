@@ -71,22 +71,27 @@ func (this *InstrumentManager) ensureMap() error {
 
 	var missingCode bool
 	for currency, instruments := range currencyInstruments {
-		if len(instruments) != 3 {
+		if len(instruments) != 3 && len(instruments) != 6 {
 			missingCode = true
 		}
 
+		var code string
 		for _, ins := range instruments {
+			var suffix string
+			if strings.Contains(ins.InstrumentId, "USDT") {
+				suffix = "USDT"
+			}
 			switch ins.Alias {
 			case "quarter":
-				m[currency + "QFUT.OKEX"] = ins.InstrumentId
+				code = fmt.Sprintf("%sQFUT%s.OKEX", currency, suffix)
 			case "this_week":
-				m[currency + "TFUT.OKEX"] = ins.InstrumentId
+				code = fmt.Sprintf("%sTFUT%s.OKEX", currency, suffix)
 			case "next_week":
-				m[currency + "NFUT.OKEX"] = ins.InstrumentId
+				code = fmt.Sprintf("%sNFUT%s.OKEX", currency, suffix)
 			}
+			m[code] = ins.InstrumentId
 		}
 	}
-
 	this.lock.Lock()
 	var changed = false
 	for k, v := range m {
@@ -120,10 +125,15 @@ func (this *InstrumentManager) GetInstrumentId(code string) (string, error) {
 	instrumentId, ok := this.codeInstrumentIdMap[code]
 	if !ok {
 		security := entity.ParseSecurityUnsafe(code)
-		if security.GetCode() == "QFUT" {
-			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sNFUT.OKEX", security.GetCategory())]
-		} else if security.GetCode() == "NFUT" {
-			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sTFUT.OKEX", security.GetCategory())]
+		code := security.GetCode()
+		var suffix string
+		if len(code) > 4 {
+			suffix = code[4:]
+		}
+		if strings.HasPrefix(code, "QFUT") {
+			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sNFUT%s.OKEX", security.GetCategory(), suffix)]
+		} else if strings.HasPrefix(code, "NFUT") {
+			instrumentId, ok = this.codeInstrumentIdMap[fmt.Sprintf("%sTFUT%s.OKEX", security.GetCategory(), suffix)]
 		}
 	}
 	if !ok {

@@ -10,6 +10,7 @@ import (
 )
 
 var CODE_PATTERN, _ = regexp.Compile("[0-9]+")
+var SUFFIX_PATTERN, _ = regexp.Compile("[QTN]?FUT[A-Z]+")
 
 func FromSecurity(security *entity.Security) string {
 	if security.IsIndex() {
@@ -26,6 +27,14 @@ func FromSecurity(security *entity.Security) string {
 	case "FUT":
 		return fmt.Sprintf("%s-USD-SWAP", security.Category)
 	default:
+		if SUFFIX_PATTERN.Match([]byte(security.Code)) {
+			instrumentId, err := DEFAULT_INSTRUMENT_MANAGER.GetInstrumentId(security.String())
+			if err != nil {
+				panic(err)
+			}
+			return instrumentId
+		}
+
 		if CODE_PATTERN.Match([]byte(security.Code)) {
 			return fmt.Sprintf("%s-USD-%s", security.Category, security.GetCode())
 		}

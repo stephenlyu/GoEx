@@ -20,7 +20,7 @@ func (this _callback) OnTickItem(tick *entity.TickItem) {
 func TestOKExQuoter_Subscribe(t *testing.T) {
 	q := NewOKQutoterFatory().CreateQuoter(nil)
 	q.SetCallback(&_callback{})
-	q.Subscribe(entity.ParseSecurityUnsafe("BTCQFUT.OKEX"))
+	q.Subscribe(entity.ParseSecurityUnsafe("BTCQFUTUSDT.OKEX"))
 
 	time.Sleep(10 * time.Minute)
 	q.Destroy()
