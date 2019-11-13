@@ -110,8 +110,8 @@ func TestFameex_PlaceOrders(t *testing.T) {
 }
 
 func TestFameex_CancelOrder(t *testing.T) {
-	code := "OMG_USDT"
-	err := fameex.CancelOrder(code, "11390673392530882560")
+	code := "BTC_USDT"
+	err := fameex.CancelOrder(code, "11390856677097734144")
 	assert.Nil(t, err)
 }
 
@@ -123,8 +123,8 @@ func TestFameex_BatchCancelOrders(t *testing.T) {
 }
 
 func TestFameex_GetPendingOrders(t *testing.T) {
-	code := "BTC_USDT"
-	orders, err := fameex.QueryPendingOrders(code, 1, 10)
+	code := "OMG_ETH"
+	orders, err := fameex.QueryPendingOrders(code, 1, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -142,7 +142,7 @@ func TestFameex_Freq(t *testing.T) {
 
 func TestFameex_GetOrder(t *testing.T) {
 	code := "BTC_USDT"
-	order, err := fameex.QueryOrder(code, "11390873839006908416")
+	order, err := fameex.QueryOrder(code, "11395826265174573056")
 	assert.Nil(t, err)
 	output(order)
 }

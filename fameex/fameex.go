@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	HOST = "testapi.fameex.com"
+	HOST = "api.fameex.com"
 	API_BASE_URL = "https://" + HOST
 	SYMBOL = "/v1/common/symbols"
 	TICKER = "/v1/market/history/kline24h"
@@ -163,10 +163,9 @@ func (this *Fameex) GetSymbols() ([]Symbol, error) {
 			Quote string
 			PricePercision decimal.Decimal
 			AmountPercision decimal.Decimal
-			PermitAmountPercision decimal.Decimal
+			PermitAmount decimal.Decimal
 		}
 	}
-
 	err := HttpGet4(this.client, url, nil, &resp)
 
 	if err != nil {
@@ -185,7 +184,7 @@ func (this *Fameex) GetSymbols() ([]Symbol, error) {
 			QuoteCurrency: r.Quote,
 			PricePrecision: int(r.PricePercision.IntPart()),
 			AmountPrecision: int(r.AmountPercision.IntPart()),
-			MinAmount: r.PermitAmountPercision,
+			MinAmount: r.PermitAmount ,
 			Symbol: fmt.Sprintf("%s_%s", r.Base, r.Quote),
 		})
 	}
@@ -447,6 +446,7 @@ func (this *Fameex) PlaceOrders(symbol string, reqList []OrderReq) ([]string, []
 	queryString := this.sign("POST", BATCH_PLACE_ORDERS, params)
 
 	reqUrl := API_BASE_URL + BATCH_PLACE_ORDERS + "?" + queryString
+	println(reqUrl)
 	postData := map[string]interface{} {
 		"base": pair.CurrencyA.Symbol,
 		"quote": pair.CurrencyB.Symbol,
@@ -500,6 +500,8 @@ func (this *Fameex) CancelOrder(symbol string, orderId string) error {
 		"quote": pair.CurrencyB.Symbol,
 		"orderid": orderId,
 	}
+	bytes, _ := json.Marshal(postData)
+	println(reqUrl, string(bytes))
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
 		return err
@@ -636,10 +638,13 @@ func (this *Fameex) QueryOrder(symbol string, orderId string) (*OrderDecimal, er
 		"quote": parts[1],
 		"orderid": orderId,
 	}
+	bytes, _ := json.Marshal(postData)
+	println(reqUrl, string(bytes))
 	bytes, err := HttpPostForm4(this.client, reqUrl, postData, nil)
 	if err != nil {
 		return nil, err
 	}
+	println(string(bytes))
 	var data struct {
 		Code int
 		Data *OrderInfo

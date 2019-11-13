@@ -6,10 +6,9 @@ import (
 	"log"
 	"time"
 	"github.com/shopspring/decimal"
-	"errors"
-	"github.com/nntaoli-project/GoEx"
 	"fmt"
 	"strings"
+	"strconv"
 )
 
 func (this *Fameex) createWsConn() {
@@ -22,7 +21,7 @@ func (this *Fameex) createWsConn() {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.ws = NewWsConn("wss://test.fameex.com/push")
+			this.ws = NewWsConn("wss://www.fameex.com/push")
 			this.ws.SetErrorHandler(this.errorHandle)
 			this.ws.Heartbeat(func() interface{} {
 				return map[string]string{
@@ -49,7 +48,7 @@ func (this *Fameex) createWsConn() {
 				case "login":
 					var err error
 					if data.Code != 200 {
-						err = errors.New("Login failure")
+						err = fmt.Errorf("Login failure, msg: %s", string(msg))
 					}
 					if this.wsLoginHandle != nil {
 						this.wsLoginHandle(err)
@@ -74,10 +73,11 @@ func (this *Fameex) createWsConn() {
 }
 
 func (this *Fameex) getLoginData() interface{} {
+	now := time.Now().UnixNano()
 	return map[string]interface{}{
 		"op":   "login",
 		"AccessKey": this.ApiKey,
-		"sign": this.UserId,
+		"sign": strconv.FormatInt(now, 10),
 	}
 }
 
@@ -117,7 +117,7 @@ func (this *Fameex) GetDepthWithWs(symbol string,
 
 	this.createWsConn()
 
-	pair := goex.NewCurrencyPair2(symbol)
+	pair := NewCurrencyPair2(symbol)
 
 	this.wsDepthHandleMap[symbol] = depthHandle
 	this.wsTradeHandleMap[symbol] = tradesHandle
@@ -214,6 +214,11 @@ func (this *Fameex) parseOrder(msg []byte) {
 				Base string
 				Quote string
 				OrderId string
+				Price decimal.Decimal
+				Count decimal.Decimal
+				DealedCount decimal.Decimal
+				State int
+				BuyType int
 			 }
 	}
 
@@ -223,22 +228,39 @@ func (this *Fameex) parseOrder(msg []byte) {
 		return
 	}
 	symbol := strings.ToUpper(fmt.Sprintf("%s_%s", data.Data.Base, data.Data.Quote))
-	go func(symbol, orderId string) {
-		var err error
-		var order *OrderDecimal
-		for i := 0; i < 10; i++ {
-			order, err = this.QueryOrder(symbol, orderId)
-			if err == nil {
-				break
-			}
-			time.Sleep(time.Millisecond * 100)
-		}
-		if err != nil {
-			this.errorHandle(err)
-		} else if order != nil {
-			this.wsOrderHandle([]OrderDecimal{*order})
-		}
-	} (symbol, data.Data.OrderId)
+
+	r := &data.Data
+
+	var status TradeStatus
+	switch r.State {
+	case 1, 7:
+		status = ORDER_UNFINISH
+	case 11:
+		status = ORDER_CANCEL
+	case 4, 10:
+		status = ORDER_FINISH
+	case 9:
+		status = ORDER_PART_FINISH
+	}
+
+	var side TradeSide
+	switch r.BuyType {
+	case SIDE_BUY:
+		side = BUY
+	case SIDE_SELL:
+		side = SELL
+	}
+
+	order := OrderDecimal{
+		Currency: NewCurrencyPair2(symbol),
+		Price: r.Price,
+		OrderID2: r.OrderId,
+		Amount: r.Count,
+		DealAmount: r.DealedCount,
+		Status: status,
+		Side: side,
+	}
+	this.wsOrderHandle([]OrderDecimal{order})
 }
 
 func (this *Fameex) CloseWs() {
