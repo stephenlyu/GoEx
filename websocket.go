@@ -6,6 +6,7 @@ import (
 	"time"
 	"io/ioutil"
 	"sync/atomic"
+	"errors"
 )
 
 type WsConn struct {
@@ -107,6 +108,9 @@ func (ws *WsConn) ReConnect() {
 			select {
 			case <-timer.C:
 				if time.Now().Sub(ws.actived) >= ws.checkConnectIntervalTime + 5 * time.Second {
+					if  ws.errorHandler != nil {
+						ws.errorHandler(errors.New("timeout"))
+					}
 					go doReconnect()
 					errTimes = 0
 				}
