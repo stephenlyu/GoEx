@@ -39,7 +39,7 @@ func (this *HuobiFuture) createPublicWsConn() {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.publicWs = NewWsConn("wss://www.hbdm.com/ws")
+			this.publicWs = NewWsConn("wss://dm.btcgateway.pro/ws")
 			this.publicWs.SetErrorHandler(this.errorHandle)
 			this.publicWs.ReConnect()
 			this.publicWs.ReceiveMessageEx(func(isBin bool, msg []byte) {

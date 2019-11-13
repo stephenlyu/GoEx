@@ -48,7 +48,7 @@ func (this *CoinTiger) createPublicWsConn() {
 					fmt.Println(err)
 					return
 				}
-				println(string(msg))
+				//println(string(msg))
 
 				var data struct {
 					Ping int64

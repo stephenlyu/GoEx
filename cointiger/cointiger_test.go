@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"io/ioutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/shopspring/decimal"
 )
 
 var api *CoinTiger
@@ -65,48 +67,46 @@ func TestCoinTiger_GetDepth(t *testing.T) {
 
 func TestCoinTiger_GetTrades(t *testing.T) {
 	api := NewCoinTiger("", "")
-	ret, err := api.GetTrades("ETC_USDT")
+	ret, err := api.GetTrades("TCH_USDT")
 	chk(err)
 	output(ret)
 }
-//
-//func TestCoinTiger_GetAccount(t *testing.T) {
-//	ret, err := api.GetAccount()
-//	chk(err)
-//	output(ret)
-//}
-//
-//func TestCoinTiger_PlaceOrder(t *testing.T) {
-//	code := "SHT_USDT"
-//	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(500), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.04))
-//	assert.Nil(t, err)
-//	output(orderId)
-//
-//	order, err := api.QueryOrder(code, orderId)
-//	assert.Nil(t, err)
-//	output(order)
-//}
-//
-//func TestOKExV3_FutureCancelOrder(t *testing.T) {
-//	code := "sht_usdt"
-//	err := api.CancelOrder(code, "10278430")
-//	assert.Nil(t, err)
-//}
-//
-//func TestOKExV3_GetPendingOrders(t *testing.T) {
-//	code := "sht_usdt"
-//	orders, err := api.QueryPendingOrders(code, 0, 100)
-//	assert.Nil(t, err)
-//	output(orders)
-//}
-//
-//func TestOKExV3_GetOrder(t *testing.T) {
-//	code := "sht_usdt"
-//	order, err := api.QueryOrder(code, "10278430")
-//	assert.Nil(t, err)
-//	output(order)
-//}
-//
+
+func TestCoinTiger_GetAccount(t *testing.T) {
+	ret, err := api.GetAccount()
+	chk(err)
+	output(ret)
+}
+
+func TestCoinTiger_PlaceOrder(t *testing.T) {
+	code := "TCH_USDT"
+	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(1000), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.024))
+	assert.Nil(t, err)
+	output(orderId)
+}
+
+func TestCoinTiger_CancelOrder(t *testing.T) {
+	code := "TCH_USDT"
+	err, errors := api.CancelOrder(code, []string{"1000000"})
+	assert.Nil(t, err)
+	assert.True(t, len(errors)==1)
+	assert.Nil(t, errors[0])
+}
+
+func TestCoinTiger_GetPendingOrders(t *testing.T) {
+	code := "TCH_USDT"
+	orders, err := api.QueryPendingOrders(code, "", 50)
+	assert.Nil(t, err)
+	output(orders)
+}
+
+func TestCoinTiger_GetOrder(t *testing.T) {
+	code := "TCH_USDT"
+	order, err := api.QueryOrder(code, "1000000")
+	assert.Nil(t, err)
+	output(order)
+}
+
 //func TestZBG_CancelAll(t *testing.T) {
 //	code := "sht_usdt"
 //	orders, err := api.QueryPendingOrders(code, 1, 100)

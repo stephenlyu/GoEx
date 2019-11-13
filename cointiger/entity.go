@@ -15,18 +15,18 @@ type Symbol struct {
 }
 
 type OrderInfo struct {
-	Side string
-	TotalPrice decimal.Decimal		`json:"total_price"`
+	Symbol string
+	Fee decimal.Decimal
 	AvgPrice decimal.Decimal		`json:"avg_price"`
-	Type int 						`json:"type"`
-	Id decimal.Decimal
+	Type string
+	MTime decimal.Decimal
 	Volume decimal.Decimal
 	Price decimal.Decimal
+	CTime decimal.Decimal
 	DealVolume decimal.Decimal		`json:"deal_volume"`
-	DealPrice decimal.Decimal		`json:"deal_price"`
-	RemainVolume decimal.Decimal	`json:"remain_volume"`
+	Id decimal.Decimal
+	DealMoney decimal.Decimal		`json:"deal_money"`
 	Status decimal.Decimal
-	CreateAt decimal.Decimal			`json:"created_at"`
 }
 
 func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
@@ -34,7 +34,7 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	switch this.Status.IntPart() {
 	case 6:
 		status = goex.ORDER_REJECT
-	case 0, 1:
+	case 1:
 		status = goex.ORDER_UNFINISH
 	case 4:
 		status = goex.ORDER_CANCEL
@@ -47,18 +47,15 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	}
 
 	var side goex.TradeSide
-	if this.Side == "BUY" {
-		if this.Type == ORDER_TYPE_LIMIT {
-			side = goex.BUY
-		} else {
-			side = goex.BUY_MARKET
-		}
-	} else {
-		if this.Type == ORDER_TYPE_LIMIT {
-			side = goex.SELL
-		} else {
-			side = goex.SELL_MARKET
-		}
+	switch this.Type {
+	case OrderTypeBuyLimit:
+		side = goex.BUY
+	case OrderTypeBuyMarket:
+		side = goex.BUY_MARKET
+	case OrderTypeSellLimit:
+		side = goex.SELL
+	case OrderTypeSellMarket:
+		side = goex.SELL_MARKET
 	}
 
 	return &goex.OrderDecimal{
@@ -66,11 +63,12 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 		Amount: this.Volume,
 		AvgPrice: this.AvgPrice,
 		DealAmount: this.DealVolume,
-		Notinal: this.TotalPrice,
-		DealNotional: this.DealPrice,
+		Notinal: this.Price.Mul(this.Volume),
+		DealNotional: this.DealMoney,
 		OrderID2: this.Id.String(),
-		Timestamp: this.CreateAt.IntPart(),
+		Timestamp: this.CTime.IntPart(),
 		Status: status,
+		Fee: this.Fee,
 		Currency: goex.NewCurrencyPair2(symbol),
 		Side: side,
 	}

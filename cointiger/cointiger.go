@@ -10,6 +10,9 @@ import (
 	"time"
 	. "github.com/stephenlyu/GoEx"
 	"sync"
+	"strconv"
+	"sort"
+	"net/url"
 )
 
 const (
@@ -18,6 +21,11 @@ const (
 
 	ORDER_TYPE_LIMIT = 1
 	ORDER_TYPE_MARKET = 2
+
+	OrderTypeBuyMarket = "buy-market"
+	OrderTypeBuyLimit = "buy-limit"
+	OrderTypeSellMarket = "sell-market"
+	OrderTypeSellLimit = "sell-limit"
 )
 
 const (
@@ -29,12 +37,12 @@ const (
 	GET_TICKER = "/market/detail?symbol=%s"
 	GET_MARKET_DEPH = "/market/depth?symbol=%s&type=step0"
 	GET_TRADES = "/market/history/trade?symbol=%s&size=1"
-	ACCOUNT = "/open/api/user/account"
-	CREATE_ORDER = "/open/api/create_order"
-	CANCEL_ORDER = "/open/api/cancel_order"
-	NEW_ORDER = "/open/api/new_order"
-	ORDER_INFO = "/open/api/order_info"
-	ALL_ORDER = "/open/api/all_order"
+	ACCOUNT = "/api/user/balance"
+	CREATE_ORDER = "/order"
+	CANCEL_ORDER = "/order/batch_cancel"
+	NEW_ORDER = "/order/current"
+	ORDER_INFO = "/order/details"
+	ALL_ORDER = "/order/history"
 )
 
 type CoinTiger struct {
@@ -211,7 +219,6 @@ func (this *CoinTiger) GetDepth(symbol string) (*DepthDecimal, error) {
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	println(string(body))
 
 	if err != nil {
 		return nil, err
@@ -273,7 +280,6 @@ func (this *CoinTiger) GetTrades(symbol string) ([]TradeDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	println(string(body))
 
 	var data struct {
 		Msg string
@@ -311,276 +317,272 @@ func (this *CoinTiger) GetTrades(symbol string) ([]TradeDecimal, error) {
 
 	return trades, nil
 }
-//
-//func (this *CoinTiger) signData(data string) string {
-//	message := data + this.SecretKey
-//	sign, _ := GetParamMD5Sign(this.SecretKey, message)
-//
-//	return sign
-//}
-//
-//func (this *CoinTiger) sign(param map[string]string) map[string]string {
-//	timestamp := strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
-//	param["api_key"] = this.ApiKey
-//	param["time"] = timestamp
-//
-//	var keys []string
-//	for k := range param {
-//		keys = append(keys, k)
-//	}
-//	sort.Slice(keys, func(i,j int) bool {
-//		return keys[i] < keys[j]
-//	})
-//
-//	var parts []string
-//	for _, k := range keys {
-//		parts = append(parts, k + param[k])
-//	}
-//	data := strings.Join(parts, "")
-//
-//	sign := this.signData(data)
-//	param["sign"] = sign
-//	return param
-//}
-//
-//func (this *CoinTiger) buildQueryString(param map[string]string) string {
-//	var parts []string
-//	for k, v := range param {
-//		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
-//	}
-//	return strings.Join(parts, "&")
-//}
-//
-//func (this *CoinTiger) GetAccount() ([]SubAccountDecimal, error) {
-//	params := map[string]string {}
-//	params = this.sign(params)
-//
-//	url := API_BASE_URL + ACCOUNT + "?" + this.buildQueryString(params)
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//		Data struct {
-//				TotalAsset decimal.Decimal 	`json:"total_asset"`
-//				CoinList []struct {
-//					Coin string
-//					Normal decimal.Decimal
-//					Locked decimal.Decimal
-//					BtcValuatin decimal.Decimal
-//				}	`json:"coin_list"`
-//			}
-//	}
-//
-//	err := HttpGet4(this.client, url, map[string]string{}, &resp)
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	var ret []SubAccountDecimal
-//	for _, o := range resp.Data.CoinList {
-//		currency := strings.ToUpper(o.Coin)
-//		if currency == "" {
-//			continue
-//		}
-//		ret = append(ret, SubAccountDecimal{
-//			Currency: Currency{Symbol: currency},
-//			AvailableAmount: o.Normal,
-//			FrozenAmount: o.Locked,
-//			Amount: o.Normal.Add(o.Locked),
-//		})
-//	}
-//
-//	return ret, nil
-//}
-//
-//func (this *CoinTiger) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
-//	symbol = this.transSymbol(symbol)
-//	params := map[string]string {
-//		"side": side,
-//		"volume": volume.String(),
-//		"type": strconv.Itoa(_type),
-//		"symbol": symbol,
-//		"price": price.String(),
-//	}
-//
-//	params = this.sign(params)
-//
-//	data := this.buildQueryString(params)
-//	url := API_BASE_URL + CREATE_ORDER
-//	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
-//
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//		Data struct {
-//		   OrderId decimal.Decimal		`json:"order_id"`
-//	   }
-//	}
-//
-//	err = json.Unmarshal(body, &resp)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return "", fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	return resp.Data.OrderId.String(), nil
-//}
-//
-//func (this *CoinTiger) CancelOrder(symbol string, orderId string) error {
-//	symbol = this.transSymbol(symbol)
-//	params := map[string]string {
-//		"symbol": symbol,
-//		"order_id": orderId,
-//
-//	}
-//	params = this.sign(params)
-//
-//	data := this.buildQueryString(params)
-//	url := API_BASE_URL + CANCEL_ORDER
-//	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//	}
-//
-//	err = json.Unmarshal(body, &resp)
-//	if err != nil {
-//		return err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	return nil
-//}
-//
-//func (this *CoinTiger) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-//	param := map[string]string {
-//		"symbol": this.transSymbol(symbol),
-//	}
-//	if page > 0 {
-//		param["page"] = strconv.Itoa(page)
-//	}
-//	if pageSize > 0 {
-//		param["pageSize"] = strconv.Itoa(pageSize)
-//	}
-//	param = this.sign(param)
-//
-//	url := fmt.Sprintf(API_BASE_URL + NEW_ORDER + "?" + this.buildQueryString(param))
-//
-//	var resp struct {
-//	    Msg string
-//	    Code decimal.Decimal
-//		Data struct {
-//			Count int
-//			ResultList []OrderInfo
-//		}
-//	}
-//
-//	err := HttpGet4(this.client, url, nil, &resp)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	var ret = make([]OrderDecimal, len(resp.Data.ResultList))
-//	for i := range resp.Data.ResultList {
-//		ret[i] = *resp.Data.ResultList[i].ToOrderDecimal(symbol)
-//	}
-//
-//	return ret, nil
-//}
-//
-//func (this *CoinTiger) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-//	param := map[string]string {
-//		"symbol": this.transSymbol(symbol),
-//	}
-//	if page > 0 {
-//		param["page"] = strconv.Itoa(page)
-//	}
-//	if pageSize > 0 {
-//		param["pageSize"] = strconv.Itoa(pageSize)
-//	}
-//	param = this.sign(param)
-//
-//	url := fmt.Sprintf(API_BASE_URL + ALL_ORDER + "?" + this.buildQueryString(param))
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//		Data struct {
-//				Count     int
-//				OrderList []OrderInfo
-//			}
-//	}
-//
-//	err := HttpGet4(this.client, url, nil, &resp)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	var ret = make([]OrderDecimal, len(resp.Data.OrderList))
-//	for i := range resp.Data.OrderList {
-//		ret[i] = *resp.Data.OrderList[i].ToOrderDecimal(symbol)
-//	}
-//
-//	return ret, nil
-//}
-//
-//func (this *CoinTiger) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
-//	symbol = strings.ToUpper(symbol)
-//	param := this.sign(map[string]string {
-//		"symbol": this.transSymbol(symbol),
-//		"order_id": orderId,
-//	})
-//
-//	url := fmt.Sprintf(API_BASE_URL + ORDER_INFO + "?" + this.buildQueryString(param))
-//
-//	var resp struct {
-//	    Msg string
-//	    Code decimal.Decimal
-//		Data struct {
-//			OrderInfo *OrderInfo			`json:"order_info"`
-//			 }
-//	}
-//
-//	err := HttpGet4(this.client, url, nil, &resp)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if resp.Code.IntPart() != 0 {
-//		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-//	}
-//
-//	if resp.Data.OrderInfo == nil {
-//		return nil, nil
-//	}
-//
-//	return resp.Data.OrderInfo.ToOrderDecimal(symbol), nil
-//}
+
+func (this *CoinTiger) signData(data string) string {
+	message := data + this.SecretKey
+	sign, _ := GetParamHmacSHA512Sign(this.SecretKey, message)
+
+	return sign
+}
+
+func (this *CoinTiger) sign(param map[string]string) map[string]string {
+	timestamp := strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
+	param["time"] = timestamp
+
+	var keys []string
+	for k := range param {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i,j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, k + param[k])
+	}
+	data := strings.Join(parts, "")
+
+	sign := this.signData(data)
+	param["api_key"] = this.ApiKey
+	param["sign"] = sign
+	return param
+}
+
+func (this *CoinTiger) buildQueryString(param map[string]string) string {
+	var parts []string
+	for k, v := range param {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
+	}
+	return strings.Join(parts, "&")
+}
+
+func (this *CoinTiger) GetAccount() ([]SubAccountDecimal, error) {
+	params := map[string]string {}
+	params = this.sign(params)
+
+	url := Trading_Macro + ACCOUNT + "?" + this.buildQueryString(params)
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		Data []struct {
+			Normal decimal.Decimal
+			Lock decimal.Decimal
+			Coin string
+		}
+	}
+
+	err := HttpGet4(this.client, url, map[string]string{}, &resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	var ret []SubAccountDecimal
+	for _, o := range resp.Data {
+		currency := strings.ToUpper(o.Coin)
+		if currency == "" {
+			continue
+		}
+		ret = append(ret, SubAccountDecimal{
+			Currency: Currency{Symbol: currency},
+			AvailableAmount: o.Normal,
+			FrozenAmount: o.Lock,
+			Amount: o.Normal.Add(o.Lock),
+		})
+	}
+
+	return ret, nil
+}
+
+func (this *CoinTiger) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
+	symbol = this.transSymbol(symbol)
+	signParams := map[string]string {
+		"side": side,
+		"volume": volume.String(),
+		"type": strconv.Itoa(_type),
+		"symbol": symbol,
+		"price": price.String(),
+	}
+	signParams = this.sign(signParams)
+
+	queryParams := map[string]string {
+		"api_key": this.ApiKey,
+		"time": signParams["time"],
+		"sign": signParams["sign"],
+	}
+
+	delete(signParams, "api_key")
+	delete(signParams, "sign")
+
+	queryString := this.buildQueryString(queryParams)
+	url := Trading_Macro_v2 + CREATE_ORDER + "?" + queryString
+
+	postData := this.buildQueryString(signParams)
+
+	body, err := HttpPostForm3(this.client, url, postData, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+
+	if err != nil {
+		return "", err
+	}
+
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		Data struct {
+		   OrderId decimal.Decimal		`json:"order_id"`
+	   }
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return "", err
+	}
+
+	if !resp.Code.IsZero() {
+		return "", fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	return resp.Data.OrderId.String(), nil
+}
+
+func (this *CoinTiger) CancelOrder(symbol string, orderIds []string) (error, []error) {
+	var errors = make([]error, len(orderIds))
+
+	symbol = this.transSymbol(symbol)
+	bytes, _ := json.Marshal(map[string][]string{symbol: orderIds})
+	signParams := map[string]string {
+		"orderIdList": string(bytes),
+
+	}
+	signParams = this.sign(signParams)
+
+	queryParams := map[string]string {
+		"api_key": this.ApiKey,
+		"time": signParams["time"],
+		"sign": signParams["sign"],
+	}
+
+	delete(signParams, "api_key")
+	delete(signParams, "sign")
+
+	queryString := this.buildQueryString(queryParams)
+
+	data := this.buildQueryString(signParams)
+	url := Trading_Macro_v2 + CANCEL_ORDER + "?" + queryString
+
+	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+
+	if err != nil {
+		return err, errors
+	}
+
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		Data struct {
+			Success []decimal.Decimal
+			Failed []struct {
+				OrderId decimal.Decimal `json:"order-id"`
+				ErrCode decimal.Decimal	`json:"err-code"`
+			}
+		}
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err, errors
+	}
+
+	if !resp.Code.IsZero() {
+		return fmt.Errorf("error code: %s", resp.Code), errors
+	}
+
+	var m = make(map[string]int)
+	for i, orderId := range orderIds {
+		m[orderId] = i
+	}
+
+	for _, r := range resp.Data.Failed {
+		index := m[r.OrderId.String()]
+		errors[index] = fmt.Errorf("error_code: %s", r.ErrCode)
+	}
+
+	return nil, errors
+}
+
+func (this *CoinTiger) QueryPendingOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
+	if pageSize == 0 || pageSize > 50 {
+		pageSize = 50
+	}
+
+	param := map[string]string {
+		"symbol": this.transSymbol(symbol),
+		"states": "new,part_filled",
+		"direct": "prev",
+	}
+	if from != "" {
+		param["from"] = from
+	}
+	if pageSize > 0 {
+		param["size"] = strconv.Itoa(pageSize)
+	}
+	param = this.sign(param)
+	url := Trading_Macro_v2 + NEW_ORDER + "?" + this.buildQueryString(param)
+	var resp struct {
+	    Msg string
+	    Code decimal.Decimal
+		Data []OrderInfo
+	}
+
+	err := HttpGet4(this.client, url, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	var ret = make([]OrderDecimal, len(resp.Data))
+	for i := range resp.Data {
+		ret[i] = *resp.Data[i].ToOrderDecimal(symbol)
+	}
+
+	return ret, nil
+}
+
+func (this *CoinTiger) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
+	symbol = strings.ToUpper(symbol)
+	param := this.sign(map[string]string {
+		"symbol": this.transSymbol(symbol),
+		"order_id": orderId,
+	})
+
+	url := fmt.Sprintf(Trading_Macro_v2 + ORDER_INFO + "?" + this.buildQueryString(param))
+
+	var resp struct {
+	    Msg string
+	    Code decimal.Decimal
+		Data *OrderInfo
+	}
+
+	err := HttpGet4(this.client, url, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	if resp.Data == nil || resp.Data.Id.IsZero() {
+		return nil, nil
+	}
+
+	return resp.Data.ToOrderDecimal(symbol), nil
+}
