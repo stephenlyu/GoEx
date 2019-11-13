@@ -51,10 +51,10 @@ type Trade struct {
 type TradeDecimal struct {
 	Tid    int64   `json:"tid"`
 	Type   string  `json:"type"`
-	Amount decimal.Decimal `json:"amount,string"`
-	Price  decimal.Decimal `json:"price,string"`
+	Amount decimal.Decimal `json:"amount"`
+	Price  decimal.Decimal `json:"price"`
 	Date   int64   `json:"date_ms"`
-	Time   string
+	Time   string	`json:"-"`
 }
 
 type SubAccount struct {
@@ -143,8 +143,8 @@ type Depth struct {
 }
 
 type DepthRecordDecimal struct {
-	Price,
-	Amount decimal.Decimal
+	Price decimal.Decimal		`json:"price"`
+	Amount decimal.Decimal		`json:"amount"`
 }
 
 type DepthRecordsDecimal []DepthRecordDecimal
