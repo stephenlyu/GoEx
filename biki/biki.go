@@ -11,7 +11,7 @@ import (
 	. "github.com/stephenlyu/GoEx"
 	"strconv"
 	"sort"
-	"github.com/qiniu/api.v6/url"
+	"net/url"
 )
 
 const (
