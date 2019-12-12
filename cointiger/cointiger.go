@@ -509,6 +509,9 @@ func (this *CoinTiger) CancelOrder(symbol string, orderIds []string) (error, []e
 
 	for _, r := range resp.Data.Failed {
 		index := m[r.OrderId.String()]
+		if r.ErrCode.IntPart() == 8 {
+			continue
+		}
 		errors[index] = fmt.Errorf("error_code: %s", r.ErrCode)
 	}
 
