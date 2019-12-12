@@ -60,14 +60,14 @@ func TestCoinTiger_GetTicker(t *testing.T) {
 
 func TestCoinTiger_GetDepth(t *testing.T) {
 	api := NewCoinTiger("", "")
-	ret, err := api.GetDepth("ETC_USDT")
+	ret, err := api.GetDepth("LEEE_USDT")
 	chk(err)
 	output(ret)
 }
 
 func TestCoinTiger_GetTrades(t *testing.T) {
 	api := NewCoinTiger("", "")
-	ret, err := api.GetTrades("TCH_USDT")
+	ret, err := api.GetTrades("LEEE_USDT")
 	chk(err)
 	output(ret)
 }
@@ -80,7 +80,7 @@ func TestCoinTiger_GetAccount(t *testing.T) {
 
 func TestCoinTiger_PlaceOrder(t *testing.T) {
 	code := "TCH_USDT"
-	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(1000), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.024))
+	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(30000), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.02192))
 	assert.Nil(t, err)
 	output(orderId)
 }
@@ -94,7 +94,7 @@ func TestCoinTiger_CancelOrder(t *testing.T) {
 }
 
 func TestCoinTiger_GetPendingOrders(t *testing.T) {
-	code := "TCH_USDT"
+	code := "LEEE_USDT"
 	orders, err := api.QueryPendingOrders(code, "", 50)
 	assert.Nil(t, err)
 	output(orders)

@@ -33,7 +33,7 @@ const (
 	Trading_Macro = "https://" + Host + "/exchange/trading"
 	Trading_Macro_v2 = "https://" + Host + "/exchange/trading/api/v2"
 	Market_Macro = "https://" + Host + "/exchange/trading/api"
-	COMMON_SYMBOLS = "/currencys/v2"
+	COMMON_SYMBOLS = "/currencys"
 	GET_TICKER = "/market/detail?symbol=%s"
 	GET_MARKET_DEPH = "/market/depth?symbol=%s&type=step0"
 	GET_TRADES = "/market/history/trade?symbol=%s&size=1"
