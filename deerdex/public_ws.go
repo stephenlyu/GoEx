@@ -22,7 +22,7 @@ func (this *DeerDex) createPublicWsConn() {
 			this.publicWs.SetErrorHandler(this.errorHandle)
 			this.publicWs.ReConnect()
 			this.publicWs.ReceiveMessageEx(func(isBin bool, msg []byte) {
-				println(string(msg))
+				//println(string(msg))
 
 				var data struct {
 					Ping int64

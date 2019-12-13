@@ -226,3 +226,11 @@ func HttpDeleteForm(client *http.Client, reqUrl string, postData url.Values, hea
 	headers["Content-Type"] = "application/x-www-form-urlencoded"
 	return NewHttpRequest(client, "DELETE", reqUrl, postData.Encode(), headers)
 }
+
+func HttpDeleteForm3(client *http.Client, reqUrl string, postData string, headers map[string]string) ([]byte, error) {
+	return NewHttpRequest(client, "DELETE", reqUrl, postData, headers)
+}
+
+func HttpPutForm3(client *http.Client, reqUrl string, postData string, headers map[string]string) ([]byte, error) {
+	return NewHttpRequest(client, "PUT", reqUrl, postData, headers)
+}

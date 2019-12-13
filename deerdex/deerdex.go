@@ -18,13 +18,8 @@ const (
 	ORDER_SELL = "SELL"
 	ORDER_BUY = "BUY"
 
-	ORDER_TYPE_LIMIT = 1
-	ORDER_TYPE_MARKET = 2
-
-	OrderTypeBuyMarket = "buy-market"
-	OrderTypeBuyLimit = "buy-limit"
-	OrderTypeSellMarket = "sell-market"
-	OrderTypeSellLimit = "sell-limit"
+	ORDER_TYPE_LIMIT = "LIMIT"
+	ORDER_TYPE_MARKET = "MARKET"
 )
 
 const (
@@ -40,6 +35,8 @@ const (
 	NEW_ORDER = "/openapi/v1/openOrders"
 	ORDER_INFO = "/openapi/v1/order"
 	His_ORDER = "/openapi/v1/historyOrders"
+
+	USER_DATA_STREAM = "/openapi/v1/userDataStream"
 )
 
 type DeerDex struct {
@@ -148,7 +145,6 @@ func (this *DeerDex) transSymbol(symbol string) string {
 func (this *DeerDex) GetTicker(symbol string) (*TickerDecimal, error) {
 	symbol = this.transSymbol(symbol)
 	url := fmt.Sprintf(API_BASE + GET_TICKER, symbol)
-	println(url)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -314,7 +310,7 @@ func (this *DeerDex) signData(data string) string {
 	return sign
 }
 
-func (this *DeerDex) sign(param map[string]string) map[string]string {
+func (this *DeerDex) sign(param map[string]string) string {
 	timestamp := strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 	param["timestamp"] = timestamp
 
@@ -323,10 +319,8 @@ func (this *DeerDex) sign(param map[string]string) map[string]string {
 		parts = append(parts, k + "=" + v)
 	}
 	data := strings.Join(parts, "&")
-	println(data)
 	sign := this.signData(data)
-	param["signature"] = sign
-	return param
+	return data + "&signature=" + sign
 }
 
 func (this *DeerDex) buildQueryString(param map[string]string) string {
@@ -346,9 +340,9 @@ func (this *DeerDex) authHeader() map[string]string {
 
 func (this *DeerDex) GetAccount() ([]SubAccountDecimal, error) {
 	params := map[string]string {}
-	params = this.sign(params)
+	queryString := this.sign(params)
 
-	url := API_BASE + ACCOUNT + "?" + this.buildQueryString(params)
+	url := API_BASE + ACCOUNT + "?" + queryString
 	var resp struct {
 		Msg string
 		Code decimal.Decimal
@@ -386,190 +380,210 @@ func (this *DeerDex) GetAccount() ([]SubAccountDecimal, error) {
 	return ret, nil
 }
 
-//func (this *DeerDex) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
-//	symbol = this.transSymbol(symbol)
-//	signParams := map[string]string {
-//		"side": side,
-//		"volume": volume.String(),
-//		"type": strconv.Itoa(_type),
-//		"symbol": symbol,
-//		"price": price.String(),
-//	}
-//	signParams = this.sign(signParams)
-//
-//	queryParams := map[string]string {
-//		"api_key": this.ApiKey,
-//		"time": signParams["time"],
-//		"sign": signParams["sign"],
-//	}
-//
-//	delete(signParams, "api_key")
-//	delete(signParams, "sign")
-//
-//	queryString := this.buildQueryString(queryParams)
-//	url := Trading_Macro_v2 + CREATE_ORDER + "?" + queryString
-//
-//	postData := this.buildQueryString(signParams)
-//
-//	body, err := HttpPostForm3(this.client, url, postData, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
-//
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//		Data struct {
-//		   OrderId decimal.Decimal		`json:"order_id"`
-//	   }
-//	}
-//
-//	err = json.Unmarshal(body, &resp)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	if !resp.Code.IsZero() {
-//		return "", fmt.Errorf("error code: %s", resp.Code)
-//	}
-//
-//	return resp.Data.OrderId.String(), nil
-//}
-//
-//func (this *DeerDex) CancelOrder(symbol string, orderIds []string) (error, []error) {
-//	var errors = make([]error, len(orderIds))
-//
-//	symbol = this.transSymbol(symbol)
-//	bytes, _ := json.Marshal(map[string][]string{symbol: orderIds})
-//	signParams := map[string]string {
-//		"orderIdList": string(bytes),
-//
-//	}
-//	signParams = this.sign(signParams)
-//
-//	queryParams := map[string]string {
-//		"api_key": this.ApiKey,
-//		"time": signParams["time"],
-//		"sign": signParams["sign"],
-//	}
-//
-//	delete(signParams, "api_key")
-//	delete(signParams, "sign")
-//
-//	queryString := this.buildQueryString(queryParams)
-//
-//	data := this.buildQueryString(signParams)
-//	url := Trading_Macro_v2 + CANCEL_ORDER + "?" + queryString
-//
-//	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
-//
-//	if err != nil {
-//		return err, errors
-//	}
-//
-//	var resp struct {
-//		Msg string
-//		Code decimal.Decimal
-//		Data struct {
-//			Success []decimal.Decimal
-//			Failed []struct {
-//				OrderId decimal.Decimal `json:"order-id"`
-//				ErrCode decimal.Decimal	`json:"err-code"`
-//			}
-//		}
-//	}
-//
-//	err = json.Unmarshal(body, &resp)
-//	if err != nil {
-//		return err, errors
-//	}
-//
-//	if !resp.Code.IsZero() {
-//		return fmt.Errorf("error code: %s", resp.Code), errors
-//	}
-//
-//	var m = make(map[string]int)
-//	for i, orderId := range orderIds {
-//		m[orderId] = i
-//	}
-//
-//	for _, r := range resp.Data.Failed {
-//		index := m[r.OrderId.String()]
-//		errors[index] = fmt.Errorf("error_code: %s", r.ErrCode)
-//	}
-//
-//	return nil, errors
-//}
-//
-//func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
-//	if pageSize == 0 || pageSize > 50 {
-//		pageSize = 50
-//	}
-//
-//	param := map[string]string {
-//		"symbol": this.transSymbol(symbol),
-//		"states": "new,part_filled",
-//		"direct": "prev",
-//	}
-//	if from != "" {
-//		param["from"] = from
-//	}
-//	if pageSize > 0 {
-//		param["size"] = strconv.Itoa(pageSize)
-//	}
-//	param = this.sign(param)
-//	url := Trading_Macro_v2 + NEW_ORDER + "?" + this.buildQueryString(param)
-//	var resp struct {
-//	    Msg string
-//	    Code decimal.Decimal
-//		Data []OrderInfo
-//	}
-//
-//	err := HttpGet4(this.client, url, nil, &resp)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if !resp.Code.IsZero() {
-//		return nil, fmt.Errorf("error code: %s", resp.Code)
-//	}
-//
-//	var ret = make([]OrderDecimal, len(resp.Data))
-//	for i := range resp.Data {
-//		ret[i] = *resp.Data[i].ToOrderDecimal(symbol)
-//	}
-//
-//	return ret, nil
-//}
-//
-//func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
-//	symbol = strings.ToUpper(symbol)
-//	param := this.sign(map[string]string {
-//		"symbol": this.transSymbol(symbol),
-//		"order_id": orderId,
-//	})
-//
-//	url := fmt.Sprintf(Trading_Macro_v2 + ORDER_INFO + "?" + this.buildQueryString(param))
-//
-//	var resp struct {
-//	    Msg string
-//	    Code decimal.Decimal
-//		Data *OrderInfo
-//	}
-//
-//	err := HttpGet4(this.client, url, nil, &resp)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if !resp.Code.IsZero() {
-//		return nil, fmt.Errorf("error code: %s", resp.Code)
-//	}
-//
-//	if resp.Data == nil || resp.Data.Id.IsZero() {
-//		return nil, nil
-//	}
-//
-//	return resp.Data.ToOrderDecimal(symbol), nil
-//}
+func (this *DeerDex) PlaceOrder(volume decimal.Decimal, side string, _type string, symbol string, price decimal.Decimal) (string, error) {
+	symbol = this.transSymbol(symbol)
+	signParams := map[string]string {
+		"side": side,
+		"quantity": volume.String(),
+		"type": _type,
+		"symbol": symbol,
+		"price": price.String(),
+		"timeInForce": "GTC",
+	}
+	postData := this.sign(signParams)
+
+	url := API_BASE + CREATE_ORDER
+
+	body, err := HttpPostForm3(this.client, url, postData, this.authHeader())
+
+	if err != nil {
+		return "", err
+	}
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		OrderId decimal.Decimal		`json:"orderId"`
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return "", err
+	}
+
+	if !resp.Code.IsZero() {
+		return "", fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	return resp.OrderId.String(), nil
+}
+
+func (this *DeerDex) CancelOrder(orderId string) error {
+	signParams := map[string]string {
+		"orderId": orderId,
+
+	}
+	postData := this.sign(signParams)
+	url := API_BASE + CANCEL_ORDER + "?" + postData
+	body, err := HttpDeleteForm3(this.client, url, "", this.authHeader())
+
+	if err != nil {
+		if strings.Contains(err.Error(), "-1142") {
+			return nil
+		}
+		return err
+	}
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Code.IsZero() {
+		return fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	return nil
+}
+
+func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
+	if pageSize == 0 || pageSize > 50 {
+		pageSize = 50
+	}
+
+	param := map[string]string {
+		"symbol": this.transSymbol(symbol),
+	}
+	if from != "" {
+		param["orderId"] = from
+	}
+	if pageSize > 0 {
+		param["limit"] = strconv.Itoa(pageSize)
+	}
+	queryStr := this.sign(param)
+	url := API_BASE + NEW_ORDER + "?" + queryStr
+
+	bytes, err := HttpGet6(this.client, url, this.authHeader())
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(string(bytes), "{") {
+		var resp struct {
+			Msg string
+			Code decimal.Decimal
+		}
+
+		err = json.Unmarshal(bytes, &resp)
+		if err != nil {
+			return nil, err
+		}
+
+		if !resp.Code.IsZero() {
+			return nil, fmt.Errorf("error code: %s", resp.Code)
+		}
+	}
+
+	var l []OrderInfo
+	err = json.Unmarshal(bytes, &l)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret = make([]OrderDecimal, len(l))
+	for i := range l {
+		ret[i] = *l[i].ToOrderDecimal(symbol)
+	}
+
+	return ret, nil
+}
+
+func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
+	symbol = strings.ToUpper(symbol)
+	queryStr := this.sign(map[string]string {
+		"orderId": orderId,
+	})
+
+	url := API_BASE + ORDER_INFO + "?" + queryStr
+
+	var resp *OrderInfo
+
+	err := HttpGet4(this.client, url, this.authHeader(), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Code.IsZero() {
+		return nil, fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	if resp == nil || resp.OrderId.IsZero() {
+		return nil, nil
+	}
+
+	return resp.ToOrderDecimal(symbol), nil
+}
+
+// User Stream Helpers
+
+func (this *DeerDex) CreateListenKey() (string, error) {
+	signParams := map[string]string {}
+	postData := this.sign(signParams)
+
+	url := API_BASE + USER_DATA_STREAM
+
+	body, err := HttpPostForm3(this.client, url, postData, this.authHeader())
+
+	if err != nil {
+		return "", err
+	}
+
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+		ListenKey string
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return "", err
+	}
+
+	if !resp.Code.IsZero() {
+		return "", fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	return resp.ListenKey, nil
+}
+
+func (this *DeerDex) ListenKeyKeepAlive(listenKey string) (error) {
+	signParams := map[string]string {
+		"listenKey": listenKey,
+	}
+	postData := this.sign(signParams)
+
+	url := API_BASE + USER_DATA_STREAM
+	body, err := HttpPutForm3(this.client, url, postData, this.authHeader())
+
+	if err != nil {
+		return err
+	}
+
+	var resp struct {
+		Msg string
+		Code decimal.Decimal
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return err
+	}
+
+	if !resp.Code.IsZero() {
+		return fmt.Errorf("error code: %s", resp.Code)
+	}
+
+	return nil
+}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"io/ioutil"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 )
 
 var api *DeerDex
@@ -76,35 +78,32 @@ func TestDeerDex_GetAccount(t *testing.T) {
 	output(ret)
 }
 
-//func TestDeerDex_PlaceOrder(t *testing.T) {
-//	code := "TCH_USDT"
-//	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(30000), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.02192))
-//	assert.Nil(t, err)
-//	output(orderId)
-//}
-//
-//func TestDeerDex_CancelOrder(t *testing.T) {
-//	code := "TCH_USDT"
-//	err, errors := api.CancelOrder(code, []string{"1000000"})
-//	assert.Nil(t, err)
-//	assert.True(t, len(errors)==1)
-//	assert.Nil(t, errors[0])
-//}
-//
-//func TestDeerDex_GetPendingOrders(t *testing.T) {
-//	code := "TCH_USDT"
-//	orders, err := api.QueryPendingOrders(code, "", 50)
-//	assert.Nil(t, err)
-//	output(orders)
-//}
-//
-//func TestDeerDex_GetOrder(t *testing.T) {
-//	code := "TCH_USDT"
-//	order, err := api.QueryOrder(code, "1000000")
-//	assert.Nil(t, err)
-//	output(order)
-//}
-//
+func TestDeerDex_PlaceOrder(t *testing.T) {
+	code := "LEEE_USDT"
+	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(100), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.005))
+	assert.Nil(t, err)
+	output(orderId)
+}
+
+func TestDeerDex_CancelOrder(t *testing.T) {
+	err := api.CancelOrder("515778354371116288")
+	assert.Nil(t, err)
+}
+
+func TestDeerDex_GetPendingOrders(t *testing.T) {
+	code := "LEEE_USDT"
+	orders, err := api.QueryPendingOrders(code, "", 100)
+	assert.Nil(t, err)
+	output(orders)
+}
+
+func TestDeerDex_GetOrder(t *testing.T) {
+	code := "LEEE_USDT"
+	order, err := api.QueryOrder(code, "515104109123199488")
+	assert.Nil(t, err)
+	output(order)
+}
+
 
 //func TestZBG_CancelAll(t *testing.T) {
 //	code := "sht_usdt"
@@ -161,3 +160,12 @@ func TestDeerDex_GetAccount(t *testing.T) {
 //	assert.Nil(t, err)
 //	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
 //}
+
+func TestDeerDex_CreateListenKey(t *testing.T) {
+	ret, err := api.CreateListenKey()
+	chk(err)
+	output(ret)
+
+	err = api.ListenKeyKeepAlive(ret)
+	chk(err)
+}
