@@ -430,6 +430,9 @@ func (this *DeerDex) CancelOrder(orderId string) error {
 		if strings.Contains(err.Error(), "-1142") {
 			return nil
 		}
+		if strings.Contains(err.Error(), "-1139") {
+			return nil
+		}
 		return err
 	}
 	var resp struct {
