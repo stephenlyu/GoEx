@@ -79,8 +79,8 @@ func TestCoinTiger_GetAccount(t *testing.T) {
 }
 
 func TestCoinTiger_PlaceOrder(t *testing.T) {
-	code := "TCH_USDT"
-	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(30000), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.02192))
+	code := "LEEE_USDT"
+	orderId, err := api.PlaceOrder(decimal.NewFromFloat32(100000), ORDER_BUY, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.001639))
 	assert.Nil(t, err)
 	output(orderId)
 }
@@ -94,15 +94,16 @@ func TestCoinTiger_CancelOrder(t *testing.T) {
 }
 
 func TestCoinTiger_GetPendingOrders(t *testing.T) {
-	code := "LEEE_USDT"
+	code := "LEEE_TCH"
 	orders, err := api.QueryPendingOrders(code, "", 50)
 	assert.Nil(t, err)
 	output(orders)
+	println(len(orders))
 }
 
 func TestCoinTiger_GetOrder(t *testing.T) {
-	code := "TCH_USDT"
-	order, err := api.QueryOrder(code, "1000000")
+	code := "LEEE_USDT"
+	order, err := api.QueryOrder(code, "6522")
 	assert.Nil(t, err)
 	output(order)
 }
