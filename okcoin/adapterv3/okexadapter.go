@@ -23,12 +23,21 @@ type OKExQuoter struct {
 }
 
 func newOKExQuoter() quoter.Quoter {
-	return &OKExQuoter{
+	this := &OKExQuoter{
 		okex: okcoin.NewOKExV3(http.DefaultClient, "", "", ""),
 		tickMap: make(map[string]*entity.TickItem),
 		firstTrade: true,
 		instrumentIdSecurityMap: make(map[string]*entity.Security),
 	}
+	this.okex.SetErrorHandler(func (err error) {
+		if err != nil {
+			if this.callback != nil {
+				this.callback.OnError(err)
+			}
+		}
+	})
+
+	return this
 }
 
 func (this *OKExQuoter) Subscribe(security *entity.Security) {
