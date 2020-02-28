@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 	"github.com/stephenlyu/tds/entity"
+	"log"
 )
 
 //
@@ -45,6 +46,8 @@ func (this *InstrumentManager) ensureMap() error {
 		return nil
 	}
 
+	log.Printf("InstrumentManager.ensureMap")
+
 	var err error
 	var instruments []okcoin.V3Instrument
 
@@ -53,7 +56,9 @@ func (this *InstrumentManager) ensureMap() error {
 		if err == nil {
 			break
 		}
-		time.Sleep(time.Second)
+		nSeconds := i * 5 + 1
+		log.Printf("InstrumentManager.ensureMap error: %+v sleep %d seconds", err, nSeconds)
+		time.Sleep(time.Duration(nSeconds)*time.Second)
 	}
 	if err != nil {
 		return err
@@ -70,17 +75,27 @@ func (this *InstrumentManager) ensureMap() error {
 	m := make(map[string]string)
 
 	var missingCode bool
-	for currency, instruments := range currencyInstruments {
+	for currency, l := range currencyInstruments {
+		var instruments []okcoin.V3Instrument
+		for _, ins := range l {
+			switch ins.Alias {
+			default:
+				break
+			case "quarter", "this_week", "next_week":
+				instruments = append(instruments, ins)
+			}
+		}
+
 		if len(instruments) != 3 && len(instruments) != 6 {
 			missingCode = true
 		}
 
-		var code string
 		for _, ins := range instruments {
 			var suffix string
 			if strings.Contains(ins.InstrumentId, "USDT") {
 				suffix = "USDT"
 			}
+			var code string
 			switch ins.Alias {
 			case "quarter":
 				code = fmt.Sprintf("%sQFUT%s.OKEX", currency, suffix)
@@ -89,7 +104,9 @@ func (this *InstrumentManager) ensureMap() error {
 			case "next_week":
 				code = fmt.Sprintf("%sNFUT%s.OKEX", currency, suffix)
 			}
-			m[code] = ins.InstrumentId
+			if code != "" {
+				m[code] = ins.InstrumentId
+			}
 		}
 	}
 	this.lock.Lock()
