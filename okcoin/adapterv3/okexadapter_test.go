@@ -17,6 +17,9 @@ func (this _callback) OnTickItem(tick *entity.TickItem) {
 	//}
 }
 
+func (this *_callback) OnError(error) {
+}
+
 func TestOKExQuoter_Subscribe(t *testing.T) {
 	q := NewOKQutoterFatory().CreateQuoter(nil)
 	q.SetCallback(&_callback{})
