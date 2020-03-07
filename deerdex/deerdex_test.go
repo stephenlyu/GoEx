@@ -8,6 +8,9 @@ import (
 	"io/ioutil"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stephenlyu/GoEx"
+	"time"
+	"github.com/stephenlyu/tds/date"
 )
 
 var api *DeerDex
@@ -104,6 +107,13 @@ func TestDeerDex_GetOrder(t *testing.T) {
 	output(order)
 }
 
+func TestDeerDex_QueryFills(t *testing.T) {
+	timestamp, _ := date.SecondString2Timestamp("20200201 00:00:00")
+	fmt.Println(timestamp)
+	fills, err := api.QueryFills(0, int64(timestamp), 0, 100)
+	assert.Nil(t, err)
+	output(fills)
+}
 
 //func TestZBG_CancelAll(t *testing.T) {
 //	code := "sht_usdt"
@@ -123,43 +133,43 @@ func TestDeerDex_GetOrder(t *testing.T) {
 //	assert.Nil(t, err)
 //	output(orders)
 //}
-//
-//func TestZBG_QueryAllDoneOrders(t *testing.T) {
-//	code := "sht_usdt"
-//
-//	const pageSize = 100
-//
-//	queryDoneOrders := func(page int) (orders []goex.OrderDecimal, err error) {
-//		for i := 0; i < 3; i++ {
-//			orders, err = api.QueryAllOrders(code, page, pageSize)
-//			if err == nil {
-//				break
-//			}
-//			time.Sleep(time.Second)
-//		}
-//		return
-//	}
-//
-//	var page = 1
-//	var allOrders []goex.OrderDecimal
-//
-//	for {
-//		orders, err := queryDoneOrders(page)
-//		assert.Nil(t, err)
-//		if len(orders) == 0 {
-//			break
-//		}
-//		fmt.Printf("Get page %d... lastId: %s\n", page, orders[len(orders) - 1].OrderID2)
-//		allOrders = append(allOrders, orders...)
-//		if len(allOrders) > 5000 {
-//			break
-//		}
-//		page++
-//	}
-//	bytes, err := json.MarshalIndent(allOrders, "", "  ")
-//	assert.Nil(t, err)
-//	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
-//}
+
+func Test_QueryAllDoneOrders(t *testing.T) {
+	code := "ODIN_USDT"
+
+	const pageSize = 100
+
+	queryHisOrders := func(fromOrderId string) (orders []goex.OrderDecimal, err error) {
+		for i := 0; i < 3; i++ {
+			orders, err = api.QueryHisOrders(code, fromOrderId, pageSize)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+		return
+	}
+
+	var fromOrderId string
+	var allOrders []goex.OrderDecimal
+
+	for {
+		orders, err := queryHisOrders(fromOrderId)
+		assert.Nil(t, err)
+		if len(orders) == 0 {
+			break
+		}
+		fmt.Printf("Get page %s... lastId: %s\n", fromOrderId, orders[len(orders) - 1].OrderID2)
+		allOrders = append(allOrders, orders...)
+		if len(allOrders) > 5000 {
+			break
+		}
+		fromOrderId = orders[len(orders)-1].OrderID2
+	}
+	bytes, err := json.MarshalIndent(allOrders, "", "  ")
+	assert.Nil(t, err)
+	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
+}
 
 func TestDeerDex_CreateListenKey(t *testing.T) {
 	ret, err := api.CreateListenKey()

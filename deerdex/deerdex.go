@@ -35,6 +35,7 @@ const (
 	NEW_ORDER = "/openapi/v1/openOrders"
 	ORDER_INFO = "/openapi/v1/order"
 	His_ORDER = "/openapi/v1/historyOrders"
+	MY_TRADES = "/openapi/v1/myTrades"
 
 	USER_DATA_STREAM = "/openapi/v1/userDataStream"
 )
@@ -503,6 +504,57 @@ func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int
 	return ret, nil
 }
 
+func (this *DeerDex) QueryHisOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
+	if pageSize == 0 || pageSize > 50 {
+		pageSize = 50
+	}
+
+	param := map[string]string {
+		"symbol": this.transSymbol(symbol),
+	}
+	if from != "" {
+		param["orderId"] = from
+	}
+	if pageSize > 0 {
+		param["limit"] = strconv.Itoa(pageSize)
+	}
+	queryStr := this.sign(param)
+	url := API_BASE + His_ORDER + "?" + queryStr
+
+	bytes, err := HttpGet6(this.client, url, this.authHeader())
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(string(bytes), "{") {
+		var resp struct {
+			Msg string
+			Code decimal.Decimal
+		}
+
+		err = json.Unmarshal(bytes, &resp)
+		if err != nil {
+			return nil, err
+		}
+
+		if !resp.Code.IsZero() {
+			return nil, fmt.Errorf("error code: %s", resp.Code)
+		}
+	}
+
+	var l []OrderInfo
+	err = json.Unmarshal(bytes, &l)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret = make([]OrderDecimal, len(l))
+	for i := range l {
+		ret[i] = *l[i].ToOrderDecimal(symbol)
+	}
+
+	return ret, nil
+}
+
 func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
 	symbol = strings.ToUpper(symbol)
 	queryStr := this.sign(map[string]string {
@@ -527,6 +579,57 @@ func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, e
 	}
 
 	return resp.ToOrderDecimal(symbol), nil
+}
+
+func (this *DeerDex) QueryFills(startTime, endTime int64, fromId int64, pageSize int) ([]Fill, error) {
+	if pageSize == 0 || pageSize > 50 {
+		pageSize = 50
+	}
+
+	param := map[string]string {
+	}
+	if startTime > 0 {
+		param["startTime"] = strconv.FormatInt(startTime, 10)
+	}
+	if endTime > 0 {
+		param["endTime"] = strconv.FormatInt(endTime, 10)
+	}
+	if fromId > 0 {
+		param["fromId"] = strconv.FormatInt(fromId, 10)
+	}
+	if pageSize > 0 {
+		param["limit"] = strconv.Itoa(pageSize)
+	}
+	queryStr := this.sign(param)
+	url := API_BASE + MY_TRADES + "?" + queryStr
+
+	bytes, err := HttpGet6(this.client, url, this.authHeader())
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(string(bytes), "{") {
+		var resp struct {
+			Msg string
+			Code decimal.Decimal
+		}
+
+		err = json.Unmarshal(bytes, &resp)
+		if err != nil {
+			return nil, err
+		}
+
+		if !resp.Code.IsZero() {
+			return nil, fmt.Errorf("error code: %s", resp.Code)
+		}
+	}
+
+	var l []Fill
+	err = json.Unmarshal(bytes, &l)
+	if err != nil {
+		return nil, err
+	}
+
+	return l, nil
 }
 
 // User Stream Helpers

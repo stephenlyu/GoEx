@@ -81,3 +81,16 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 		Side: side,
 	}
 }
+
+type Fill struct {
+	Symbol string
+	Id decimal.Decimal
+	OrderId decimal.Decimal
+	Price decimal.Decimal
+	Qty decimal.Decimal
+	Commission decimal.Decimal
+	CommissionAsset string
+	Time decimal.Decimal
+	IsBuyer bool
+	IsMaker bool
+}
