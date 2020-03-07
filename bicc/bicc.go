@@ -27,12 +27,13 @@ const (
 )
 
 const (
-	OrderStatusNew = "NEW"
-	OrderStatusPartiallyFilled = "PARTIALLY_FILLED"
-	OrderStatusFilled = "FILLED"
-	OrderStatusCanceled = "CANCELED"
-	OrderStatusPendingCancel = "PENDING_CANCEL"
-	OrderStatusRejected = "REJECTED"
+	OrderStatusInit = 0
+	OrderStatusNew = 1
+	OrderStatusPartiallyFilled = 3
+	OrderStatusFilled = 2
+	OrderStatusCanceled = 4
+	OrderStatusPendingCancel = 5
+	OrderStatusRejected = 6
 )
 
 const (
@@ -43,6 +44,7 @@ const (
 	GET_TRADES = "/open/api/get_trades?symbol=%s"
 	ACCOUNT = "/open/api/user/account"
 	CREATE_ORDER = "/open/api/create_order"
+	BATCH_REPLACE = "/open/api/mass_replace"
 	CANCEL_ORDER = "/open/api/cancel_order"
 	NEW_ORDER = "/open/api/v2/new_order"
 	ORDER_INFO = "/open/api/order_info"
@@ -324,27 +326,16 @@ func (this *Bicc) buildQueryString(param map[string]string) string {
 		return keys[i] < keys[j]
 	})
 
+	var sign string
 	for _, k := range keys {
 		v := param[k]
+		if k == "sign" {
+			sign = v
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
 	}
-	return strings.Join(parts, "&")
-}
-
-func (this *Bicc) buildQueryStringUnescape(param map[string]string) string {
-	var parts []string
-	var keys []string
-	for k := range param {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-
-	for _, k := range keys {
-		v := param[k]
-		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
-	}
+	parts = append(parts, fmt.Sprintf("sign=%s", url.QueryEscape(sign)))
 	return strings.Join(parts, "&")
 }
 
@@ -378,6 +369,7 @@ func (this *Bicc) sign(param map[string]string) map[string]string {
 
 func (this *Bicc) getAuthHeader() map[string]string {
 	return map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
 	}
 }
 
@@ -440,13 +432,15 @@ func (this *Bicc) PlaceOrder(volume decimal.Decimal, side string, _type string, 
 
 	params = this.sign(params)
 
-	data, _ := json.Marshal(params)
+	data := this.buildQueryString(params)
+	println(data)
 	url := API_BASE_URL + CREATE_ORDER
-	body, err := HttpPostJson(this.client, url, string(data), this.getAuthHeader())
+	body, err := HttpPostForm3(this.client, url, data, this.getAuthHeader())
 
 	if err != nil {
 		return "", err
 	}
+	println(string(body))
 
 	var resp struct {
 		Msg  string
@@ -468,25 +462,18 @@ func (this *Bicc) PlaceOrder(volume decimal.Decimal, side string, _type string, 
 	return resp.Data.OrderId.String(), nil
 }
 
-func (this *Bicc) CancelOrder(orderId, clientOrderId string) error {
+func (this *Bicc) CancelOrder(symbol, orderId string) error {
+	symbol = this.transSymbol(symbol)
 	params := map[string]string{
-	}
-	if orderId != "" {
-		params["orderId"] = orderId
-	}
-	if clientOrderId != "" {
-		params["clientOrderId"] = clientOrderId
+		"symbol": symbol,
+		"order_id": orderId,
 	}
 	params = this.sign(params)
 
 	data := this.buildQueryString(params)
-	url := API_BASE_URL + CANCEL_ORDER + "?" + data
-	body, err := HttpDeleteForm3(this.client, url, "", this.getAuthHeader())
-
+	url := API_BASE_URL + CANCEL_ORDER
+	body, err := HttpPostForm3(this.client, url, data, this.getAuthHeader())
 	if err != nil {
-		if strings.Contains(err.Error(), "-2013") {
-			return ErrNotExist
-		}
 		return err
 	}
 
@@ -500,75 +487,41 @@ func (this *Bicc) CancelOrder(orderId, clientOrderId string) error {
 		return err
 	}
 
-	if resp.Code.IntPart() != 0 {
+	if resp.Code.IntPart() == 22 {
+		return ErrNotExist
+	}
+
+	if resp.Code.IntPart() != 0 && resp.Code.IntPart() != -1 {
 		return fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
 	return nil
 }
 
-func (this *Bicc) QueryPendingOrders(symbol string, orderId string, limit int) ([]OrderDecimal, error) {
+func (this *Bicc) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
+	if pageSize == 0 {
+		pageSize = 20
+	}
 	param := map[string]string{
 		"symbol": this.transSymbol(symbol),
 	}
-	if orderId != "" {
-		param["orderId"] = orderId
-	}
-	if limit > 0 {
-		param["limit"] = strconv.Itoa(limit)
-	}
+	param["page"] = strconv.Itoa(page)
+	param["pageSize"] = strconv.Itoa(pageSize)
 	param = this.sign(param)
 
 	url := fmt.Sprintf(API_BASE_URL + NEW_ORDER + "?" + this.buildQueryString(param))
 
-	bytes, err := HttpGet6(this.client, url, this.getAuthHeader())
-	if err != nil {
-		return nil, err
+	var resp struct {
+		Code decimal.Decimal
+		Msg  string
+		Data struct {
+				 Count      int
+				 ResultList []OrderInfo
+			 }
 	}
-	if strings.HasPrefix(strings.TrimSpace(string(bytes)), "{") {
-		var resp struct {
-			Msg  string
-			Code decimal.Decimal
-		}
-		err = json.Unmarshal(bytes, &resp)
-		if err != nil {
-			return nil, err
-		}
-		if resp.Code.IntPart() != 0 {
-			return nil, fmt.Errorf("error code: %s", resp.Code.String())
-		}
-		panic("unreachable code")
-	}
-
-	var data []OrderInfo
-	err = json.Unmarshal(bytes, &data)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret = make([]OrderDecimal, len(data))
-	for i := range data {
-		symbol := this.getPairByName(data[i].Symbol)
-		ret[i] = *data[i].ToOrderDecimal(symbol)
-	}
-
-	return ret, nil
-}
-
-func (this *Bicc) QueryOrder(orderId string) (*OrderDecimal, error) {
-	param := this.sign(map[string]string{
-		"orderId": orderId,
-	})
-
-	url := fmt.Sprintf(API_BASE_URL + ORDER_INFO + "?" + this.buildQueryString(param))
-
-	var resp OrderInfo
 
 	err := HttpGet4(this.client, url, this.getAuthHeader(), &resp)
 	if err != nil {
-		if strings.Contains(err.Error(), "-2013") {
-			return nil, ErrNotExist
-		}
 		return nil, err
 	}
 
@@ -576,7 +529,125 @@ func (this *Bicc) QueryOrder(orderId string) (*OrderDecimal, error) {
 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	symbol := this.getPairByName(resp.Symbol)
+	var ret = make([]OrderDecimal, len(resp.Data.ResultList))
+	for i := range resp.Data.ResultList {
+		ret[i] = *resp.Data.ResultList[i].ToOrderDecimal(symbol)
+	}
 
-	return resp.ToOrderDecimal(symbol), nil
+	return ret, nil
+}
+
+func (this *Bicc) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
+	param := this.sign(map[string]string{
+		"symbol": this.transSymbol(symbol),
+		"order_id": orderId,
+	})
+
+	url := fmt.Sprintf(API_BASE_URL + ORDER_INFO + "?" + this.buildQueryString(param))
+
+	var resp struct {
+		Code decimal.Decimal
+		Msg  string
+		Data struct {
+				 OrderInfo *OrderInfo `json:"order_info"`
+			 }
+	}
+
+	err := HttpGet4(this.client, url, this.getAuthHeader(), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code.IntPart() != 0 {
+		return nil, fmt.Errorf("error code: %s", resp.Code.String())
+	}
+
+	if resp.Data.OrderInfo == nil {
+		return nil, ErrNotExist
+	}
+
+	return resp.Data.OrderInfo.ToOrderDecimal(symbol), nil
+}
+
+func (this *Bicc) BatchReplace(symbol string, cancelOrderIds []string, placeReqList []OrderReq) (cancelErrors []error, orderIds []string, placeErrList []error, err error) {
+	cancelErrors = make([]error, len(cancelOrderIds))
+	orderIds = make([]string, len(placeReqList))
+	placeErrList = make([]error, len(placeReqList))
+
+	symbol = this.transSymbol(symbol)
+	params := map[string]string{
+		"symbol": symbol,
+	}
+
+	if len(cancelOrderIds) > 0 {
+		bytes, _ := json.Marshal(cancelOrderIds)
+		params["mass_cancel"] = string(bytes)
+	}
+
+	if len(placeReqList) > 0 {
+		bytes, _ := json.Marshal(placeReqList)
+		params["mass_place"] = string(bytes)
+	}
+
+	params = this.sign(params)
+
+	data := this.buildQueryString(params)
+	url := API_BASE_URL + BATCH_REPLACE
+	var body []byte
+	body, err = HttpPostForm3(this.client, url, data, this.getAuthHeader())
+
+	if err != nil {
+		return
+	}
+
+	var resp struct {
+		Msg  string
+		Code decimal.Decimal
+		Data struct {
+				 MassCancel []struct {
+					 Code    decimal.Decimal
+					 Msg     string
+					 OrderId decimal.Decimal `json:"order_id"`
+				 }`json:"mass_cancel"`
+				 MassPlace  []struct {
+					 Code    decimal.Decimal
+					 Msg     string
+					 OrderId decimal.Decimal `json:"order_id"`
+				 } `json:"mass_place"`
+			 }
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return
+	}
+
+	if resp.Code.IntPart() != 0 {
+		err = fmt.Errorf("error code: %s", resp.Code.String())
+		return
+	}
+
+	if len(resp.Data.MassCancel) != len(cancelOrderIds) {
+		panic("cancel order id count not matched")
+	}
+
+	if len(resp.Data.MassPlace) != len(placeReqList) {
+		panic("place order count not matched")
+	}
+
+	for i, o := range resp.Data.MassCancel {
+		if o.Code.IntPart() != 0 {
+			cancelErrors[i] = fmt.Errorf("error code: %s", o.Code.String())
+		}
+	}
+
+	for i, o := range resp.Data.MassPlace {
+		if o.Code.IntPart() != 0 {
+			placeErrList[i] = fmt.Errorf("error code: %s", o.Code.String())
+		} else {
+			orderIds[i] = o.OrderId.String()
+		}
+	}
+
+	return
 }

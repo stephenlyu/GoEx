@@ -6,33 +6,26 @@ import (
 )
 
 type Symbol struct {
-	Symbol string
-	CountCoin string `json:"count_coin"`
+	Symbol          string
+	CountCoin       string `json:"count_coin"`
 	AmountPrecision int `json:"amount_precision"`
-	BaseCoin string 	`json:"base_coin"`
-	PricePrecision int `json:"price_precision"`
+	BaseCoin        string    `json:"base_coin"`
+	PricePrecision  int `json:"price_precision"`
 }
 
 type OrderInfo struct {
-	Msg string
-	Code decimal.Decimal
-
-	Symbol string
-	OrderId decimal.Decimal
-	ClientOrderId string
-	Price decimal.Decimal
-	OrigQty decimal.Decimal
-	ExecuteQty decimal.Decimal
-	CummulativeQuoteQty decimal.Decimal
-	Status string
-	TimeInForce string
-	Type string
-	Side string
-	StopPrice decimal.Decimal
-	IcebergQty decimal.Decimal
-	Time decimal.Decimal
-	UpdateTime decimal.Decimal
-	IsWorking bool
+	ID         decimal.Decimal
+	Side       string
+	CreatedAt  decimal.Decimal        `json:"created_at"`
+	Price      decimal.Decimal
+	Volume     decimal.Decimal
+	DealVolume decimal.Decimal    `json:"deal_volume"`
+	TotalPrice decimal.Decimal    `json:"total_price"`
+	DealPrice  decimal.Decimal    `json:"deal_price"`
+	Type       decimal.Decimal
+	Fee        decimal.Decimal
+	AvgPrice   decimal.Decimal    `json:"avg_price"`
+	Status     int
 }
 
 func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
@@ -40,7 +33,7 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	switch this.Status {
 	case OrderStatusRejected:
 		status = goex.ORDER_REJECT
-	case OrderStatusNew:
+	case OrderStatusInit, OrderStatusNew:
 		status = goex.ORDER_UNFINISH
 	case OrderStatusCanceled:
 		status = goex.ORDER_CANCEL
@@ -54,36 +47,37 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 
 	var side goex.TradeSide
 	if this.Side == OrderBuy {
-		if this.Type == OrderTypeLimit {
+		if this.Type.String() == OrderTypeLimit {
 			side = goex.BUY
 		} else {
 			side = goex.BUY_MARKET
 		}
 	} else {
-		if this.Type == OrderTypeLimit {
+		if this.Type.String() == OrderTypeLimit {
 			side = goex.SELL
 		} else {
 			side = goex.SELL_MARKET
 		}
 	}
 
-	var avgPrice decimal.Decimal
-	if this.ExecuteQty.IsPositive() {
-		avgPrice = this.CummulativeQuoteQty.Div(this.ExecuteQty)
-	}
-
 	return &goex.OrderDecimal{
 		Price: this.Price,
-		Amount: this.OrigQty,
-		AvgPrice: avgPrice,
-		DealAmount: this.ExecuteQty,
-		Notinal: this.Price.Mul(this.OrigQty),
-		DealNotional: this.CummulativeQuoteQty,
-		OrderID2: this.OrderId.String(),
-		ClientOid: this.ClientOrderId,
-		Timestamp: this.Time.IntPart(),
+		Amount: this.Volume,
+		AvgPrice: this.AvgPrice,
+		DealAmount: this.DealVolume,
+		Notinal: this.Volume.Mul(this.Price),
+		DealNotional: this.DealPrice,
+		OrderID2: this.ID.String(),
+		Timestamp: this.CreatedAt.IntPart(),
 		Status: status,
 		Currency: goex.NewCurrencyPair2(symbol),
 		Side: side,
 	}
+}
+
+type OrderReq struct {
+	Side   string    `json:"side"`
+	Type   string    `json:"type"`
+	Volume decimal.Decimal    `json:"volume"`
+	Price  decimal.Decimal    `json:"price"`
 }
