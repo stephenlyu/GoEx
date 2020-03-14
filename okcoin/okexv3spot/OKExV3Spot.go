@@ -299,7 +299,7 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	println(string(body))
 	var ret *struct {
 		OrderId string `json:"order_id"`
 		ClientOid string `json:"client_oid"`
@@ -312,7 +312,7 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 		return "", err
 	}
 
-	if ret.ErrorCode != "" {
+	if ret.ErrorCode != "" && ret.ErrorCode != "0" {
 		return "", fmt.Errorf("error code: %s", ret.ErrorCode)
 	}
 
@@ -339,11 +339,12 @@ func (ok *OKExV3Spot) CancelOrder(instrumentId, orderId, clientOid string) error
 	reqPath := SPOT_V3_API_BASE_URL + reqUrl
 	body, err := HttpPostJson(ok.client, reqPath, data, header)
 	if err != nil {
-		if strings.Contains(err.Error(), "33027") {
+		if strings.Contains(err.Error(), "33014") {
 			return nil
 		}
 		return err
 	}
+	println(string(body))
 	respMap := make(map[string]interface{})
 	err = json.Unmarshal(body, &respMap)
 
@@ -409,7 +410,7 @@ func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, er
 
 func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clientOids []string) error {
 	param := make(map[string]interface{})
-	param["instrument_id"] = instrumentId
+	param["instrument_id"] = strings.ToLower(instrumentId)
 	if len(orderIds) > 0 {
 		param["order_ids"] = orderIds
 	} else if len(clientOids) > 0 {
@@ -422,7 +423,7 @@ func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clien
 	reqUrl := SPOT_V3_CANCEL_ORDERS
 
 	header := ok.buildHeader("POST", reqUrl, string(bytes))
-
+	println(string(bytes))
 	reqPath := SPOT_V3_API_BASE_URL + reqUrl
 	body, err := HttpPostJson(ok.client, reqPath, string(bytes), header)
 	if err != nil {
@@ -431,9 +432,10 @@ func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clien
 		}
 		return err
 	}
-	var resp map[string]struct {
+	println(string(body))
+	var resp map[string][]struct {
 		Result bool 		`json:"result"`
-		OrderIds []string 	`json:"order_ids"`
+		OrderId string 	`json:"order_id"`
 		ClientOid string 	`json:"client_oid"`
 	}
 	err = json.Unmarshal(body, &resp)

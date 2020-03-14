@@ -78,7 +78,7 @@ func getId() string {
 }
 
 func TestOKExV3Spot_PlaceOrder(t *testing.T) {
-	code := "USDT-USDK"
+	code := "BTC-USDT"
 	clientOid := getId()
 	println(clientOid)
 	orderId, err := okexV3.PlaceOrder(OrderReq{
@@ -87,8 +87,8 @@ func TestOKExV3Spot_PlaceOrder(t *testing.T) {
 		Side: "sell",
 		InstrumentId: code,
 		OrderType: "0",
-		Price: decimal.NewFromFloat(1.0008),
-		Size: decimal.NewFromFloat(42),
+		Price: decimal.NewFromFloat(10000),
+		Size: decimal.NewFromFloat(0.001),
 		MarginTrading: 1,
 	})
 	assert.Nil(t, err)
@@ -100,7 +100,7 @@ func TestOKExV3Spot_PlaceOrder(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrder(t *testing.T) {
-	err := okexV3.CancelOrder("EOS-USDT", "", "cba31249763b45459bbf684bb47f9fb5")
+	err := okexV3.CancelOrder("BTC-USDT", "4552015650759680", "")
 	assert.Nil(t, err)
 }
 
@@ -115,7 +115,7 @@ func TestOKExV3_PlaceOrders(t *testing.T) {
 			InstrumentId: "btc-usdt",
 			OrderType: "0",
 			Price: decimal.NewFromFloat(10000),
-			Size: decimal.NewFromFloat(1),
+			Size: decimal.NewFromFloat(0.001),
 			MarginTrading: 1,
 		},
 	}
@@ -126,12 +126,12 @@ func TestOKExV3_PlaceOrders(t *testing.T) {
 }
 
 func TestOKExV3_FutureCancelOrders(t *testing.T) {
-	err := okexV3.CancelOrders("EOS-USDT", []string {"2500567789935616"}, nil)
+	err := okexV3.CancelOrders("BTC-USDT", []string {"4551966199734272"}, nil)
 	assert.Nil(t, err)
 }
 
 func TestOKExV3_GetInstrumentOrders(t *testing.T) {
-	orders, err := okexV3.GetInstrumentOrders("EOS-USDT", "6", "", "", "")
+	orders, err := okexV3.GetInstrumentOrders("BTC-USDT", "6", "", "", "")
 	assert.Nil(t, err)
 	output(orders)
 }
@@ -143,7 +143,7 @@ func TestOKExV3_GetInstrumentPendingOrders(t *testing.T) {
 }
 
 func TestOKExV3_GetInstrumentOrder(t *testing.T) {
-	order, err := okexV3.GetInstrumentOrder("USDT-USDK", "3034317952855040")
+	order, err := okexV3.GetInstrumentOrder("BTC-USDT", "4552015650759681")
 	assert.Nil(t, err)
 	output(order)
 }
