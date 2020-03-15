@@ -16,6 +16,7 @@ type Symbol struct {
 type OrderInfo struct {
 	ID         decimal.Decimal
 	Price      decimal.Decimal
+	Prize      decimal.Decimal
 	Volume     decimal.Decimal    `json:"count"`
 	DealVolume decimal.Decimal    `json:"success_count"`
 	Side       decimal.Decimal    `json:"type"`
@@ -49,8 +50,13 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 		avgPrice = this.DealPrice.Div(this.DealVolume)
 	}
 
+	var price = this.Price
+	if price.IsZero() {
+		price = this.Prize
+	}
+
 	return &goex.OrderDecimal{
-		Price: this.Price,
+		Price: price,
 		Amount: this.Volume,
 		AvgPrice: avgPrice,
 		DealAmount: this.DealVolume,

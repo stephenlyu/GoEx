@@ -75,11 +75,9 @@ func TestZingEx_GetAccount(t *testing.T) {
 
 func TestZingEx_PlaceOrder(t *testing.T) {
 	code := "BTC_USDT"
-	for i := 0; i < 100; i++ {
-		orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.1), OrderBuy, code, decimal.NewFromFloat(5400))
-		assert.Nil(t, err)
-		output(orderId)
-	}
+	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.0015), OrderBuy, code, decimal.NewFromFloat(5400))
+	assert.Nil(t, err)
+	output(orderId)
 
 	//order, err := bitribe.QueryOrder(orderId)
 	//assert.Nil(t, err)
@@ -88,7 +86,7 @@ func TestZingEx_PlaceOrder(t *testing.T) {
 
 func TestZingEx_Sell(t *testing.T) {
 	code := "BTC_USDT"
-	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.01), OrderSell, code, decimal.NewFromFloat(5400))
+	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.002), OrderSell, code, decimal.NewFromFloat(5400))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -111,7 +109,7 @@ func TestZingExGetPendingOrders(t *testing.T) {
 
 func TestZingExGetOrder(t *testing.T) {
 	code := "BTC_USDT"
-	order, err := zingEx.QueryOrder(code, "4")
+	order, err := zingEx.QueryOrder(code, "628")
 	assert.Nil(t, err)
 	output(order)
 }
