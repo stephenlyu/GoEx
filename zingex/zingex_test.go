@@ -56,7 +56,7 @@ func TestZingEx_GetTicker(t *testing.T) {
 }
 
 func TestZingEx_GetDepth(t *testing.T) {
-	ret, err := zingEx.GetDepth("BTC_USDT")
+	ret, err := zingEx.GetDepth("LEEE_ETH")
 	chk(err)
 	output(ret)
 }

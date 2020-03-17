@@ -65,6 +65,8 @@ func NewZingEx(client *http.Client, ApiKey string, SecretKey string) *ZingEx {
 	this.symbolNameMap = map[string]string{
 		"btc_usdt": "1",
 		"eth_usdt": "2",
+		"leee_usdt": "3",
+		"leee_eth": "5",
 	}
 	return this
 }
