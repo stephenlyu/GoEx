@@ -20,18 +20,18 @@ type Symbol struct {
 }
 
 type OrderInfo struct {
-	Msg string
-	Code decimal.Decimal
+	Msg         string
+	Code        decimal.Decimal
 
-	Symbol     string
-	OrderId    decimal.Decimal
-	Price      decimal.Decimal
-	OrigQty    decimal.Decimal
-	ExecuteQty decimal.Decimal
-	Status     string
-	Type       string
-	Side 	   string
-	Time      decimal.Decimal
+	Symbol      string
+	OrderId     decimal.Decimal
+	Price       decimal.Decimal
+	OrigQty     decimal.Decimal
+	ExecutedQty decimal.Decimal
+	Status      string
+	Type        string
+	Side        string
+	Time        decimal.Decimal
 }
 
 func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
@@ -72,8 +72,10 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	return &goex.OrderDecimal{
 		Price: this.Price,
 		Amount: this.OrigQty,
-		DealAmount: this.ExecuteQty,
+		DealAmount: this.ExecutedQty,
 		Notinal: this.Price.Mul(this.OrigQty),
+		DealNotional: this.Price.Mul(this.ExecutedQty),
+		AvgPrice: this.Price,
 		OrderID2: this.OrderId.String(),
 		Timestamp: this.Time.IntPart(),
 		Status: status,
