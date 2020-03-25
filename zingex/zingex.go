@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"sync"
 	"errors"
+	"crypto/tls"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 )
 
 const (
-	API_BASE_URL = "http://47.244.216.195:10002"
+	API_BASE_URL = "https://47.244.216.195"
 	COMMON_SYMBOLS = "/appApi.json?action=tickers"
 	GET_TICKER = "/appApi.json?action=market&symbol=%s"
 	GET_MARKET_DEPTH = "/appApi.json?action=depth&symbol=%s&size=30"
@@ -57,6 +58,11 @@ type ZingEx struct {
 }
 
 func NewZingEx(client *http.Client, ApiKey string, SecretKey string) *ZingEx {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client.Transport = tr
+
 	this := new(ZingEx)
 	this.ApiKey = ApiKey
 	this.SecretKey = SecretKey
