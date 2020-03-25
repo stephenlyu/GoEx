@@ -425,7 +425,7 @@ func (this *ZingEx) PlaceOrder(volume decimal.Decimal, side string, symbol strin
 	}
 
 	if resp.Code.IntPart() != 200 {
-		return "", fmt.Errorf("error code: %s", resp.Code.String())
+		return "", fmt.Errorf("error code: %s msg: %s", resp.Code.String(), resp.Msg)
 	}
 
 	return resp.OrderId.String(), nil
