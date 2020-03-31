@@ -62,7 +62,7 @@ func TestZingEx_GetDepth(t *testing.T) {
 }
 
 func TestZingEx_GetTrades(t *testing.T) {
-	ret, err := zingEx.GetTrades("BTC_USDT")
+	ret, err := zingEx.GetTrades("LEEE_ETH")
 	chk(err)
 	output(ret)
 }

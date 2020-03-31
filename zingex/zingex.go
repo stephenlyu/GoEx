@@ -28,7 +28,7 @@ const (
 )
 
 const (
-	API_BASE_URL = "https://47.244.216.195"
+	API_BASE_URL = "https://tinance.pro"
 	COMMON_SYMBOLS = "/appApi.json?action=tickers"
 	GET_TICKER = "/appApi.json?action=market&symbol=%s"
 	GET_MARKET_DEPTH = "/appApi.json?action=depth&symbol=%s&size=30"
