@@ -50,7 +50,7 @@ func TestZingEx_GetSymbols(t *testing.T) {
 }
 
 func TestZingEx_GetTicker(t *testing.T) {
-	ret, err := zingEx.GetTicker("BTC_USDT")
+	ret, err := zingEx.GetTicker("ODIN_USDT")
 	chk(err)
 	output(ret)
 }

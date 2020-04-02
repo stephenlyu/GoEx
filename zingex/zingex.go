@@ -73,6 +73,7 @@ func NewZingEx(client *http.Client, ApiKey string, SecretKey string) *ZingEx {
 		"eth_usdt": "2",
 		"leee_usdt": "3",
 		"leee_eth": "5",
+		"odin_usdt": "6",
 	}
 	return this
 }
