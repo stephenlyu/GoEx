@@ -521,3 +521,24 @@ func (this *ZingEx) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
 
 	return resp.Data[0].ToOrderDecimal(symbol), nil
 }
+
+func (this *ZingEx) GetPositionStatistics() (*PositionStat, error) {
+	url := "https://api.starqueen.top/api/v1/contract/statistic"
+
+	var resp struct {
+		Code decimal.Decimal
+		Msg  string
+		Obj *PositionStat
+	}
+
+	err := HttpGet4(this.client, url, this.getAuthHeader(), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code.IntPart() != 1 {
+		return nil, fmt.Errorf("error code: %s", resp.Code.String())
+	}
+
+	return resp.Obj, nil
+}

@@ -68,3 +68,11 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 		Side: side,
 	}
 }
+
+type PositionStat struct {
+	FallSheet decimal.Decimal
+	FallPrice decimal.Decimal
+	RiseSheet decimal.Decimal
+	RisePrice decimal.Decimal
+	Profit decimal.Decimal
+}

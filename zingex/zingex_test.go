@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/shopspring/decimal"
+	"github.com/stephenlyu/GoEx"
 )
 
 var zingEx *ZingEx
@@ -56,7 +57,7 @@ func TestZingEx_GetTicker(t *testing.T) {
 }
 
 func TestZingEx_GetDepth(t *testing.T) {
-	ret, err := zingEx.GetDepth("LEEE_ETH")
+	ret, err := zingEx.GetDepth("ODIN_USDT")
 	chk(err)
 	output(ret)
 }
@@ -101,10 +102,22 @@ func TestZingExCancelOrder(t *testing.T) {
 }
 
 func TestZingExGetPendingOrders(t *testing.T) {
-	code := "BTC_USDT"
+	code := "ODIN_USDT"
 	orders, err := zingEx.QueryPendingOrders(code)
 	assert.Nil(t, err)
-	output(orders)
+
+	var bids []goex.OrderDecimal
+	var asks []goex.OrderDecimal
+	for _, order := range orders {
+		if order.Side == goex.BUY || order.Side == goex.BUY_MARKET {
+			bids = append(bids, order)
+		} else {
+			asks = append(asks, order)
+		}
+	}
+	fmt.Printf("bid count: %d ask count: %d", len(bids), len(asks))
+
+	//output(orders)
 }
 
 func TestZingExGetOrder(t *testing.T) {
@@ -122,4 +135,10 @@ func TestZingExCancelAll(t *testing.T) {
 		err = zingEx.CancelOrder(o.OrderID2)
 		assert.Nil(t, err)
 	}
+}
+
+func TestGetPositionStatistics(t *testing.T) {
+	stat, err := zingEx.GetPositionStatistics()
+	assert.Nil(t, err)
+	output(stat)
 }
