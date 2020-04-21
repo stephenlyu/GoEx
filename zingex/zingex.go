@@ -13,6 +13,7 @@ import (
 	"sync"
 	"errors"
 	"crypto/tls"
+	"time"
 )
 
 const (
@@ -29,6 +30,7 @@ const (
 
 const (
 	API_BASE_URL = "https://tinance.pro"
+	SYMBOL_MAP = "/ticker.json"
 	COMMON_SYMBOLS = "/appApi.json?action=tickers"
 	GET_TICKER = "/appApi.json?action=market&symbol=%s"
 	GET_MARKET_DEPTH = "/appApi.json?action=depth&symbol=%s&size=30"
@@ -68,14 +70,49 @@ func NewZingEx(client *http.Client, ApiKey string, SecretKey string) *ZingEx {
 	this.SecretKey = SecretKey
 	this.client = client
 
-	this.symbolNameMap = map[string]string{
-		"btc_usdt": "1",
-		"eth_usdt": "2",
-		"leee_usdt": "3",
-		"leee_eth": "5",
-		"odin_usdt": "6",
-	}
+	this.init()
 	return this
+}
+
+func (ok *ZingEx) init() {
+	var err error
+	for i := 0; i < 3; i++ {
+		err = ok.getSymbolMap()
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+	panic(err)
+}
+
+func (ok *ZingEx) getSymbolMap() error {
+	url := API_BASE_URL + SYMBOL_MAP
+	resp, err := ok.client.Get(url)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return err
+	}
+
+	var data map[string]decimal.Decimal
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return err
+	}
+
+	ok.symbolNameMap = make(map[string]string)
+	for k, v := range data {
+		ok.symbolNameMap[k] = v.String()
+	}
+	return nil
 }
 
 func (ok *ZingEx) GetSymbols() ([]Symbol, error) {

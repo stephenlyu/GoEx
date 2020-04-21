@@ -121,8 +121,8 @@ func TestZingExGetPendingOrders(t *testing.T) {
 }
 
 func TestZingExGetOrder(t *testing.T) {
-	code := "BTC_USDT"
-	order, err := zingEx.QueryOrder(code, "628")
+	code := "ODIN_USDT"
+	order, err := zingEx.QueryOrder(code, "22534753")
 	assert.Nil(t, err)
 	output(order)
 }
