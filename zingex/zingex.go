@@ -559,8 +559,8 @@ func (this *ZingEx) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
 	return resp.Data[0].ToOrderDecimal(symbol), nil
 }
 
-func (this *ZingEx) GetPositionStatistics() (*PositionStat, error) {
-	url := "https://api.starqueen.top/api/v1/contract/statistic"
+func (this *ZingEx) GetPositionStatistics(symbol string) (*PositionStat, error) {
+	url := "https://api.starqueen.top/api/v1/contract/statistic?symbol=" + strings.ToLower(symbol)
 
 	var resp struct {
 		Code decimal.Decimal

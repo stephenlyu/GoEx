@@ -138,7 +138,8 @@ func TestZingExCancelAll(t *testing.T) {
 }
 
 func TestGetPositionStatistics(t *testing.T) {
-	stat, err := zingEx.GetPositionStatistics()
+	code := "ODIN_USDT"
+	stat, err := zingEx.GetPositionStatistics(code)
 	assert.Nil(t, err)
 	output(stat)
 }
