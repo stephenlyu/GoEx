@@ -59,14 +59,13 @@ type Atop struct {
 	SecretKey        string
 	client           *http.Client
 
-	symbolNameMap    map[string]string
-
 	ws               *WsConn
 	createWsLock     sync.Mutex
 	wsDepthHandleMap map[string]func(*DepthDecimal)
 	wsTradeHandleMap map[string]func(string, []TradeDecimal)
 	errorHandle      func(error)
 	wsSymbolMap      map[string]string
+	depthManagers	 map[string]*DepthManager
 }
 
 func NewAtop(client *http.Client, ApiKey string, SecretKey string) *Atop {
@@ -74,8 +73,6 @@ func NewAtop(client *http.Client, ApiKey string, SecretKey string) *Atop {
 	this.ApiKey = ApiKey
 	this.SecretKey = SecretKey
 	this.client = client
-
-	this.symbolNameMap = make(map[string]string)
 	return this
 }
 
