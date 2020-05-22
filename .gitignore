@@ -1,1 +1,4 @@
 .idea
+key*.json
+*.test
+*.iml
