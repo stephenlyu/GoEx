@@ -1,22 +1,19 @@
 package ztb
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/shopspring/decimal"
-	. "github.com/stephenlyu/GoEx"
+	goex "github.com/stephenlyu/GoEx"
 )
 
 // Order Side
@@ -64,13 +61,13 @@ type Ztb struct {
 	SecretKey string
 	client    *http.Client
 
-	// ws               *WsConn
-	// createWsLock     sync.Mutex
-	// wsDepthHandleMap map[string]func(*DepthDecimal)
-	// wsTradeHandleMap map[string]func(string, []TradeDecimal)
-	// errorHandle      func(error)
-	// wsSymbolMap      map[string]string
-	// depthManagers    map[string]*DepthManager
+	ws               *goex.WsConn
+	createWsLock     sync.Mutex
+	wsDepthHandleMap map[string]func(*goex.DepthDecimal)
+	wsTradeHandleMap map[string]func(string, []goex.TradeDecimal)
+	errorHandle      func(error)
+	wsSymbolMap      map[string]string
+	depthManagers    map[string]*depthManager
 }
 
 // NewZtb is constructor for Ztb object
@@ -113,7 +110,7 @@ func (ztb *Ztb) transSymbol(symbol string) string {
 }
 
 // GetTicker is for getting ticker data of a coin pair
-func (ztb *Ztb) GetTicker(symbol string) (*TickerDecimal, error) {
+func (ztb *Ztb) GetTicker(symbol string) (*goex.TickerDecimal, error) {
 	symbol = ztb.transSymbol(symbol)
 	url := fmt.Sprintf(apiBaseURL+getTickerURL, symbol)
 	resp, err := ztb.client.Get(url)
@@ -146,7 +143,7 @@ func (ztb *Ztb) GetTicker(symbol string) (*TickerDecimal, error) {
 		return nil, err
 	}
 
-	ticker := new(TickerDecimal)
+	ticker := new(goex.TickerDecimal)
 	for _, r := range data.Ticker {
 		if r.Symbol == symbol {
 			ticker.Buy = r.Buy
@@ -163,7 +160,7 @@ func (ztb *Ztb) GetTicker(symbol string) (*TickerDecimal, error) {
 }
 
 // GetDepth is for getting market depth of a coin pair
-func (ztb *Ztb) GetDepth(symbol string) (*DepthDecimal, error) {
+func (ztb *Ztb) GetDepth(symbol string) (*goex.DepthDecimal, error) {
 	inputSymbol := symbol
 	symbol = ztb.transSymbol(symbol)
 	url := fmt.Sprintf(apiBaseURL+getMarketDepthURL, symbol)
@@ -199,24 +196,24 @@ func (ztb *Ztb) GetDepth(symbol string) (*DepthDecimal, error) {
 
 	r := &data
 
-	depth := new(DepthDecimal)
-	depth.Pair = NewCurrencyPair2(inputSymbol)
+	depth := new(goex.DepthDecimal)
+	depth.Pair = goex.NewCurrencyPair2(inputSymbol)
 
-	depth.AskList = make([]DepthRecordDecimal, len(r.Asks), len(r.Asks))
+	depth.AskList = make([]goex.DepthRecordDecimal, len(r.Asks), len(r.Asks))
 	for i, o := range r.Asks {
-		depth.AskList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+		depth.AskList[i] = goex.DepthRecordDecimal{Price: o[0], Amount: o[1]}
 	}
 
-	depth.BidList = make([]DepthRecordDecimal, len(r.Bids), len(r.Bids))
+	depth.BidList = make([]goex.DepthRecordDecimal, len(r.Bids), len(r.Bids))
 	for i, o := range r.Bids {
-		depth.BidList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+		depth.BidList[i] = goex.DepthRecordDecimal{Price: o[0], Amount: o[1]}
 	}
 
 	return depth, nil
 }
 
 // GetTrades is for getting latest trades of a coin pair
-func (ztb *Ztb) GetTrades(symbol string) ([]TradeDecimal, error) {
+func (ztb *Ztb) GetTrades(symbol string) ([]goex.TradeDecimal, error) {
 	symbol = ztb.transSymbol(symbol)
 	url := fmt.Sprintf(apiBaseURL+getTradesURL, symbol)
 	resp, err := ztb.client.Get(url)
@@ -256,7 +253,7 @@ func (ztb *Ztb) GetTrades(symbol string) ([]TradeDecimal, error) {
 		return nil, err
 	}
 
-	var trades = make([]TradeDecimal, len(data))
+	var trades = make([]goex.TradeDecimal, len(data))
 
 	for i, o := range data {
 		t := &trades[i]
@@ -272,7 +269,7 @@ func (ztb *Ztb) GetTrades(symbol string) ([]TradeDecimal, error) {
 
 func (ztb *Ztb) signData(data string) string {
 	message := data + "&secret_key=" + ztb.SecretKey
-	sign, _ := GetParamMD5Sign(ztb.SecretKey, message)
+	sign, _ := goex.GetParamMD5Sign(ztb.SecretKey, message)
 
 	return sign
 }
@@ -335,7 +332,7 @@ func (ztb *Ztb) getAuthHeader() map[string]string {
 }
 
 // GetAccount is for get account balance information
-func (ztb *Ztb) GetAccount() ([]SubAccountDecimal, error) {
+func (ztb *Ztb) GetAccount() ([]goex.SubAccountDecimal, error) {
 	params := map[string]string{}
 	params = ztb.sign(params)
 
@@ -343,12 +340,11 @@ func (ztb *Ztb) GetAccount() ([]SubAccountDecimal, error) {
 
 	header := ztb.getAuthHeader()
 	data := ztb.buildQueryString(params)
-	bytes, err := HttpPostForm3(ztb.client, url, data, header)
+	bytes, err := goex.HttpPostForm3(ztb.client, url, data, header)
 
 	if err != nil {
 		return nil, err
 	}
-	println(string(bytes))
 	var resp struct {
 		Message string
 		Code    decimal.Decimal
@@ -364,7 +360,7 @@ func (ztb *Ztb) GetAccount() ([]SubAccountDecimal, error) {
 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	var ret []SubAccountDecimal
+	var ret []goex.SubAccountDecimal
 	for coin, o := range resp.Result {
 		if reflect.TypeOf(o).Kind() != reflect.Map {
 			continue
@@ -377,8 +373,8 @@ func (ztb *Ztb) GetAccount() ([]SubAccountDecimal, error) {
 		available, _ := decimal.NewFromString(m["available"].(string))
 		freeze, _ := decimal.NewFromString(m["freeze"].(string))
 
-		ret = append(ret, SubAccountDecimal{
-			Currency:        Currency{Symbol: currency},
+		ret = append(ret, goex.SubAccountDecimal{
+			Currency:        goex.Currency{Symbol: currency},
 			AvailableAmount: available,
 			FrozenAmount:    freeze,
 			Amount:          available.Add(freeze),
@@ -388,296 +384,296 @@ func (ztb *Ztb) GetAccount() ([]SubAccountDecimal, error) {
 	return ret, nil
 }
 
-func (ztb *Ztb) PlaceOrder(volume decimal.Decimal, side int, _type int, symbol string, price decimal.Decimal) (string, error) {
-	symbol = ztb.transSymbol(symbol)
-	params := map[string]string{
-		"market":      symbol,
-		"type":        strconv.Itoa(side),
-		"entrustType": strconv.Itoa(_type),
-		"number":      volume.String(),
-		"price":       price.String(),
-	}
+// func (ztb *Ztb) PlaceOrder(volume decimal.Decimal, side int, _type int, symbol string, price decimal.Decimal) (string, error) {
+// 	symbol = ztb.transSymbol(symbol)
+// 	params := map[string]string{
+// 		"market":      symbol,
+// 		"type":        strconv.Itoa(side),
+// 		"entrustType": strconv.Itoa(_type),
+// 		"number":      volume.String(),
+// 		"price":       price.String(),
+// 	}
 
-	params = ztb.sign(params)
+// 	params = ztb.sign(params)
 
-	data := ztb.buildQueryString(params)
-	println(data)
-	url := apiBaseURL + createOrderURL
-	body, err := HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
+// 	data := ztb.buildQueryString(params)
+// 	println(data)
+// 	url := apiBaseURL + createOrderURL
+// 	body, err := HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
 
-	if err != nil {
-		return "", err
-	}
-	println(string(body))
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	println(string(body))
 
-	var resp struct {
-		Info string
-		Code decimal.Decimal
-		Data struct {
-			Id decimal.Decimal
-		}
-	}
+// 	var resp struct {
+// 		Info string
+// 		Code decimal.Decimal
+// 		Data struct {
+// 			Id decimal.Decimal
+// 		}
+// 	}
 
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return "", err
-	}
+// 	err = json.Unmarshal(body, &resp)
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		return "", fmt.Errorf("error code: %s", resp.Code.String())
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		return "", fmt.Errorf("error code: %s", resp.Code.String())
+// 	}
 
-	return resp.Data.Id.String(), nil
-}
+// 	return resp.Data.Id.String(), nil
+// }
 
-func (ztb *Ztb) CancelOrder(symbol, orderId string) error {
-	symbol = ztb.transSymbol(symbol)
-	params := map[string]string{
-		"market": symbol,
-		"id":     orderId,
-	}
-	params = ztb.sign(params)
+// func (ztb *Ztb) CancelOrder(symbol, orderId string) error {
+// 	symbol = ztb.transSymbol(symbol)
+// 	params := map[string]string{
+// 		"market": symbol,
+// 		"id":     orderId,
+// 	}
+// 	params = ztb.sign(params)
 
-	data := ztb.buildQueryString(params)
-	url := apiBaseURL + cancelOrderURL
-	body, err := HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
-	if err != nil {
-		return err
-	}
+// 	data := ztb.buildQueryString(params)
+// 	url := apiBaseURL + cancelOrderURL
+// 	body, err := HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
+// 	if err != nil {
+// 		return err
+// 	}
 
-	var resp struct {
-		Info string
-		Code decimal.Decimal
-	}
+// 	var resp struct {
+// 		Info string
+// 		Code decimal.Decimal
+// 	}
 
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return err
-	}
+// 	err = json.Unmarshal(body, &resp)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if resp.Code.IntPart() == 404 {
-		return ErrNotExist
-	}
+// 	if resp.Code.IntPart() == 404 {
+// 		return ErrNotExist
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		return fmt.Errorf("error code: %s", resp.Code.String())
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		return fmt.Errorf("error code: %s", resp.Code.String())
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func (ztb *Ztb) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-	if pageSize == 0 {
-		pageSize = 20
-	}
-	param := map[string]string{
-		"market": ztb.transSymbol(symbol),
-	}
-	param["page"] = strconv.Itoa(page)
-	param["pageSize"] = strconv.Itoa(pageSize)
-	param = ztb.sign(param)
+// func (ztb *Ztb) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
+// 	if pageSize == 0 {
+// 		pageSize = 20
+// 	}
+// 	param := map[string]string{
+// 		"market": ztb.transSymbol(symbol),
+// 	}
+// 	param["page"] = strconv.Itoa(page)
+// 	param["pageSize"] = strconv.Itoa(pageSize)
+// 	param = ztb.sign(param)
 
-	url := fmt.Sprintf(apiBaseURL + newOrderURL + "?" + ztb.buildQueryString(param))
+// 	url := fmt.Sprintf(apiBaseURL + newOrderURL + "?" + ztb.buildQueryString(param))
 
-	var resp struct {
-		Code decimal.Decimal
-		Msg  string
-		Data []OrderInfo
-	}
+// 	var resp struct {
+// 		Code decimal.Decimal
+// 		Msg  string
+// 		Data []OrderInfo
+// 	}
 
-	err := HttpGet4(ztb.client, url, ztb.getAuthHeader(), &resp)
-	if err != nil {
-		return nil, err
-	}
+// 	err := HttpGet4(ztb.client, url, ztb.getAuthHeader(), &resp)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if resp.Code.IntPart() == 404 {
-		return nil, nil
-	}
+// 	if resp.Code.IntPart() == 404 {
+// 		return nil, nil
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
+// 	}
 
-	var ret = make([]OrderDecimal, len(resp.Data))
-	for i := range resp.Data {
-		ret[i] = *resp.Data[i].ToOrderDecimal(symbol)
-	}
+// 	var ret = make([]OrderDecimal, len(resp.Data))
+// 	for i := range resp.Data {
+// 		ret[i] = *resp.Data[i].ToOrderDecimal(symbol)
+// 	}
 
-	return ret, nil
-}
+// 	return ret, nil
+// }
 
-func (ztb *Ztb) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
-	param := ztb.sign(map[string]string{
-		"market": ztb.transSymbol(symbol),
-		"id":     orderId,
-	})
+// func (ztb *Ztb) QueryOrder(symbol, orderId string) (*OrderDecimal, error) {
+// 	param := ztb.sign(map[string]string{
+// 		"market": ztb.transSymbol(symbol),
+// 		"id":     orderId,
+// 	})
 
-	url := fmt.Sprintf(apiBaseURL + orderInfoURL + "?" + ztb.buildQueryString(param))
+// 	url := fmt.Sprintf(apiBaseURL + orderInfoURL + "?" + ztb.buildQueryString(param))
 
-	var resp struct {
-		Code decimal.Decimal
-		Info string
-		Data *OrderInfo
-	}
+// 	var resp struct {
+// 		Code decimal.Decimal
+// 		Info string
+// 		Data *OrderInfo
+// 	}
 
-	err := HttpGet4(ztb.client, url, ztb.getAuthHeader(), &resp)
-	if err != nil {
-		return nil, err
-	}
+// 	err := HttpGet4(ztb.client, url, ztb.getAuthHeader(), &resp)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if resp.Code.IntPart() == 404 {
-		return nil, ErrNotExist
-	}
+// 	if resp.Code.IntPart() == 404 {
+// 		return nil, ErrNotExist
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		return nil, fmt.Errorf("error code: %s", resp.Code.String())
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
+// 	}
 
-	return resp.Data.ToOrderDecimal(symbol), nil
-}
+// 	return resp.Data.ToOrderDecimal(symbol), nil
+// }
 
-func (ztb *Ztb) BatchPlace(symbol string, placeReqList []OrderReq) (orderIds []string, err error) {
-	if len(placeReqList) == 0 {
-		return nil, nil
-	}
+// func (ztb *Ztb) BatchPlace(symbol string, placeReqList []OrderReq) (orderIds []string, err error) {
+// 	if len(placeReqList) == 0 {
+// 		return nil, nil
+// 	}
 
-	orderIds = make([]string, len(placeReqList))
+// 	orderIds = make([]string, len(placeReqList))
 
-	symbol = ztb.transSymbol(symbol)
-	params := map[string]string{
-		"market": symbol,
-	}
+// 	symbol = ztb.transSymbol(symbol)
+// 	params := map[string]string{
+// 		"market": symbol,
+// 	}
 
-	bytes, _ := json.Marshal(placeReqList)
-	params["data"] = base64.StdEncoding.EncodeToString(bytes)
+// 	bytes, _ := json.Marshal(placeReqList)
+// 	params["data"] = base64.StdEncoding.EncodeToString(bytes)
 
-	params = ztb.sign(params)
+// 	params = ztb.sign(params)
 
-	data := ztb.buildQueryString(params)
-	url := apiBaseURL + batchPlaceURL
-	var body []byte
-	body, err = HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
+// 	data := ztb.buildQueryString(params)
+// 	url := apiBaseURL + batchPlaceURL
+// 	var body []byte
+// 	body, err = HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
 
-	if err != nil {
-		return
-	}
+// 	if err != nil {
+// 		return
+// 	}
 
-	var resp struct {
-		Info string
-		Code decimal.Decimal
-		Data []struct {
-			Amount float64
-			Price  float64
-			Id     decimal.Decimal
-			Type   int
-		}
-	}
+// 	var resp struct {
+// 		Info string
+// 		Code decimal.Decimal
+// 		Data []struct {
+// 			Amount float64
+// 			Price  float64
+// 			Id     decimal.Decimal
+// 			Type   int
+// 		}
+// 	}
 
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return
-	}
+// 	err = json.Unmarshal(body, &resp)
+// 	if err != nil {
+// 		return
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		err = fmt.Errorf("error code: %s", resp.Code.String())
-		return
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		err = fmt.Errorf("error code: %s", resp.Code.String())
+// 		return
+// 	}
 
-	floatEquals := func(a, b float64) bool {
-		diff := math.Abs(a - b)
-		return diff < 0.00000000001
-	}
+// 	floatEquals := func(a, b float64) bool {
+// 		diff := math.Abs(a - b)
+// 		return diff < 0.00000000001
+// 	}
 
-	find := func(amount, price float64, _type int) int {
-		for i, o := range placeReqList {
-			if floatEquals(o.Amount, amount) && floatEquals(o.Price, price) && _type == o.Type {
-				return i
-			}
-		}
-		panic("not found")
-		return -1
-	}
+// 	find := func(amount, price float64, _type int) int {
+// 		for i, o := range placeReqList {
+// 			if floatEquals(o.Amount, amount) && floatEquals(o.Price, price) && _type == o.Type {
+// 				return i
+// 			}
+// 		}
+// 		panic("not found")
+// 		return -1
+// 	}
 
-	for i, o := range resp.Data {
-		j := find(o.Amount, o.Price, o.Type)
-		if i != j {
-			log.Println("order req sequence not matched")
-		}
-		orderIds[j] = o.Id.String()
-	}
+// 	for i, o := range resp.Data {
+// 		j := find(o.Amount, o.Price, o.Type)
+// 		if i != j {
+// 			log.Println("order req sequence not matched")
+// 		}
+// 		orderIds[j] = o.Id.String()
+// 	}
 
-	return
-}
+// 	return
+// }
 
-func (ztb *Ztb) BatchCancel(symbol string, inOrderIds []string) (errors []error, err error) {
-	if len(inOrderIds) == 0 {
-		return nil, nil
-	}
+// func (ztb *Ztb) BatchCancel(symbol string, inOrderIds []string) (errors []error, err error) {
+// 	if len(inOrderIds) == 0 {
+// 		return nil, nil
+// 	}
 
-	var orderIds = make([]int64, len(inOrderIds))
-	for i, id := range inOrderIds {
-		orderIds[i], _ = strconv.ParseInt(id, 10, 64)
-	}
+// 	var orderIds = make([]int64, len(inOrderIds))
+// 	for i, id := range inOrderIds {
+// 		orderIds[i], _ = strconv.ParseInt(id, 10, 64)
+// 	}
 
-	symbol = ztb.transSymbol(symbol)
-	params := map[string]string{
-		"market": symbol,
-	}
+// 	symbol = ztb.transSymbol(symbol)
+// 	params := map[string]string{
+// 		"market": symbol,
+// 	}
 
-	bytes, _ := json.Marshal(orderIds)
-	params["data"] = base64.StdEncoding.EncodeToString(bytes)
+// 	bytes, _ := json.Marshal(orderIds)
+// 	params["data"] = base64.StdEncoding.EncodeToString(bytes)
 
-	params = ztb.sign(params)
+// 	params = ztb.sign(params)
 
-	data := ztb.buildQueryString(params)
-	url := apiBaseURL + batchCancelURL
-	var body []byte
-	body, err = HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
+// 	data := ztb.buildQueryString(params)
+// 	url := apiBaseURL + batchCancelURL
+// 	var body []byte
+// 	body, err = HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
 
-	if err != nil {
-		return
-	}
+// 	if err != nil {
+// 		return
+// 	}
 
-	var resp struct {
-		Info string
-		Code decimal.Decimal
-		Data []struct {
-			Msg  string
-			Code decimal.Decimal
-			Id   decimal.Decimal
-		}
-	}
+// 	var resp struct {
+// 		Info string
+// 		Code decimal.Decimal
+// 		Data []struct {
+// 			Msg  string
+// 			Code decimal.Decimal
+// 			Id   decimal.Decimal
+// 		}
+// 	}
 
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return
-	}
+// 	err = json.Unmarshal(body, &resp)
+// 	if err != nil {
+// 		return
+// 	}
 
-	if resp.Code.IntPart() != 200 {
-		err = fmt.Errorf("error code: %s", resp.Code.String())
-		return
-	}
+// 	if resp.Code.IntPart() != 200 {
+// 		err = fmt.Errorf("error code: %s", resp.Code.String())
+// 		return
+// 	}
 
-	find := func(id string) int {
-		for i, o := range inOrderIds {
-			if o == id {
-				return i
-			}
-		}
-		panic("not found")
-		return -1
-	}
+// 	find := func(id string) int {
+// 		for i, o := range inOrderIds {
+// 			if o == id {
+// 				return i
+// 			}
+// 		}
+// 		panic("not found")
+// 		return -1
+// 	}
 
-	errors = make([]error, len(inOrderIds))
-	for i, o := range resp.Data {
-		j := find(o.Id.String())
-		if i != j {
-			log.Println("order req sequence not matched")
-		}
-		if o.Code.IntPart() != 120 && o.Code.IntPart() != 121 {
-			errors[j] = fmt.Errorf("error code: %s", o.Code.String())
-		}
-	}
+// 	errors = make([]error, len(inOrderIds))
+// 	for i, o := range resp.Data {
+// 		j := find(o.Id.String())
+// 		if i != j {
+// 			log.Println("order req sequence not matched")
+// 		}
+// 		if o.Code.IntPart() != 120 && o.Code.IntPart() != 121 {
+// 			errors[j] = fmt.Errorf("error code: %s", o.Code.String())
+// 		}
+// 	}
 
-	return
-}
+// 	return
+// }

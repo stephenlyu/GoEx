@@ -73,9 +73,3 @@ func (orderInfo *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 		Side:         side,
 	}
 }
-
-type OrderReq struct {
-	Type   int     `json:"type"`
-	Amount float64 `json:"amount"`
-	Price  float64 `json:"price"`
-}
