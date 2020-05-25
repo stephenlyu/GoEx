@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
 )
 
 var ztb *Ztb
@@ -71,36 +74,51 @@ func TestZtb_GetAccount(t *testing.T) {
 	output(ret)
 }
 
-// func TestZtb_PlaceOrder(t *testing.T) {
-// 	code := "BTC_USDT"
-// 	orderId, err := ztb.PlaceOrder(decimal.NewFromFloat(0.001), OrderBuy, OrderTypeLimit, code, decimal.NewFromFloat(8500))
-// 	assert.Nil(t, err)
-// 	output(orderId)
+func TestZtb_PlaceOrder(t *testing.T) {
+	code := "BTC_USDT"
+	orderID, err := ztb.PlaceOrder(decimal.NewFromFloat(0.001), OrderBuy, code, decimal.NewFromFloat(8500))
+	assert.Nil(t, err)
+	output(orderID)
 
-// 	//order, err := bitribe.QueryOrder(orderId)
-// 	//assert.Nil(t, err)
-// 	//output(order)
-// }
+	//order, err := bitribe.QueryOrder(orderId)
+	//assert.Nil(t, err)
+	//output(order)
+}
 
-// func TestZtbCancelOrder(t *testing.T) {
-// 	code := "BTC_USDT"
-// 	err := ztb.CancelOrder(code, "159002570098514")
-// 	assert.Nil(t, err)
-// }
+func TestZtbCancelOrder(t *testing.T) {
+	code := "BTC_USDT"
+	order, err := ztb.CancelOrder(code, "11552766863")
+	assert.Nil(t, err)
+	output(order)
+}
 
-// func TestZtbGetPendingOrders(t *testing.T) {
-// 	code := "BTC_USDT"
-// 	orders, err := ztb.QueryPendingOrders(code, 0, 100)
-// 	assert.Nil(t, err)
-// 	output(orders)
-// }
+func TestZtbGetPendingOrders(t *testing.T) {
+	code := "BTC_USDT"
+	orders, err := ztb.QueryPendingOrders(code, 0, 100)
+	assert.Nil(t, err)
+	output(orders)
+}
 
-// func TestZtbGetOrder(t *testing.T) {
-// 	code := "BTC_USDT"
-// 	order, err := ztb.QueryOrder(code, "159002427396873")
-// 	assert.Nil(t, err)
-// 	output(order)
-// }
+func TestZtbGetFinishedOrders(t *testing.T) {
+	code := "BTC_USDT"
+	orders, err := ztb.QueryFinishedOrders(code, 0, 100)
+	assert.Nil(t, err)
+	output(orders)
+}
+
+func TestZtbGetOrder(t *testing.T) {
+	code := "BTC_USDT"
+	order, err := ztb.QueryOrder(code, "11549578096")
+	assert.Nil(t, err)
+	output(order)
+}
+
+func TestZtbGetFinishedOrder(t *testing.T) {
+	code := "BTC_USDT"
+	order, err := ztb.QueryOrder(code, "11549578096")
+	assert.Nil(t, err)
+	output(order)
+}
 
 // func TestZtb_BatchReplace(t *testing.T) {
 // 	code := "BTC_USDT"

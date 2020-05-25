@@ -14,60 +14,57 @@ type Symbol struct {
 
 // OrderInfo is order info
 type OrderInfo struct {
-	Number         decimal.Decimal
-	Price          decimal.Decimal
-	AvgPrice       decimal.Decimal
-	ID             decimal.Decimal
-	Time           decimal.Decimal
-	Type           decimal.Decimal
-	Status         int
-	CompleteNumber decimal.Decimal
-	CompleteMoney  decimal.Decimal
-	EntrustType    decimal.Decimal
-	Fee            decimal.Decimal
+	Amount    decimal.Decimal
+	Ctime     decimal.Decimal
+	DealFee   decimal.Decimal `json:"deal_fee"`
+	DealMoney decimal.Decimal `json:"deal_money"`
+	DealStock decimal.Decimal `json:"deal_stock"`
+	ID        decimal.Decimal
+	Price     decimal.Decimal
+	Side      decimal.Decimal
+	Status    int
+	AvgPrice  decimal.Decimal
+	Type      decimal.Decimal
 }
 
 // ToOrderDecimal is convert OrderInfo to OrderDecimal
 func (orderInfo *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	var status goex.TradeStatus
 	switch orderInfo.Status {
-	case OrderStatusInit:
+	case OrderStatusInit, OrderStatusQueue:
 		status = goex.ORDER_UNFINISH
 	case OrderStatusCanceled:
 		status = goex.ORDER_CANCEL
-	case OrderStatusFilled, OrderStatusSettle:
+	case OrderStatusFilled:
 		status = goex.ORDER_FINISH
 	case OrderStatusPartiallyFilled:
-		if orderInfo.CompleteNumber.IsPositive() {
-			status = goex.ORDER_PART_FINISH
-		} else {
-			status = goex.ORDER_UNFINISH
-		}
+		status = goex.ORDER_PART_FINISH
 	}
 
 	var side goex.TradeSide
-	if orderInfo.Type.IntPart() == OrderBuy {
-		if orderInfo.EntrustType.IntPart() == OrderTypeLimit {
+	if orderInfo.Side.String() == OrderBuy {
+		if orderInfo.Type.String() == OrderTypeLimit {
 			side = goex.BUY
 		} else {
 			side = goex.BUY_MARKET
 		}
 	} else {
-		if orderInfo.EntrustType.IntPart() == OrderTypeLimit {
+		if orderInfo.Type.String() == OrderTypeLimit {
 			side = goex.SELL
 		} else {
 			side = goex.SELL_MARKET
 		}
 	}
 
+	ctime, _ := orderInfo.Ctime.Float64()
 	return &goex.OrderDecimal{
 		Price:        orderInfo.Price,
-		Amount:       orderInfo.Number,
+		Amount:       orderInfo.Amount,
 		AvgPrice:     orderInfo.AvgPrice,
-		DealAmount:   orderInfo.CompleteNumber,
-		DealNotional: orderInfo.CompleteMoney,
+		DealAmount:   orderInfo.DealStock,
+		DealNotional: orderInfo.DealMoney,
 		OrderID2:     orderInfo.ID.String(),
-		Timestamp:    orderInfo.Time.IntPart(),
+		Timestamp:    int64(ctime * 1000),
 		Status:       status,
 		Currency:     goex.NewCurrencyPair2(symbol),
 		Side:         side,
