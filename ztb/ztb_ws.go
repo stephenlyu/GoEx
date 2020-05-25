@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/shopspring/decimal"
 	goex "github.com/stephenlyu/GoEx"
@@ -25,10 +26,11 @@ func (ztb *Ztb) createWsConn() {
 
 			ztb.ws = goex.NewWsConn("wss://ws.ztb.com/ws")
 			ztb.ws.SetErrorHandler(ztb.errorHandle)
+			ztb.ws.Heartbeat(func() interface{} { return map[string]string{"event": "ping"} }, time.Hour*1000000)
 			ztb.ws.ReConnect()
 			ztb.ws.ReceiveMessageEx(func(isBin bool, msg []byte) {
 				var err error
-				println(string(msg))
+				// println(string(msg))
 
 				var data struct {
 					Method string

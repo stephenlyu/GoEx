@@ -128,7 +128,7 @@ func (ztb *Ztb) GetTicker(symbol string) (*goex.TickerDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	println(string(body))
+	// println(string(body))
 	var data struct {
 		Ticker []struct {
 			High   decimal.Decimal
@@ -400,14 +400,14 @@ func (ztb *Ztb) PlaceOrder(volume decimal.Decimal, side string, symbol string, p
 	params = ztb.sign(params)
 
 	data := ztb.buildQueryString(params)
-	println(data)
+	// println(data)
 	url := apiBaseURL + createOrderURL
 	body, err := goex.HttpPostForm3(ztb.client, url, data, ztb.getAuthHeader())
 
 	if err != nil {
 		return "", err
 	}
-	println(string(body))
+	// println(string(body))
 
 	var resp struct {
 		Message string
@@ -444,7 +444,7 @@ func (ztb *Ztb) CancelOrder(symbol, orderID string) (*goex.OrderDecimal, error) 
 	if err != nil {
 		return nil, err
 	}
-	println(string(body))
+	// println(string(body))
 	var resp struct {
 		Messag string
 		Code   decimal.Decimal
