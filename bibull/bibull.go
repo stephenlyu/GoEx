@@ -446,7 +446,7 @@ func (api *BiBull) PlaceOrder(volume decimal.Decimal, side string, _type string,
 	params = api.sign(params)
 
 	data := api.buildQueryString(params)
-	println(data)
+
 	url := _ApiBaseURL + _CreateOrderURL
 	body, err := goex.HttpPostForm3(api.client, url, data, api.getAuthHeader())
 

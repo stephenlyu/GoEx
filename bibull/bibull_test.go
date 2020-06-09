@@ -80,7 +80,7 @@ func TestBiBull_GetAccount(t *testing.T) {
 
 func TestBiBull_PlaceOrder(t *testing.T) {
 	code := "EOS_USDT"
-	orderId, err := bibull.PlaceOrder(decimal.NewFromFloat(0.528), OrderSell, OrderTypeMarket, code, decimal.NewFromFloat(3.6))
+	orderId, err := bibull.PlaceOrder(decimal.NewFromFloat(0.1), OrderBuy, OrderTypeLimit, code, decimal.NewFromFloat(2))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -91,7 +91,7 @@ func TestBiBull_PlaceOrder(t *testing.T) {
 
 func TestBiBullCancelOrder(t *testing.T) {
 	code := "EOS_USDT"
-	err := bibull.CancelOrder(code, "42948624")
+	err := bibull.CancelOrder(code, "63523150424935438")
 	assert.Nil(t, err)
 }
 
@@ -104,7 +104,7 @@ func TestBiBullGetPendingOrders(t *testing.T) {
 
 func TestBiBullGetOrder(t *testing.T) {
 	code := "EOS_USDT"
-	order, err := bibull.QueryOrder(code, "42958597")
+	order, err := bibull.QueryOrder(code, "63523150424935438")
 	assert.Nil(t, err)
 	output(order)
 }
