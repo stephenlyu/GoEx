@@ -1,41 +1,42 @@
 package deerdex
 
 import (
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"strings"
-	"time"
-	. "github.com/stephenlyu/GoEx"
-	"sync"
-	"strconv"
+	"io/ioutil"
+	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/shopspring/decimal"
+	. "github.com/stephenlyu/GoEx"
 )
 
 const (
 	ORDER_SELL = "SELL"
-	ORDER_BUY = "BUY"
+	ORDER_BUY  = "BUY"
 
-	ORDER_TYPE_LIMIT = "LIMIT"
+	ORDER_TYPE_LIMIT  = "LIMIT"
 	ORDER_TYPE_MARKET = "MARKET"
 )
 
 const (
-	Host = "api.deerdex.com"
-	API_BASE = "https://" + Host
-	COMMON_SYMBOLS = "/openapi/v1/brokerInfo"
-	GET_TICKER = "/openapi/quote/v1/ticker/24hr?symbol=%s"
+	Host            = "api.deerdex.com"
+	API_BASE        = "https://" + Host
+	COMMON_SYMBOLS  = "/openapi/v1/brokerInfo"
+	GET_TICKER      = "/openapi/quote/v1/ticker/24hr?symbol=%s"
 	GET_MARKET_DEPH = "/openapi/quote/v1/depth?symbol=%s&limit=20"
-	GET_TRADES = "/openapi/quote/v1/trades?symbol=%s&limit=1"
-	ACCOUNT = "/openapi/v1/account"
-	CREATE_ORDER = "/openapi/v1/order"
-	CANCEL_ORDER = "/openapi/v1/order"
-	NEW_ORDER = "/openapi/v1/openOrders"
-	ORDER_INFO = "/openapi/v1/order"
-	His_ORDER = "/openapi/v1/historyOrders"
-	MY_TRADES = "/openapi/v1/myTrades"
+	GET_TRADES      = "/openapi/quote/v1/trades?symbol=%s&limit=1"
+	ACCOUNT         = "/openapi/v1/account"
+	CREATE_ORDER    = "/openapi/v1/order"
+	CANCEL_ORDER    = "/openapi/v1/order"
+	NEW_ORDER       = "/openapi/v1/openOrders"
+	ORDER_INFO      = "/openapi/v1/order"
+	His_ORDER       = "/openapi/v1/historyOrders"
+	MY_TRADES       = "/openapi/v1/myTrades"
 
 	USER_DATA_STREAM = "/openapi/v1/userDataStream"
 )
@@ -111,8 +112,8 @@ func (ok *DeerDex) GetSymbols() ([]Symbol, error) {
 
 	var data struct {
 		Symbols []Symbol
-		Msg string
-		Code decimal.Decimal
+		Msg     string
+		Code    decimal.Decimal
 	}
 
 	err = json.Unmarshal(body, &data)
@@ -145,7 +146,7 @@ func (this *DeerDex) transSymbol(symbol string) string {
 
 func (this *DeerDex) GetTicker(symbol string) (*TickerDecimal, error) {
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE + GET_TICKER, symbol)
+	url := fmt.Sprintf(API_BASE+GET_TICKER, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -158,8 +159,8 @@ func (this *DeerDex) GetTicker(symbol string) (*TickerDecimal, error) {
 		return nil, err
 	}
 	var data struct {
-		Msg          string
-		Code         decimal.Decimal
+		Msg  string
+		Code decimal.Decimal
 
 		Time         int64
 		BestBidPrice decimal.Decimal
@@ -198,7 +199,7 @@ func (this *DeerDex) GetTicker(symbol string) (*TickerDecimal, error) {
 func (this *DeerDex) GetDepth(symbol string) (*DepthDecimal, error) {
 	inputSymbol := symbol
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE + GET_MARKET_DEPH, symbol)
+	url := fmt.Sprintf(API_BASE+GET_MARKET_DEPH, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -213,8 +214,8 @@ func (this *DeerDex) GetDepth(symbol string) (*DepthDecimal, error) {
 	}
 
 	var data struct {
-		Msg string
-	    Code decimal.Decimal
+		Msg  string
+		Code decimal.Decimal
 		Asks [][]decimal.Decimal
 		Bids [][]decimal.Decimal
 	}
@@ -248,7 +249,7 @@ func (this *DeerDex) GetDepth(symbol string) (*DepthDecimal, error) {
 
 func (this *DeerDex) GetTrades(symbol string) ([]TradeDecimal, error) {
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE + GET_TRADES, symbol)
+	url := fmt.Sprintf(API_BASE+GET_TRADES, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -265,7 +266,7 @@ func (this *DeerDex) GetTrades(symbol string) ([]TradeDecimal, error) {
 	bodyStr := string(body)
 	if bodyStr[0] == '{' {
 		var data struct {
-			Msg string
+			Msg  string
 			Code decimal.Decimal
 		}
 		err = json.Unmarshal(body, &data)
@@ -277,9 +278,9 @@ func (this *DeerDex) GetTrades(symbol string) ([]TradeDecimal, error) {
 	}
 
 	var data []struct {
-		Price decimal.Decimal
-		Qty decimal.Decimal
-		Time int64
+		Price        decimal.Decimal
+		Qty          decimal.Decimal
+		Time         int64
 		IsBuyerMaker bool
 	}
 
@@ -312,12 +313,12 @@ func (this *DeerDex) signData(data string) string {
 }
 
 func (this *DeerDex) sign(param map[string]string) string {
-	timestamp := strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 	param["timestamp"] = timestamp
 
 	var parts []string
 	for k, v := range param {
-		parts = append(parts, k + "=" + v)
+		parts = append(parts, k+"="+v)
 	}
 	data := strings.Join(parts, "&")
 	sign := this.signData(data)
@@ -333,23 +334,23 @@ func (this *DeerDex) buildQueryString(param map[string]string) string {
 }
 
 func (this *DeerDex) authHeader() map[string]string {
-	return map[string]string {
-		"X-BH-APIKEY": this.ApiKey,
+	return map[string]string{
+		"X-BH-APIKEY":  this.ApiKey,
 		"Content-Type": "application/x-www-form-urlencoded",
 	}
 }
 
 func (this *DeerDex) GetAccount() ([]SubAccountDecimal, error) {
-	params := map[string]string {}
+	params := map[string]string{}
 	queryString := this.sign(params)
 
 	url := API_BASE + ACCOUNT + "?" + queryString
 	var resp struct {
-		Msg string
-		Code decimal.Decimal
+		Msg      string
+		Code     decimal.Decimal
 		Balances []struct {
-			Asset string
-			Free decimal.Decimal
+			Asset  string
+			Free   decimal.Decimal
 			Locked decimal.Decimal
 		}
 	}
@@ -371,10 +372,10 @@ func (this *DeerDex) GetAccount() ([]SubAccountDecimal, error) {
 			continue
 		}
 		ret = append(ret, SubAccountDecimal{
-			Currency: Currency{Symbol: currency},
+			Currency:        Currency{Symbol: currency},
 			AvailableAmount: o.Free,
-			FrozenAmount: o.Locked,
-			Amount: o.Free.Add(o.Locked),
+			FrozenAmount:    o.Locked,
+			Amount:          o.Free.Add(o.Locked),
 		})
 	}
 
@@ -383,16 +384,16 @@ func (this *DeerDex) GetAccount() ([]SubAccountDecimal, error) {
 
 func (this *DeerDex) PlaceOrder(volume decimal.Decimal, side string, _type string, symbol string, price decimal.Decimal) (string, error) {
 	symbol = this.transSymbol(symbol)
-	signParams := map[string]string {
-		"side": side,
-		"quantity": volume.String(),
-		"type": _type,
-		"symbol": symbol,
-		"price": price.String(),
+	signParams := map[string]string{
+		"side":        side,
+		"quantity":    volume.String(),
+		"type":        _type,
+		"symbol":      symbol,
+		"price":       price.String(),
 		"timeInForce": "GTC",
 	}
 	postData := this.sign(signParams)
-
+	println(postData)
 	url := API_BASE + CREATE_ORDER
 
 	body, err := HttpPostForm3(this.client, url, postData, this.authHeader())
@@ -400,10 +401,11 @@ func (this *DeerDex) PlaceOrder(volume decimal.Decimal, side string, _type strin
 	if err != nil {
 		return "", err
 	}
+	println(string(body))
 	var resp struct {
-		Msg string
-		Code decimal.Decimal
-		OrderId decimal.Decimal		`json:"orderId"`
+		Msg     string
+		Code    decimal.Decimal
+		OrderId decimal.Decimal `json:"orderId"`
 	}
 
 	err = json.Unmarshal(body, &resp)
@@ -419,9 +421,8 @@ func (this *DeerDex) PlaceOrder(volume decimal.Decimal, side string, _type strin
 }
 
 func (this *DeerDex) CancelOrder(orderId string) error {
-	signParams := map[string]string {
+	signParams := map[string]string{
 		"orderId": orderId,
-
 	}
 	postData := this.sign(signParams)
 	url := API_BASE + CANCEL_ORDER + "?" + postData
@@ -437,7 +438,7 @@ func (this *DeerDex) CancelOrder(orderId string) error {
 		return err
 	}
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 	}
 
@@ -454,11 +455,11 @@ func (this *DeerDex) CancelOrder(orderId string) error {
 }
 
 func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
-	if pageSize == 0 || pageSize > 50 {
+	if pageSize == 0 {
 		pageSize = 50
 	}
 
-	param := map[string]string {
+	param := map[string]string{
 		"symbol": this.transSymbol(symbol),
 	}
 	if from != "" {
@@ -476,7 +477,7 @@ func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int
 	}
 	if strings.HasPrefix(string(bytes), "{") {
 		var resp struct {
-			Msg string
+			Msg  string
 			Code decimal.Decimal
 		}
 
@@ -505,11 +506,11 @@ func (this *DeerDex) QueryPendingOrders(symbol string, from string, pageSize int
 }
 
 func (this *DeerDex) QueryHisOrders(symbol string, from string, pageSize int) ([]OrderDecimal, error) {
-	if pageSize == 0 || pageSize > 50 {
+	if pageSize == 0 {
 		pageSize = 50
 	}
 
-	param := map[string]string {
+	param := map[string]string{
 		"symbol": this.transSymbol(symbol),
 	}
 	if from != "" {
@@ -527,7 +528,7 @@ func (this *DeerDex) QueryHisOrders(symbol string, from string, pageSize int) ([
 	}
 	if strings.HasPrefix(string(bytes), "{") {
 		var resp struct {
-			Msg string
+			Msg  string
 			Code decimal.Decimal
 		}
 
@@ -557,7 +558,7 @@ func (this *DeerDex) QueryHisOrders(symbol string, from string, pageSize int) ([
 
 func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
 	symbol = strings.ToUpper(symbol)
-	queryStr := this.sign(map[string]string {
+	queryStr := this.sign(map[string]string{
 		"orderId": orderId,
 	})
 
@@ -582,12 +583,11 @@ func (this *DeerDex) QueryOrder(symbol string, orderId string) (*OrderDecimal, e
 }
 
 func (this *DeerDex) QueryFills(startTime, endTime int64, fromId int64, pageSize int) ([]Fill, error) {
-	if pageSize == 0 || pageSize > 50 {
+	if pageSize == 0 {
 		pageSize = 50
 	}
 
-	param := map[string]string {
-	}
+	param := map[string]string{}
 	if startTime > 0 {
 		param["startTime"] = strconv.FormatInt(startTime, 10)
 	}
@@ -609,7 +609,7 @@ func (this *DeerDex) QueryFills(startTime, endTime int64, fromId int64, pageSize
 	}
 	if strings.HasPrefix(string(bytes), "{") {
 		var resp struct {
-			Msg string
+			Msg  string
 			Code decimal.Decimal
 		}
 
@@ -635,7 +635,7 @@ func (this *DeerDex) QueryFills(startTime, endTime int64, fromId int64, pageSize
 // User Stream Helpers
 
 func (this *DeerDex) CreateListenKey() (string, error) {
-	signParams := map[string]string {}
+	signParams := map[string]string{}
 	postData := this.sign(signParams)
 
 	url := API_BASE + USER_DATA_STREAM
@@ -647,8 +647,8 @@ func (this *DeerDex) CreateListenKey() (string, error) {
 	}
 
 	var resp struct {
-		Msg string
-		Code decimal.Decimal
+		Msg       string
+		Code      decimal.Decimal
 		ListenKey string
 	}
 
@@ -664,8 +664,8 @@ func (this *DeerDex) CreateListenKey() (string, error) {
 	return resp.ListenKey, nil
 }
 
-func (this *DeerDex) ListenKeyKeepAlive(listenKey string) (error) {
-	signParams := map[string]string {
+func (this *DeerDex) ListenKeyKeepAlive(listenKey string) error {
+	signParams := map[string]string{
 		"listenKey": listenKey,
 	}
 	postData := this.sign(signParams)
@@ -678,7 +678,7 @@ func (this *DeerDex) ListenKeyKeepAlive(listenKey string) (error) {
 	}
 
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 	}
 
