@@ -131,7 +131,9 @@ func (ok *DeerDex) GetSymbols() ([]Symbol, error) {
 		for _, f := range s.Filters {
 			if f.FilterType == "LOT_SIZE" {
 				s.AmountMin = f.MinQty
-				break
+				s.BaseAssetPrecision = f.StepSize
+			} else if f.FilterType == "PRICE_FILTER" {
+				s.QuotePrecision = f.TickSize
 			}
 		}
 		ret = append(ret, s)
