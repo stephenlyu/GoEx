@@ -7,10 +7,10 @@ import (
 
 // OrderReq Order request
 type OrderReq struct {
-	Side   string  `json:"side"`
-	Type   string  `json:"type"`
-	Volume float64 `json:"volume"`
-	Price  float64 `json:"price"`
+	Side   string          `json:"side"`
+	Type   string          `json:"type"`
+	Volume decimal.Decimal `json:"volume"`
+	Price  decimal.Decimal `json:"price"`
 }
 
 // Symbol symbol

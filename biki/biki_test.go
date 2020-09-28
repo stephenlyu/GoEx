@@ -98,14 +98,14 @@ func TestBiki_MassPlaceFail(t *testing.T) {
 		{
 			Side:   OrderBuy,
 			Type:   OrderTypeLimitStr,
-			Volume: 0.0001,
-			Price:  35000,
+			Volume: decimal.NewFromFloat(0.0001),
+			Price:  decimal.NewFromFloat(35000),
 		},
 		{
 			Side:   OrderBuy,
 			Type:   OrderTypeLimitStr,
-			Volume: 0,
-			Price:  35001,
+			Volume: decimal.NewFromFloat(0),
+			Price:  decimal.NewFromFloat(35001),
 		},
 	}
 
@@ -121,14 +121,14 @@ func TestBiki_MassPlaceSuccess(t *testing.T) {
 		{
 			Side:   OrderBuy,
 			Type:   OrderTypeLimitStr,
-			Volume: 0.0001,
-			Price:  10000,
+			Volume: decimal.NewFromFloat(0.0001),
+			Price:  decimal.NewFromFloat(10000),
 		},
 		{
 			Side:   OrderBuy,
 			Type:   OrderTypeLimitStr,
-			Volume: 0.0001,
-			Price:  10001,
+			Volume: decimal.NewFromFloat(0.0001),
+			Price:  decimal.NewFromFloat(10001),
 		},
 	}
 
@@ -141,7 +141,7 @@ func TestBiki_MassPlaceSuccess(t *testing.T) {
 func TestBiki_MassCancelSuccess(t *testing.T) {
 	code := "GUNG_ODIN"
 
-	_, _, cancelErrors, err := biki.MassReplace(code, []string{"1770", "1771"}, nil)
+	_, _, cancelErrors, err := biki.MassReplace(code, []string{"1779", "1780"}, nil)
 	fmt.Println(err)
 	fmt.Println(cancelErrors)
 }
