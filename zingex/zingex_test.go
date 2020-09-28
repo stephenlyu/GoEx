@@ -1,15 +1,16 @@
 package zingex
 
 import (
-	"testing"
 	"encoding/json"
 	"fmt"
-	"os"
 	"io/ioutil"
 	"net/http"
-	"github.com/stretchr/testify/assert"
+	"os"
+	"testing"
+
 	"github.com/shopspring/decimal"
-	"github.com/stephenlyu/GoEx"
+	goex "github.com/stephenlyu/GoEx"
+	"github.com/stretchr/testify/assert"
 )
 
 var zingEx *ZingEx
@@ -22,7 +23,7 @@ func chk(err error) {
 
 func init() {
 	type Key struct {
-		ApiKey    string    `json:"api-key"`
+		ApiKey    string `json:"api-key"`
 		SecretKey string `json:"secret-key"`
 	}
 
@@ -57,7 +58,7 @@ func TestZingEx_GetTicker(t *testing.T) {
 }
 
 func TestZingEx_GetDepth(t *testing.T) {
-	ret, err := zingEx.GetDepth("ODIN_USDT")
+	ret, err := zingEx.GetDepth("BTC_USDT")
 	chk(err)
 	output(ret)
 }
@@ -75,8 +76,8 @@ func TestZingEx_GetAccount(t *testing.T) {
 }
 
 func TestZingEx_PlaceOrder(t *testing.T) {
-	code := "BTC_USDT"
-	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.0015), OrderBuy, code, decimal.NewFromFloat(5400))
+	code := "BU_USDT"
+	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(1711.31), OrderBuy, code, decimal.NewFromFloat(0.000185))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -86,8 +87,8 @@ func TestZingEx_PlaceOrder(t *testing.T) {
 }
 
 func TestZingEx_Sell(t *testing.T) {
-	code := "BTC_USDT"
-	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(0.002), OrderSell, code, decimal.NewFromFloat(5400))
+	code := "BU_USDT"
+	orderId, err := zingEx.PlaceOrder(decimal.NewFromFloat(1711.31), OrderSell, code, decimal.NewFromFloat(0.000184))
 	assert.Nil(t, err)
 	output(orderId)
 
@@ -102,9 +103,15 @@ func TestZingExCancelOrder(t *testing.T) {
 }
 
 func TestZingExGetPendingOrders(t *testing.T) {
-	code := "ODIN_USDT"
+	code := "BU_USDT"
 	orders, err := zingEx.QueryPendingOrders(code)
 	assert.Nil(t, err)
+
+	var orderIds []string
+	for _, o := range orders {
+		orderIds = append(orderIds, o.OrderID2)
+	}
+	println(orderIds)
 
 	var bids []goex.OrderDecimal
 	var asks []goex.OrderDecimal
@@ -117,7 +124,7 @@ func TestZingExGetPendingOrders(t *testing.T) {
 	}
 	fmt.Printf("bid count: %d ask count: %d", len(bids), len(asks))
 
-	//output(orders)
+	output(orders)
 }
 
 func TestZingExGetOrder(t *testing.T) {

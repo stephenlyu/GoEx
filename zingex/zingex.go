@@ -1,55 +1,56 @@
 package zingex
 
 import (
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
-	"fmt"
-	"github.com/shopspring/decimal"
-	"strings"
-	. "github.com/stephenlyu/GoEx"
-	"sort"
-	"net/url"
-	"sync"
-	"errors"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"sort"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/shopspring/decimal"
+	. "github.com/stephenlyu/GoEx"
 )
 
 const (
-	OrderBuy = "0"
+	OrderBuy  = "0"
 	OrderSell = "1"
 )
 
 const (
-	OrderStatusNew = 1
+	OrderStatusNew             = 1
 	OrderStatusPartiallyFilled = 2
-	OrderStatusFilled = 3
-	OrderStatusCanceled = 4
+	OrderStatusFilled          = 3
+	OrderStatusCanceled        = 4
 )
 
 const (
-	API_BASE_URL = "https://tinance.pro"
-	SYMBOL_MAP = "/ticker.json"
-	COMMON_SYMBOLS = "/appApi.json?action=tickers"
-	GET_TICKER = "/appApi.json?action=market&symbol=%s"
+	API_BASE_URL     = "https://tinance.pro"
+	SYMBOL_MAP       = "/ticker.json"
+	COMMON_SYMBOLS   = "/appApi.json?action=tickers"
+	GET_TICKER       = "/appApi.json?action=market&symbol=%s"
 	GET_MARKET_DEPTH = "/appApi.json?action=depth&symbol=%s&size=30"
-	GET_TRADES = "/appApi.json?action=trades&symbol=%s"
-	ACCOUNT = "/appApi.json?action=userinfo"
-	CREATE_ORDER = "/appApi.json?action=trade"
-	CANCEL_ORDER = "/appApi.json?action=cancel_entrust"
-	NEW_ORDER = "/appApi.json?action=entrust"
-	ORDER_INFO = "/appApi.json?action=order"
+	GET_TRADES       = "/appApi.json?action=trades&symbol=%s"
+	ACCOUNT          = "/appApi.json?action=userinfo"
+	CREATE_ORDER     = "/appApi.json?action=trade"
+	CANCEL_ORDER     = "/appApi.json?action=cancel_entrust"
+	NEW_ORDER        = "/appApi.json?action=entrust"
+	ORDER_INFO       = "/appApi.json?action=order"
 )
 
 var ErrNotExist = errors.New("NOT EXISTS")
 
 type ZingEx struct {
-	ApiKey           string
-	SecretKey        string
-	client           *http.Client
+	ApiKey    string
+	SecretKey string
+	client    *http.Client
 
-	symbolNameMap    map[string]string
+	symbolNameMap map[string]string
 
 	ws               *WsConn
 	createWsLock     sync.Mutex
@@ -160,7 +161,7 @@ func (this *ZingEx) transSymbol(symbol string) string {
 
 func (this *ZingEx) GetTicker(symbol string) (*TickerDecimal, error) {
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE_URL + GET_TICKER, symbol)
+	url := fmt.Sprintf(API_BASE_URL+GET_TICKER, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -179,13 +180,13 @@ func (this *ZingEx) GetTicker(symbol string) (*TickerDecimal, error) {
 
 		Time int64
 		Data struct {
-				 High decimal.Decimal
-				 Vol  decimal.Decimal
-				 Last decimal.Decimal
-				 Low  decimal.Decimal
-				 Buy  decimal.Decimal
-				 Sell decimal.Decimal
-			 }
+			High decimal.Decimal
+			Vol  decimal.Decimal
+			Last decimal.Decimal
+			Low  decimal.Decimal
+			Buy  decimal.Decimal
+			Sell decimal.Decimal
+		}
 	}
 
 	err = json.Unmarshal(body, &data)
@@ -214,7 +215,7 @@ func (this *ZingEx) GetTicker(symbol string) (*TickerDecimal, error) {
 func (this *ZingEx) GetDepth(symbol string) (*DepthDecimal, error) {
 	inputSymbol := symbol
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE_URL + GET_MARKET_DEPTH, symbol)
+	url := fmt.Sprintf(API_BASE_URL+GET_MARKET_DEPTH, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -232,9 +233,9 @@ func (this *ZingEx) GetDepth(symbol string) (*DepthDecimal, error) {
 		Msg  string
 		Code decimal.Decimal
 		Data struct {
-				 Asks [][]decimal.Decimal
-				 Bids [][]decimal.Decimal
-			 }
+			Asks [][]decimal.Decimal
+			Bids [][]decimal.Decimal
+		}
 	}
 
 	err = json.Unmarshal(body, &data)
@@ -266,7 +267,7 @@ func (this *ZingEx) GetDepth(symbol string) (*DepthDecimal, error) {
 
 func (this *ZingEx) GetTrades(symbol string) ([]TradeDecimal, error) {
 	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE_URL + GET_TRADES, symbol)
+	url := fmt.Sprintf(API_BASE_URL+GET_TRADES, symbol)
 	resp, err := this.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -287,7 +288,7 @@ func (this *ZingEx) GetTrades(symbol string) ([]TradeDecimal, error) {
 			Amount decimal.Decimal
 			Price  decimal.Decimal
 			ID     int64
-			Type   string    `json:"en_type"`
+			Type   string `json:"en_type"`
 		}
 	}
 
@@ -361,9 +362,9 @@ func (this *ZingEx) sign(param map[string]string) map[string]string {
 		if value == "" {
 			continue
 		}
-		parts = append(parts, key + "=" + value)
+		parts = append(parts, key+"="+value)
 	}
-	parts = append(parts, "secret_key=" + this.SecretKey)
+	parts = append(parts, "secret_key="+this.SecretKey)
 	data := strings.Join(parts, "&")
 
 	sign := this.signData(data)
@@ -387,9 +388,9 @@ func (this *ZingEx) GetAccount() ([]SubAccountDecimal, error) {
 		Msg  string
 		Code decimal.Decimal
 		Data struct {
-				 Frozen map[string]decimal.Decimal
-				 Free   map[string]decimal.Decimal
-			 }
+			Frozen map[string]decimal.Decimal
+			Free   map[string]decimal.Decimal
+		}
 	}
 
 	header := this.getAuthHeader()
@@ -407,7 +408,7 @@ func (this *ZingEx) GetAccount() ([]SubAccountDecimal, error) {
 	for currency, amount := range resp.Data.Free {
 		currency := strings.ToUpper(currency)
 		m[currency] = &SubAccountDecimal{
-			Currency: Currency{Symbol: currency},
+			Currency:        Currency{Symbol: currency},
 			AvailableAmount: amount,
 		}
 	}
@@ -416,7 +417,7 @@ func (this *ZingEx) GetAccount() ([]SubAccountDecimal, error) {
 		o, ok := m[currency]
 		if !ok {
 			m[currency] = &SubAccountDecimal{
-				Currency: Currency{Symbol: currency},
+				Currency:     Currency{Symbol: currency},
 				FrozenAmount: amount,
 			}
 		} else {
@@ -436,9 +437,9 @@ func (this *ZingEx) GetAccount() ([]SubAccountDecimal, error) {
 func (this *ZingEx) PlaceOrder(volume decimal.Decimal, side string, symbol string, price decimal.Decimal) (string, error) {
 	params := map[string]string{
 		"symbol": this.transSymbol(symbol),
-		"type": side,
+		"type":   side,
 		"amount": volume.String(),
-		"price": price.String(),
+		"price":  price.String(),
 	}
 
 	params = this.sign(params)
@@ -565,7 +566,7 @@ func (this *ZingEx) GetPositionStatistics(symbol string) (*PositionStat, error) 
 	var resp struct {
 		Code decimal.Decimal
 		Msg  string
-		Obj *PositionStat
+		Obj  *PositionStat
 	}
 
 	err := HttpGet4(this.client, url, this.getAuthHeader(), &resp)
