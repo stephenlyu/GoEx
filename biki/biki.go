@@ -24,6 +24,9 @@ const (
 
 	OrderTypeLimit  = 1
 	OrderTypeMarket = 2
+
+	OrderTypeLimitStr  = "1"
+	OrderTypeMarketStr = "2"
 )
 
 // Urls
@@ -35,6 +38,7 @@ const (
 	getTrades      = "/open/api/get_trades?symbol=%s"
 	account        = "/open/api/user/account"
 	createOrder    = "/open/api/create_order"
+	massReplace    = "/open/api/mass_replaceV2"
 	cancelOrder    = "/open/api/cancel_order"
 	newOrder       = "/open/api/new_order"
 	orderInfo      = "/open/api/order_info"
@@ -464,6 +468,121 @@ func (biki *Biki) CancelOrder(symbol string, orderID string) error {
 	}
 
 	return nil
+}
+
+// MassReplace Mass replace orders
+func (biki *Biki) MassReplace(symbol string, cancelOrderIDs []string, reqList []OrderReq) (orderIDs []string, placeErrors, cancelErrors []error, err error) {
+	orderIDs = make([]string, len(reqList))
+	placeErrors = make([]error, len(reqList))
+	cancelErrors = make([]error, len(cancelOrderIDs))
+
+	symbol = biki.transSymbol(symbol)
+
+	params := map[string]string{
+		"symbol": symbol,
+	}
+
+	if len(cancelOrderIDs) > 0 {
+		massCancel, _ := json.Marshal(cancelOrderIDs)
+		params["mass_cancel"] = string(massCancel)
+	}
+
+	if len(reqList) > 0 {
+		massPlace, _ := json.Marshal(reqList)
+		println(string(massPlace))
+		params["mass_place"] = string(massPlace)
+	}
+
+	params = biki.sign(params)
+
+	data := biki.buildQueryString(params)
+	println(data)
+
+	url := apiBaseURL + massReplace
+	var body []byte
+	body, err = goex.HttpPostForm3(biki.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+
+	if err != nil {
+		return
+	}
+
+	println(string(body))
+
+	var resp struct {
+		Msg  string
+		Code decimal.Decimal
+		Data struct {
+			MassPlace []struct {
+				Msg      string
+				Code     decimal.Decimal
+				OrderIDs []decimal.Decimal `json:"order_id"`
+			} `json:"mass_place"`
+			MassCancel []struct {
+				Msg      string
+				Code     decimal.Decimal
+				OrderIDs []decimal.Decimal `json:"order_id"`
+			} `json:"mass_cancel"`
+		}
+	}
+
+	bodyStr := strings.Replace(string(body), `,"order_id":""`, "", -1)
+
+	err = json.Unmarshal([]byte(bodyStr), &resp)
+	if err != nil {
+		return
+	}
+
+	if resp.Code.IntPart() != 0 {
+		err = fmt.Errorf("error code: %s", resp.Code.String())
+		return
+	}
+
+	if len(cancelOrderIDs) > 0 {
+		var count int
+		m := make(map[string]int)
+		for i, orderID := range cancelOrderIDs {
+			m[orderID] = i
+		}
+		for _, o := range resp.Data.MassCancel {
+			count += len(o.OrderIDs)
+			if o.Code.IsZero() {
+				continue
+			}
+			err1 := fmt.Errorf("error code: %s", o.Code.String())
+			for _, orderID := range o.OrderIDs {
+				index, ok := m[orderID.String()]
+				if !ok {
+					panic("")
+				}
+				cancelErrors[index] = err1
+			}
+		}
+		if count != len(cancelOrderIDs) {
+			panic("")
+		}
+	}
+
+	if len(reqList) > 0 {
+		if len(resp.Data.MassPlace) != 1 {
+			panic("")
+		}
+		o := resp.Data.MassPlace[0]
+		if o.Code.IsZero() {
+			if len(o.OrderIDs) != len(reqList) {
+				panic("")
+			}
+			for i := range orderIDs {
+				orderIDs[i] = o.OrderIDs[i].String()
+			}
+		} else {
+			err1 := fmt.Errorf("error code: %s", o.Code.String())
+			for i := range placeErrors {
+				placeErrors[i] = err1
+			}
+		}
+	}
+
+	return
 }
 
 // QueryPendingOrders Query pending orders

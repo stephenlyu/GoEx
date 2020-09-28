@@ -5,6 +5,14 @@ import (
 	goex "github.com/stephenlyu/GoEx"
 )
 
+// OrderReq Order request
+type OrderReq struct {
+	Side   string  `json:"side"`
+	Type   string  `json:"type"`
+	Volume float64 `json:"volume"`
+	Price  float64 `json:"price"`
+}
+
 // Symbol symbol
 type Symbol struct {
 	Symbol          string

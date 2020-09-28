@@ -92,22 +92,84 @@ func TestBiki_PlaceOrder(t *testing.T) {
 	output(order)
 }
 
-func TestOKExV3_FutureCancelOrder(t *testing.T) {
+func TestBiki_MassPlaceFail(t *testing.T) {
+	code := "GUNG_ODIN"
+	reqList := []OrderReq{
+		{
+			Side:   OrderBuy,
+			Type:   OrderTypeLimitStr,
+			Volume: 0.0001,
+			Price:  35000,
+		},
+		{
+			Side:   OrderBuy,
+			Type:   OrderTypeLimitStr,
+			Volume: 0,
+			Price:  35001,
+		},
+	}
+
+	orderIDs, placeErrors, _, err := biki.MassReplace(code, nil, reqList)
+	fmt.Println(err)
+	fmt.Println(placeErrors)
+	fmt.Println(orderIDs)
+}
+
+func TestBiki_MassPlaceSuccess(t *testing.T) {
+	code := "GUNG_ODIN"
+	reqList := []OrderReq{
+		{
+			Side:   OrderBuy,
+			Type:   OrderTypeLimitStr,
+			Volume: 0.0001,
+			Price:  10000,
+		},
+		{
+			Side:   OrderBuy,
+			Type:   OrderTypeLimitStr,
+			Volume: 0.0001,
+			Price:  10001,
+		},
+	}
+
+	orderIDs, placeErrors, _, err := biki.MassReplace(code, nil, reqList)
+	fmt.Println(err)
+	fmt.Println(placeErrors)
+	fmt.Println(orderIDs)
+}
+
+func TestBiki_MassCancelSuccess(t *testing.T) {
+	code := "GUNG_ODIN"
+
+	_, _, cancelErrors, err := biki.MassReplace(code, []string{"1770", "1771"}, nil)
+	fmt.Println(err)
+	fmt.Println(cancelErrors)
+}
+
+func TestBiki_MassCancelFail(t *testing.T) {
+	code := "GUNG_ODIN"
+
+	_, _, cancelErrors, err := biki.MassReplace(code, []string{"10000", "1771"}, nil)
+	fmt.Println(err)
+	fmt.Println(cancelErrors)
+}
+
+func TestBiki_FutureCancelOrder(t *testing.T) {
 	code := "sht_usdt"
 	err := biki.CancelOrder(code, "10278430")
 	assert.Nil(t, err)
 }
 
-func TestOKExV3_GetPendingOrders(t *testing.T) {
+func TestBiki_GetPendingOrders(t *testing.T) {
 	code := "sht_usdt"
 	orders, err := biki.QueryPendingOrders(code, 0, 100)
 	assert.Nil(t, err)
 	output(orders)
 }
 
-func TestOKExV3_GetOrder(t *testing.T) {
-	code := "sht_usdt"
-	order, err := biki.QueryOrder(code, "10278430")
+func TestBiki_GetOrder(t *testing.T) {
+	code := "GUNG_ODIN"
+	order, err := biki.QueryOrder(code, "1770")
 	assert.Nil(t, err)
 	output(order)
 }
@@ -124,7 +186,7 @@ func TestZBG_CancelAll(t *testing.T) {
 	}
 }
 
-func TestOKExV3_GetALLOrders(t *testing.T) {
+func TestBiki_GetALLOrders(t *testing.T) {
 	code := "sht_usdt"
 	orders, err := biki.QueryAllOrders(code, 0, 100)
 	assert.Nil(t, err)
