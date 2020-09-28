@@ -1,63 +1,80 @@
 package biki
 
 import (
-	"net/http"
-	"io/ioutil"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"strings"
-	"time"
-	. "github.com/stephenlyu/GoEx"
-	"strconv"
-	"sort"
+	"io/ioutil"
+	"net/http"
 	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/shopspring/decimal"
+	goex "github.com/stephenlyu/GoEx"
 )
 
+// consts
 const (
-	ORDER_SELL = "SELL"
-	ORDER_BUY = "BUY"
+	OrerSell = "SELL"
+	OrderBuy = "BUY"
 
-	ORDER_TYPE_LIMIT = 1
-	ORDER_TYPE_MARKET = 2
+	OrderTypeLimit  = 1
+	OrderTypeMarket = 2
 )
 
+// Urls
 const (
-	API_BASE_URL    = "https://openapi.biki.com"
-	COMMON_SYMBOLS = "/open/api/common/symbols"
-	GET_TICKER = "/open/api/get_ticker?symbol=%s"
-	GET_MARKET_DEPH = "/open/api/market_dept?symbol=%s&type=step0"
-	GET_TRADES = "/open/api/get_trades?symbol=%s"
-	ACCOUNT = "/open/api/user/account"
-	CREATE_ORDER = "/open/api/create_order"
-	CANCEL_ORDER = "/open/api/cancel_order"
-	NEW_ORDER = "/open/api/new_order"
-	ORDER_INFO = "/open/api/order_info"
-	ALL_ORDER = "/open/api/all_order"
+	apiBaseURL     = "http://openapi.biki.com"
+	commonSymbols  = "/open/api/common/symbols"
+	getTicker      = "/open/api/get_ticker?symbol=%s"
+	getMarketDepth = "/open/api/market_dept?symbol=%s&type=step0"
+	getTrades      = "/open/api/get_trades?symbol=%s"
+	account        = "/open/api/user/account"
+	createOrder    = "/open/api/create_order"
+	cancelOrder    = "/open/api/cancel_order"
+	newOrder       = "/open/api/new_order"
+	orderInfo      = "/open/api/order_info"
+	allOrder       = "/open/api/all_order"
 )
 
+// Biki Biki api
 type Biki struct {
-	ApiKey    string
+	APIKey    string
 	SecretKey string
 	client    *http.Client
 
 	symbolNameMap map[string]string
+
+	ws               *goex.WsConn
+	createWsLock     sync.Mutex
+	wsDepthHandleMap map[string]func(*goex.DepthDecimal)
+	wsTradeHandleMap map[string]func(string, []goex.TradeDecimal)
+	errorHandle      func(error)
+	wsSymbolMap      map[string]string
 }
 
-func NewBiki(ApiKey string, SecretKey string) *Biki {
-	this := new(Biki)
-	this.ApiKey = ApiKey
-	this.SecretKey = SecretKey
-	this.client = http.DefaultClient
+// NewBiki Biki constructor
+func NewBiki(APIKey string, SecretKey string) *Biki {
+	biki := new(Biki)
+	biki.APIKey = APIKey
+	biki.SecretKey = SecretKey
+	biki.client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 
-	this.symbolNameMap = make(map[string]string)
-	return this
+	biki.symbolNameMap = make(map[string]string)
+	return biki
 }
 
-
-func (this *Biki) getPairByName(name string) string {
+func (biki *Biki) getPairByName(name string) string {
 	name = strings.ToUpper(name)
-	c, ok := this.symbolNameMap[name]
+	c, ok := biki.symbolNameMap[name]
 	if ok {
 		return c
 	}
@@ -65,7 +82,7 @@ func (this *Biki) getPairByName(name string) string {
 	var err error
 	var l []Symbol
 	for i := 0; i < 5; i++ {
-		l, err = this.GetSymbols()
+		l, err = biki.GetSymbols()
 		if err == nil {
 			break
 		}
@@ -76,18 +93,19 @@ func (this *Biki) getPairByName(name string) string {
 	}
 
 	for _, o := range l {
-		this.symbolNameMap[strings.ToUpper(o.Symbol)] = fmt.Sprintf("%s_%s", o.BaseCoin, o.CountCoin)
+		biki.symbolNameMap[strings.ToUpper(o.Symbol)] = fmt.Sprintf("%s_%s", o.BaseCoin, o.CountCoin)
 	}
-	c, ok = this.symbolNameMap[name]
+	c, ok = biki.symbolNameMap[name]
 	if !ok {
 		return ""
 	}
 	return c
 }
 
-func (ok *Biki) GetSymbols() ([]Symbol, error) {
-	url := API_BASE_URL + COMMON_SYMBOLS
-	resp, err := ok.client.Get(url)
+// GetSymbols Get symbols
+func (biki *Biki) GetSymbols() ([]Symbol, error) {
+	url := apiBaseURL + commonSymbols
+	resp, err := biki.client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +120,7 @@ func (ok *Biki) GetSymbols() ([]Symbol, error) {
 
 	var data struct {
 		Data []Symbol
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 	}
 
@@ -123,14 +141,15 @@ func (ok *Biki) GetSymbols() ([]Symbol, error) {
 	return data.Data, nil
 }
 
-func (this *Biki) transSymbol(symbol string) string {
+func (biki *Biki) transSymbol(symbol string) string {
 	return strings.ToLower(strings.Replace(symbol, "_", "", -1))
 }
 
-func (this *Biki) GetTicker(symbol string) (*TickerDecimal, error) {
-	symbol = this.transSymbol(symbol)
-	url := API_BASE_URL + GET_TICKER
-	resp, err := this.client.Get(fmt.Sprintf(url, symbol))
+// GetTicker Get ticker
+func (biki *Biki) GetTicker(symbol string) (*goex.TickerDecimal, error) {
+	symbol = biki.transSymbol(symbol)
+	url := apiBaseURL + getTicker
+	resp, err := biki.client.Get(fmt.Sprintf(url, symbol))
 	if err != nil {
 		return nil, err
 	}
@@ -143,17 +162,17 @@ func (this *Biki) GetTicker(symbol string) (*TickerDecimal, error) {
 		return nil, err
 	}
 	var data struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 		Data struct {
 			High decimal.Decimal
-			Vol decimal.Decimal
+			Vol  decimal.Decimal
 			Last decimal.Decimal
-			Low decimal.Decimal
-			Buy decimal.Decimal
+			Low  decimal.Decimal
+			Buy  decimal.Decimal
 			Sell decimal.Decimal
 			Time int64
-			 }
+		}
 	}
 
 	err = json.Unmarshal(body, &data)
@@ -167,7 +186,7 @@ func (this *Biki) GetTicker(symbol string) (*TickerDecimal, error) {
 
 	r := data.Data
 
-	ticker := new(TickerDecimal)
+	ticker := new(goex.TickerDecimal)
 	ticker.Date = uint64(r.Time)
 	ticker.Buy = r.Buy
 	ticker.Sell = r.Sell
@@ -179,11 +198,12 @@ func (this *Biki) GetTicker(symbol string) (*TickerDecimal, error) {
 	return ticker, nil
 }
 
-func (this *Biki) GetDepth(symbol string) (*DepthDecimal, error) {
+// GetDepth Get depth
+func (biki *Biki) GetDepth(symbol string) (*goex.DepthDecimal, error) {
 	inputSymbol := symbol
-	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE_URL + GET_MARKET_DEPH, symbol)
-	resp, err := this.client.Get(url)
+	symbol = biki.transSymbol(symbol)
+	url := fmt.Sprintf(apiBaseURL+getMarketDepth, symbol)
+	resp, err := biki.client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -197,15 +217,14 @@ func (this *Biki) GetDepth(symbol string) (*DepthDecimal, error) {
 	}
 
 	var data struct {
-	   Msg string
-	   Code decimal.Decimal
-	   Data struct {
-				Tick struct {
-						 Asks [][]decimal.Decimal
-						 Bids [][]decimal.Decimal
-
-					 }
+		Msg  string
+		Code decimal.Decimal
+		Data struct {
+			Tick struct {
+				Asks [][]decimal.Decimal
+				Bids [][]decimal.Decimal
 			}
+		}
 	}
 
 	err = json.Unmarshal(body, &data)
@@ -219,26 +238,27 @@ func (this *Biki) GetDepth(symbol string) (*DepthDecimal, error) {
 
 	r := data.Data.Tick
 
-	depth := new(DepthDecimal)
-	depth.Pair = NewCurrencyPair2(inputSymbol)
+	depth := new(goex.DepthDecimal)
+	depth.Pair = goex.NewCurrencyPair2(inputSymbol)
 
-	depth.AskList = make([]DepthRecordDecimal, len(r.Asks), len(r.Asks))
+	depth.AskList = make([]goex.DepthRecordDecimal, len(r.Asks), len(r.Asks))
 	for i, o := range r.Asks {
-		depth.AskList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+		depth.AskList[i] = goex.DepthRecordDecimal{Price: o[0], Amount: o[1]}
 	}
 
-	depth.BidList = make([]DepthRecordDecimal, len(r.Bids), len(r.Bids))
+	depth.BidList = make([]goex.DepthRecordDecimal, len(r.Bids), len(r.Bids))
 	for i, o := range r.Bids {
-		depth.BidList[i] = DepthRecordDecimal{Price: o[0], Amount: o[1]}
+		depth.BidList[i] = goex.DepthRecordDecimal{Price: o[0], Amount: o[1]}
 	}
 
 	return depth, nil
 }
 
-func (this *Biki) GetTrades(symbol string) ([]TradeDecimal, error) {
-	symbol = this.transSymbol(symbol)
-	url := fmt.Sprintf(API_BASE_URL + GET_TRADES, symbol)
-	resp, err := this.client.Get(url)
+// GetTrades Get trades
+func (biki *Biki) GetTrades(symbol string) ([]goex.TradeDecimal, error) {
+	symbol = biki.transSymbol(symbol)
+	url := fmt.Sprintf(apiBaseURL+getTrades, symbol)
+	resp, err := biki.client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -252,13 +272,13 @@ func (this *Biki) GetTrades(symbol string) ([]TradeDecimal, error) {
 	}
 
 	var data struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 		Data []struct {
 			Amount decimal.Decimal
-			Price decimal.Decimal
-			Id int64
-			Type string
+			Price  decimal.Decimal
+			ID     int64
+			Type   string
 		}
 	}
 
@@ -271,11 +291,11 @@ func (this *Biki) GetTrades(symbol string) ([]TradeDecimal, error) {
 		return nil, fmt.Errorf("error code: %s", data.Code.String())
 	}
 
-	var trades = make([]TradeDecimal, len(data.Data))
+	var trades = make([]goex.TradeDecimal, len(data.Data))
 
 	for i, o := range data.Data {
 		t := &trades[i]
-		t.Tid = o.Id
+		t.Tid = o.ID
 		t.Amount = o.Amount
 		t.Price = o.Price
 		t.Type = o.Type
@@ -284,38 +304,38 @@ func (this *Biki) GetTrades(symbol string) ([]TradeDecimal, error) {
 	return trades, nil
 }
 
-func (this *Biki) signData(data string) string {
-	message := data + this.SecretKey
-	sign, _ := GetParamMD5Sign(this.SecretKey, message)
+func (biki *Biki) signData(data string) string {
+	message := data + biki.SecretKey
+	sign, _ := goex.GetParamMD5Sign(biki.SecretKey, message)
 
 	return sign
 }
 
-func (this *Biki) sign(param map[string]string) map[string]string {
-	timestamp := strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
-	param["api_key"] = this.ApiKey
+func (biki *Biki) sign(param map[string]string) map[string]string {
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
+	param["api_key"] = biki.APIKey
 	param["time"] = timestamp
 
 	var keys []string
 	for k := range param {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i,j int) bool {
+	sort.Slice(keys, func(i, j int) bool {
 		return keys[i] < keys[j]
 	})
 
 	var parts []string
 	for _, k := range keys {
-		parts = append(parts, k + param[k])
+		parts = append(parts, k+param[k])
 	}
 	data := strings.Join(parts, "")
 
-	sign := this.signData(data)
+	sign := biki.signData(data)
 	param["sign"] = sign
 	return param
 }
 
-func (this *Biki) buildQueryString(param map[string]string) string {
+func (biki *Biki) buildQueryString(param map[string]string) string {
 	var parts []string
 	for k, v := range param {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(v)))
@@ -323,27 +343,28 @@ func (this *Biki) buildQueryString(param map[string]string) string {
 	return strings.Join(parts, "&")
 }
 
-func (this *Biki) GetAccount() ([]SubAccountDecimal, error) {
-	params := map[string]string {}
-	params = this.sign(params)
+// GetAccount Get account
+func (biki *Biki) GetAccount() ([]goex.SubAccountDecimal, error) {
+	params := map[string]string{}
+	params = biki.sign(params)
 
-	url := API_BASE_URL + ACCOUNT + "?" + this.buildQueryString(params)
+	url := apiBaseURL + account + "?" + biki.buildQueryString(params)
 
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 		Data struct {
-				TotalAsset decimal.Decimal 	`json:"total_asset"`
-				CoinList []struct {
-					Coin string
-					Normal decimal.Decimal
-					Locked decimal.Decimal
-					BtcValuatin decimal.Decimal
-				}	`json:"coin_list"`
-			}
+			TotalAsset decimal.Decimal `json:"total_asset"`
+			CoinList   []struct {
+				Coin        string
+				Normal      decimal.Decimal
+				Locked      decimal.Decimal
+				BtcValuatin decimal.Decimal
+			} `json:"coin_list"`
+		}
 	}
 
-	err := HttpGet4(this.client, url, map[string]string{}, &resp)
+	err := goex.HttpGet4(biki.client, url, map[string]string{}, &resp)
 
 	if err != nil {
 		return nil, err
@@ -353,49 +374,50 @@ func (this *Biki) GetAccount() ([]SubAccountDecimal, error) {
 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	var ret []SubAccountDecimal
+	var ret []goex.SubAccountDecimal
 	for _, o := range resp.Data.CoinList {
 		currency := strings.ToUpper(o.Coin)
 		if currency == "" {
 			continue
 		}
-		ret = append(ret, SubAccountDecimal{
-			Currency: Currency{Symbol: currency},
+		ret = append(ret, goex.SubAccountDecimal{
+			Currency:        goex.Currency{Symbol: currency},
 			AvailableAmount: o.Normal,
-			FrozenAmount: o.Locked,
-			Amount: o.Normal.Add(o.Locked),
+			FrozenAmount:    o.Locked,
+			Amount:          o.Normal.Add(o.Locked),
 		})
 	}
 
 	return ret, nil
 }
 
-func (this *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
-	symbol = this.transSymbol(symbol)
-	params := map[string]string {
-		"side": side,
+// PlaceOrder Place order
+func (biki *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, symbol string, price decimal.Decimal) (string, error) {
+	symbol = biki.transSymbol(symbol)
+	params := map[string]string{
+		"side":   side,
 		"volume": volume.String(),
-		"type": strconv.Itoa(_type),
+		"type":   strconv.Itoa(_type),
 		"symbol": symbol,
-		"price": price.String(),
+		"price":  price.String(),
 	}
 
-	params = this.sign(params)
+	params = biki.sign(params)
 
-	data := this.buildQueryString(params)
-	url := API_BASE_URL + CREATE_ORDER
-	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+	data := biki.buildQueryString(params)
+	url := apiBaseURL + createOrder
+	body, err := goex.HttpPostForm3(biki.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 
 	if err != nil {
 		return "", err
 	}
 
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 		Data struct {
-		   OrderId decimal.Decimal		`json:"order_id"`
-	   }
+			OrderID decimal.Decimal `json:"order_id"`
+		}
 	}
 
 	err = json.Unmarshal(body, &resp)
@@ -407,28 +429,28 @@ func (this *Biki) PlaceOrder(volume decimal.Decimal, side string, _type int, sym
 		return "", fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	return resp.Data.OrderId.String(), nil
+	return resp.Data.OrderID.String(), nil
 }
 
-func (this *Biki) CancelOrder(symbol string, orderId string) error {
-	symbol = this.transSymbol(symbol)
-	params := map[string]string {
-		"symbol": symbol,
-		"order_id": orderId,
-
+// CancelOrder Cancel order
+func (biki *Biki) CancelOrder(symbol string, orderID string) error {
+	symbol = biki.transSymbol(symbol)
+	params := map[string]string{
+		"symbol":   symbol,
+		"order_id": orderID,
 	}
-	params = this.sign(params)
+	params = biki.sign(params)
 
-	data := this.buildQueryString(params)
-	url := API_BASE_URL + CANCEL_ORDER
-	body, err := HttpPostForm3(this.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
+	data := biki.buildQueryString(params)
+	url := apiBaseURL + cancelOrder
+	body, err := goex.HttpPostForm3(biki.client, url, data, map[string]string{"Content-Type": "application/x-www-form-urlencoded"})
 
 	if err != nil {
 		return err
 	}
 
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 	}
 
@@ -444,9 +466,10 @@ func (this *Biki) CancelOrder(symbol string, orderId string) error {
 	return nil
 }
 
-func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-	param := map[string]string {
-		"symbol": this.transSymbol(symbol),
+// QueryPendingOrders Query pending orders
+func (biki *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]goex.OrderDecimal, error) {
+	param := map[string]string{
+		"symbol": biki.transSymbol(symbol),
 	}
 	if page > 0 {
 		param["page"] = strconv.Itoa(page)
@@ -454,20 +477,20 @@ func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]Order
 	if pageSize > 0 {
 		param["pageSize"] = strconv.Itoa(pageSize)
 	}
-	param = this.sign(param)
+	param = biki.sign(param)
 
-	url := fmt.Sprintf(API_BASE_URL + NEW_ORDER + "?" + this.buildQueryString(param))
+	url := fmt.Sprintf(apiBaseURL + newOrder + "?" + biki.buildQueryString(param))
 
 	var resp struct {
-	    Msg string
-	    Code decimal.Decimal
+		Msg  string
+		Code decimal.Decimal
 		Data struct {
-			Count int
+			Count      int
 			ResultList []OrderInfo
 		}
 	}
 
-	err := HttpGet4(this.client, url, nil, &resp)
+	err := goex.HttpGet4(biki.client, url, nil, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +499,7 @@ func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]Order
 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	var ret = make([]OrderDecimal, len(resp.Data.ResultList))
+	var ret = make([]goex.OrderDecimal, len(resp.Data.ResultList))
 	for i := range resp.Data.ResultList {
 		ret[i] = *resp.Data.ResultList[i].ToOrderDecimal(symbol)
 	}
@@ -484,9 +507,10 @@ func (this *Biki) QueryPendingOrders(symbol string, page, pageSize int) ([]Order
 	return ret, nil
 }
 
-func (this *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDecimal, error) {
-	param := map[string]string {
-		"symbol": this.transSymbol(symbol),
+// QueryAllOrders Query all orders
+func (biki *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]goex.OrderDecimal, error) {
+	param := map[string]string{
+		"symbol": biki.transSymbol(symbol),
 	}
 	if page > 0 {
 		param["page"] = strconv.Itoa(page)
@@ -494,20 +518,20 @@ func (this *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDeci
 	if pageSize > 0 {
 		param["pageSize"] = strconv.Itoa(pageSize)
 	}
-	param = this.sign(param)
+	param = biki.sign(param)
 
-	url := fmt.Sprintf(API_BASE_URL + ALL_ORDER + "?" + this.buildQueryString(param))
+	url := fmt.Sprintf(apiBaseURL + allOrder + "?" + biki.buildQueryString(param))
 
 	var resp struct {
-		Msg string
+		Msg  string
 		Code decimal.Decimal
 		Data struct {
-				Count     int
-				OrderList []OrderInfo
-			}
+			Count     int
+			OrderList []OrderInfo
+		}
 	}
 
-	err := HttpGet4(this.client, url, nil, &resp)
+	err := goex.HttpGet4(biki.client, url, nil, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +540,7 @@ func (this *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDeci
 		return nil, fmt.Errorf("error code: %s", resp.Code.String())
 	}
 
-	var ret = make([]OrderDecimal, len(resp.Data.OrderList))
+	var ret = make([]goex.OrderDecimal, len(resp.Data.OrderList))
 	for i := range resp.Data.OrderList {
 		ret[i] = *resp.Data.OrderList[i].ToOrderDecimal(symbol)
 	}
@@ -524,24 +548,25 @@ func (this *Biki) QueryAllOrders(symbol string, page, pageSize int) ([]OrderDeci
 	return ret, nil
 }
 
-func (this *Biki) QueryOrder(symbol string, orderId string) (*OrderDecimal, error) {
+// QueryOrder Query an order
+func (biki *Biki) QueryOrder(symbol string, orderID string) (*goex.OrderDecimal, error) {
 	symbol = strings.ToUpper(symbol)
-	param := this.sign(map[string]string {
-		"symbol": this.transSymbol(symbol),
-		"order_id": orderId,
+	param := biki.sign(map[string]string{
+		"symbol":   biki.transSymbol(symbol),
+		"order_id": orderID,
 	})
 
-	url := fmt.Sprintf(API_BASE_URL + ORDER_INFO + "?" + this.buildQueryString(param))
+	url := fmt.Sprintf(apiBaseURL + orderInfo + "?" + biki.buildQueryString(param))
 
 	var resp struct {
-	    Msg string
-	    Code decimal.Decimal
+		Msg  string
+		Code decimal.Decimal
 		Data struct {
-			OrderInfo *OrderInfo			`json:"order_info"`
-			 }
+			OrderInfo *OrderInfo `json:"order_info"`
+		}
 	}
 
-	err := HttpGet4(this.client, url, nil, &resp)
+	err := goex.HttpGet4(biki.client, url, nil, &resp)
 	if err != nil {
 		return nil, err
 	}

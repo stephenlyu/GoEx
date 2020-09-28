@@ -1,15 +1,16 @@
 package biki
 
 import (
-	"testing"
 	"encoding/json"
 	"fmt"
-	"os"
 	"io/ioutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/shopspring/decimal"
-	"github.com/stephenlyu/GoEx"
+	"os"
+	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
+	goex "github.com/stephenlyu/GoEx"
+	"github.com/stretchr/testify/assert"
 )
 
 var biki *Biki
@@ -22,7 +23,7 @@ func chk(err error) {
 
 func init() {
 	type Key struct {
-		ApiKey string 	`json:"api-key"`
+		APIKey    string `json:"api-key"`
 		SecretKey string `json:"secret-key"`
 	}
 
@@ -36,7 +37,7 @@ func init() {
 	var key Key
 	err = json.Unmarshal(bytes, &key)
 	chk(err)
-	biki = NewBiki(key.ApiKey, key.SecretKey)
+	biki = NewBiki(key.APIKey, key.SecretKey)
 }
 
 func output(v interface{}) {
@@ -62,7 +63,7 @@ func TestBiki_GetTicker(t *testing.T) {
 
 func TestBiki_GetDepth(t *testing.T) {
 	api := NewBiki("", "")
-	ret, err := api.GetDepth("ETC_USDT")
+	ret, err := api.GetDepth("GUNG_ODIN")
 	chk(err)
 	output(ret)
 }
@@ -82,11 +83,11 @@ func TestBiki_GetAccount(t *testing.T) {
 
 func TestBiki_PlaceOrder(t *testing.T) {
 	code := "SHT_USDT"
-	orderId, err := biki.PlaceOrder(decimal.NewFromFloat32(500), ORDER_SELL, ORDER_TYPE_LIMIT, code, decimal.NewFromFloat(0.04))
+	orderID, err := biki.PlaceOrder(decimal.NewFromFloat32(500), OrerSell, OrderTypeLimit, code, decimal.NewFromFloat(0.04))
 	assert.Nil(t, err)
-	output(orderId)
+	output(orderID)
 
-	order, err := biki.QueryOrder(code, orderId)
+	order, err := biki.QueryOrder(code, orderID)
 	assert.Nil(t, err)
 	output(order)
 }
@@ -155,7 +156,7 @@ func TestZBG_QueryAllDoneOrders(t *testing.T) {
 		if len(orders) == 0 {
 			break
 		}
-		fmt.Printf("Get page %d... lastId: %s\n", page, orders[len(orders) - 1].OrderID2)
+		fmt.Printf("Get page %d... lastId: %s\n", page, orders[len(orders)-1].OrderID2)
 		allOrders = append(allOrders, orders...)
 		if len(allOrders) > 5000 {
 			break
@@ -164,5 +165,5 @@ func TestZBG_QueryAllDoneOrders(t *testing.T) {
 	}
 	bytes, err := json.MarshalIndent(allOrders, "", "  ")
 	assert.Nil(t, err)
-	ioutil.WriteFile(code + "-orders.json", bytes, 0666)
+	ioutil.WriteFile(code+"-orders.json", bytes, 0666)
 }
