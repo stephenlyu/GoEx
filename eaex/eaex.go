@@ -24,7 +24,7 @@ const (
 )
 
 const (
-	Host            = "182.92.127.3:8081"
+	Host            = "47.105.211.130:8081"
 	API_BASE        = "http://" + Host
 	COMMON_SYMBOLS  = "/openapi/v1/brokerInfo"
 	GET_TICKER      = "/openapi/quote/v1/ticker/24hr?symbol=%s"
@@ -278,7 +278,7 @@ func (this *EAEX) GetTrades(symbol string) ([]TradeDecimal, error) {
 	var data []struct {
 		Price        decimal.Decimal
 		Qty          decimal.Decimal
-		Time         int64
+		Time         decimal.Decimal
 		IsBuyerMaker bool
 	}
 
@@ -298,7 +298,7 @@ func (this *EAEX) GetTrades(symbol string) ([]TradeDecimal, error) {
 		} else {
 			t.Type = "buy"
 		}
-		t.Date = o.Time
+		t.Date = o.Time.IntPart()
 	}
 
 	return trades, nil
