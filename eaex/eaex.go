@@ -105,7 +105,6 @@ func (ok *EAEX) GetSymbols() ([]Symbol, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var data struct {
 		Symbols []Symbol
 		Msg     string
@@ -124,14 +123,14 @@ func (ok *EAEX) GetSymbols() ([]Symbol, error) {
 	var ret []Symbol
 	for _, s := range data.Symbols {
 		s.Symbol = strings.ToUpper(fmt.Sprintf("%s_%s", s.BaseAsset, s.QuoteAsset))
-		for _, f := range s.Filters {
-			if f.FilterType == "LOT_SIZE" {
-				s.AmountMin = f.MinQty
-				s.BaseAssetPrecision = f.StepSize
-			} else if f.FilterType == "PRICE_FILTER" {
-				s.QuotePrecision = f.TickSize
-			}
-		}
+		// for _, f := range s.Filters {
+		// 	if f.FilterType == "LOT_SIZE" {
+		// 		s.AmountMin = f.MinQty
+		// 		s.BaseAssetPrecision = f.StepSize
+		// 	} else if f.FilterType == "PRICE_FILTER" {
+		// 		s.QuotePrecision = f.TickSize
+		// 	}
+		// }
 		ret = append(ret, s)
 	}
 
