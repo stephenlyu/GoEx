@@ -9,17 +9,17 @@ import (
 )
 
 func TestEAEX_GetDepthWithWs(t *testing.T) {
-	api.GetDepthWithWs("BTC_USDT", func(depth *goex.DepthDecimal) {
+	api.GetDepthWithWs("BGC_USDT", func(depth *goex.DepthDecimal) {
 		log.Printf("%+v\n", depth)
 	})
 	time.Sleep(10 * time.Minute)
-	api.publicWs.CloseWs()
+	api.depthWs.CloseWs()
 }
 
 func TestEAEX_GetTradeWithWs(t *testing.T) {
-	api.GetTradeWithWs("BTC_USDT", func(symbol string, trades []goex.TradeDecimal) {
+	api.GetTradeWithWs("BGC_USDT", func(symbol string, trades []goex.TradeDecimal) {
 		log.Printf("%+v\n", trades)
 	})
 	time.Sleep(10 * time.Minute)
-	api.publicWs.CloseWs()
+	api.tradeWs.CloseWs()
 }

@@ -9,21 +9,20 @@ import (
 	. "github.com/stephenlyu/GoEx"
 )
 
-func (this *EAEX) createPublicWsConn() {
-	if this.publicWs == nil {
+func (this *EAEX) createTradeWsConn() {
+	if this.tradeWs == nil {
 		//connect wsx
-		this.createPublicWsLock.Lock()
-		defer this.createPublicWsLock.Unlock()
+		this.createTradeWsLock.Lock()
+		defer this.createTradeWsLock.Unlock()
 
-		if this.publicWs == nil {
-			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
+		if this.tradeWs == nil {
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.publicWs = NewWsConn("ws://182.92.127.3:8081/openapi/quote/ws/v1")
-			this.publicWs.SetErrorHandler(this.errorHandle)
-			this.publicWs.ReConnect()
-			this.publicWs.ReceiveMessageEx(func(isBin bool, msg []byte) {
-				//println(string(msg))
+			this.tradeWs = NewWsConn("ws://47.105.211.130:8081/openapi/quote/ws/v1")
+			this.tradeWs.SetErrorHandler(this.errorHandle)
+			this.tradeWs.ReConnect()
+			this.tradeWs.ReceiveMessageEx(func(isBin bool, msg []byte) {
+				// println(string(msg))
 
 				var data struct {
 					Ping   int64
@@ -38,8 +37,56 @@ func (this *EAEX) createPublicWsConn() {
 				}
 
 				if data.Ping > 0 {
-					this.publicWs.UpdateActivedTime()
-					this.publicWs.SendMessage(map[string]interface{}{"pong": data.Ping})
+					this.tradeWs.UpdateActivedTime()
+					this.tradeWs.SendMessage(map[string]interface{}{"pong": data.Ping})
+					return
+				}
+
+				if data.Event == "sub" {
+					return
+				}
+
+				switch data.Topic {
+				case "trade":
+					symbol := this.getPairByName(data.Symbol)
+					trade := this.parseTrade(msg)
+					this.wsTradeHandleMap[data.Symbol](symbol, trade)
+				}
+			})
+		}
+	}
+}
+
+func (this *EAEX) createDepthWsConn() {
+	if this.depthWs == nil {
+		//connect wsx
+		this.createDepthWsLock.Lock()
+		defer this.createDepthWsLock.Unlock()
+
+		if this.depthWs == nil {
+			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
+
+			this.depthWs = NewWsConn("ws://47.105.211.130:8081/openapi/quote/ws/v1")
+			this.depthWs.SetErrorHandler(this.errorHandle)
+			this.depthWs.ReConnect()
+			this.depthWs.ReceiveMessageEx(func(isBin bool, msg []byte) {
+				// println(string(msg))
+
+				var data struct {
+					Ping   int64
+					Topic  string
+					Symbol string
+					Event  string
+				}
+				err := json.Unmarshal(msg, &data)
+				if err != nil {
+					log.Print(err)
+					return
+				}
+
+				if data.Ping > 0 {
+					this.depthWs.UpdateActivedTime()
+					this.depthWs.SendMessage(map[string]interface{}{"pong": data.Ping})
 					return
 				}
 
@@ -51,10 +98,6 @@ func (this *EAEX) createPublicWsConn() {
 				case "depth":
 					depth := this.parseDepth(msg)
 					this.wsDepthHandleMap[data.Symbol](depth)
-				case "trade":
-					symbol := this.getPairByName(data.Symbol)
-					depth := this.parseTrade(msg)
-					this.wsTradeHandleMap[data.Symbol](symbol, depth)
 				}
 			})
 		}
@@ -66,7 +109,7 @@ func (this *EAEX) GetDepthWithWs(symbol string,
 
 	symbol = this.transSymbol(symbol)
 
-	this.createPublicWsConn()
+	this.createDepthWsConn()
 
 	this.wsDepthHandleMap[symbol] = depthHandle
 
@@ -78,12 +121,12 @@ func (this *EAEX) GetDepthWithWs(symbol string,
 			"binary": false,
 		},
 	}
-	return this.publicWs.Subscribe(event)
+	return this.depthWs.Subscribe(event)
 }
 
 func (this *EAEX) GetTradeWithWs(symbol string,
 	tradesHandle func(string, []TradeDecimal)) error {
-	this.createPublicWsConn()
+	this.createTradeWsConn()
 
 	symbol = this.transSymbol(symbol)
 
@@ -97,7 +140,7 @@ func (this *EAEX) GetTradeWithWs(symbol string,
 			"binary": false,
 		},
 	}
-	return this.publicWs.Subscribe(event)
+	return this.tradeWs.Subscribe(event)
 }
 
 func (this *EAEX) parseTrade(msg []byte) []TradeDecimal {
@@ -163,7 +206,24 @@ func (this *EAEX) parseDepth(msg []byte) *DepthDecimal {
 }
 
 func (this *EAEX) CloseWs() {
-	this.publicWs.CloseWs()
+	closeTradeWs := func() {
+		this.createTradeWsLock.Lock()
+		defer this.createTradeWsLock.Unlock()
+		if this.tradeWs != nil {
+			this.tradeWs.Close()
+			this.tradeWs = nil
+		}
+	}
+	closeDepthWs := func() {
+		this.createDepthWsLock.Lock()
+		defer this.createDepthWsLock.Unlock()
+		if this.depthWs != nil {
+			this.depthWs.Close()
+			this.depthWs = nil
+		}
+	}
+	closeTradeWs()
+	closeDepthWs()
 }
 
 func (this *EAEX) SetErrorHandler(handle func(error)) {

@@ -44,11 +44,13 @@ type EAEX struct {
 
 	symbolNameMap map[string]string
 
-	publicWs           *WsConn
-	createPublicWsLock sync.Mutex
-	wsDepthHandleMap   map[string]func(*DepthDecimal)
-	wsTradeHandleMap   map[string]func(string, []TradeDecimal)
-	errorHandle        func(error)
+	depthWs           *WsConn
+	createDepthWsLock sync.Mutex
+	tradeWs           *WsConn
+	createTradeWsLock sync.Mutex
+	wsDepthHandleMap  map[string]func(*DepthDecimal)
+	wsTradeHandleMap  map[string]func(string, []TradeDecimal)
+	errorHandle       func(error)
 }
 
 func NewEAEX(ApiKey string, SecretKey string) *EAEX {
@@ -390,7 +392,6 @@ func (this *EAEX) PlaceOrder(volume decimal.Decimal, side string, _type string, 
 		"timeInForce": "GTC",
 	}
 	postData := this.sign(signParams)
-	println(postData)
 	url := API_BASE + CREATE_ORDER
 
 	fmt.Println(this.authHeader())
@@ -399,7 +400,6 @@ func (this *EAEX) PlaceOrder(volume decimal.Decimal, side string, _type string, 
 	if err != nil {
 		return "", err
 	}
-	println(string(body))
 	var resp struct {
 		Msg     string
 		Code    decimal.Decimal
