@@ -1,33 +1,34 @@
 package okexv3spot
 
 import (
-	. "github.com/stephenlyu/GoEx"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
-	"time"
-	"fmt"
-	"strings"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"sync"
+	"time"
+
 	"github.com/shopspring/decimal"
-	"github.com/stephenlyu/TdxProtocol/util"
+	. "github.com/stephenlyu/GoEx"
+	"github.com/stephenlyu/tds/util"
 )
 
 const (
-	SPOT_V3_API_BASE_URL    = "https://www.okex.com"
-	SPOT_V3_INSTRUMENTS 	  = "/api/spot/v3/instruments"
-	SPOT_V3_TRADES 			= "/api/spot/v3/instruments/%s/trades"
-	SPOT_V3_ACCOUNTS 		  = "/api/spot/v3/accounts"
-	SPOT_V3_CURRENCY_ACCOUNTS = "/api/spot/v3/accounts/%s"
-	SPOT_V3_INSTRUMENT_TICKER = "/api/spot/v3/instruments/%s/ticker"
-	SPOT_V3_ORDERS 		   = "/api/spot/v3/orders"
-	SPOT_V3_BATCH_ORDERS 		  = "/api/spot/v3/batch_orders"
-	SPOT_V3_CANCEL_ORDERS    = "/api/spot/v3/cancel_batch_orders"
-	SPOT_V3_CANCEL_ORDER		= "/api/spot/v3/cancel_orders/%s"
-	SPOT_V3_INSTRUMENT_ORDERS = "/api/spot/v3/orders?instrument_id=%s"
+	SPOT_V3_API_BASE_URL              = "https://www.okex.com"
+	SPOT_V3_INSTRUMENTS               = "/api/spot/v3/instruments"
+	SPOT_V3_TRADES                    = "/api/spot/v3/instruments/%s/trades"
+	SPOT_V3_ACCOUNTS                  = "/api/spot/v3/accounts"
+	SPOT_V3_CURRENCY_ACCOUNTS         = "/api/spot/v3/accounts/%s"
+	SPOT_V3_INSTRUMENT_TICKER         = "/api/spot/v3/instruments/%s/ticker"
+	SPOT_V3_ORDERS                    = "/api/spot/v3/orders"
+	SPOT_V3_BATCH_ORDERS              = "/api/spot/v3/batch_orders"
+	SPOT_V3_CANCEL_ORDERS             = "/api/spot/v3/cancel_batch_orders"
+	SPOT_V3_CANCEL_ORDER              = "/api/spot/v3/cancel_orders/%s"
+	SPOT_V3_INSTRUMENT_ORDERS         = "/api/spot/v3/orders?instrument_id=%s"
 	SPOT_V3_INSTRUMENT_ORDERS_PENDING = "/api/spot/v3/orders_pending?instrument_id=%s"
-	SPOT_V3_ORDER_INFO 		= "/api/spot/v3/orders/%s?instrument_id=%s"
+	SPOT_V3_ORDER_INFO                = "/api/spot/v3/orders/%s?instrument_id=%s"
 )
 
 const (
@@ -35,19 +36,19 @@ const (
 )
 
 const (
-	V3_ORDER_TYPE_NORMAL = 0
+	V3_ORDER_TYPE_NORMAL    = 0
 	V3_ORDER_TYPE_POST_ONLY = 1
-	V3_ORDER_TYPE_FOK = 2
-	V3_ORDER_TYPE_IOC = 3
+	V3_ORDER_TYPE_FOK       = 2
+	V3_ORDER_TYPE_IOC       = 3
 )
 
 type V3Instrument struct {
-	InstrumentId string 			`json:"instrument_id"`
-	BaseCurrency string 			`json:"base_currency"`
-	QuoteCurrency string			`json:"quote_currency"`
-	MinSize decimal.Decimal			`json:"min_size"`
-	SizeIncrement decimal.Decimal 	`json:"size_increment"`
-	TickSize decimal.Decimal 		`json:"tick_size"`
+	InstrumentId  string          `json:"instrument_id"`
+	BaseCurrency  string          `json:"base_currency"`
+	QuoteCurrency string          `json:"quote_currency"`
+	MinSize       decimal.Decimal `json:"min_size"`
+	SizeIncrement decimal.Decimal `json:"size_increment"`
+	TickSize      decimal.Decimal `json:"tick_size"`
 }
 
 func V3ParseDate(s string) int64 {
@@ -71,17 +72,17 @@ type OKExV3Spot struct {
 	apiKey,
 	apiSecretKey string
 	passphrase string
-	client            *http.Client
+	client     *http.Client
 
-	ws                *WsConn
-	createWsLock      sync.Mutex
-	wsLoginHandle func(err error)
-	wsDepthHandleMap  map[string]func(*DepthDecimal)
-	wsTradeHandleMap map[string]func(string, []TradeDecimal)
-	wsAccountHandleMap  map[string]func(*SubAccountDecimal)
-	wsOrderHandleMap  map[string]func([]OrderDecimal)
-	depthManagers	 map[string]*DepthManager
-	errorHandle      func(error)
+	ws                 *WsConn
+	createWsLock       sync.Mutex
+	wsLoginHandle      func(err error)
+	wsDepthHandleMap   map[string]func(*DepthDecimal)
+	wsTradeHandleMap   map[string]func(string, []TradeDecimal)
+	wsAccountHandleMap map[string]func(*SubAccountDecimal)
+	wsOrderHandleMap   map[string]func([]OrderDecimal)
+	depthManagers      map[string]*DepthManager
+	errorHandle        func(error)
 }
 
 func NewOKExV3Spot(client *http.Client, api_key, secret_key, passphrase string) *OKExV3Spot {
@@ -98,12 +99,12 @@ func (ok *OKExV3Spot) buildHeader(method, requestPath, body string) map[string]s
 	timestamp := now.Format(V3_DATE_FORMAT)
 	message := timestamp + method + requestPath + body
 	signature, _ := GetParamHmacSHA256Base64Sign(ok.apiSecretKey, message)
-	return map[string]string {
-		"OK-ACCESS-KEY": ok.apiKey,
-		"OK-ACCESS-SIGN": signature,
-		"OK-ACCESS-TIMESTAMP": timestamp,
+	return map[string]string{
+		"OK-ACCESS-KEY":        ok.apiKey,
+		"OK-ACCESS-SIGN":       signature,
+		"OK-ACCESS-TIMESTAMP":  timestamp,
 		"OK-ACCESS-PASSPHRASE": ok.passphrase,
-		"Content-Type": "application/json",
+		"Content-Type":         "application/json",
 	}
 }
 
@@ -138,23 +139,23 @@ func (ok *OKExV3Spot) GetTrades(instrumentId string) ([]TradeDecimal, error) {
 	if err != nil {
 		return nil, err
 	}
-	var data []struct{
+	var data []struct {
 		Timestamp string
-		TradeId decimal.Decimal 		`json:"trade_id"`
-		Price decimal.Decimal
-		Size decimal.Decimal
-		Side string
+		TradeId   decimal.Decimal `json:"trade_id"`
+		Price     decimal.Decimal
+		Size      decimal.Decimal
+		Side      string
 	}
 	err = json.Unmarshal(body, &data)
 
 	var ret []TradeDecimal
 	for _, o := range data {
 		ret = append(ret, TradeDecimal{
-			Tid: o.TradeId.IntPart(),
-			Type: o.Side,
+			Tid:    o.TradeId.IntPart(),
+			Type:   o.Side,
 			Amount: o.Size,
-			Price: o.Price,
-			Date: V3ParseDate(o.Timestamp),
+			Price:  o.Price,
+			Date:   V3ParseDate(o.Timestamp),
 		})
 	}
 
@@ -197,11 +198,11 @@ func (ok *OKExV3Spot) GetInstrumentTicker(instrumentId string) (*TickerDecimal, 
 }
 
 type V3CurrencyInfo struct {
-	Currency string
-	Balance decimal.Decimal		`json:"balance"`
-	Hold decimal.Decimal		`json:"hold"`
-	Available decimal.Decimal	`json:"available"`
-	Id string 					`json:"id"`
+	Currency  string
+	Balance   decimal.Decimal `json:"balance"`
+	Hold      decimal.Decimal `json:"hold"`
+	Available decimal.Decimal `json:"available"`
+	Id        string          `json:"id"`
 }
 
 func (this *V3CurrencyInfo) ToSubAccount() *SubAccountDecimal {
@@ -217,7 +218,7 @@ func (this *V3CurrencyInfo) ToSubAccount() *SubAccountDecimal {
 func (ok *OKExV3Spot) GetAccount() (*AccountDecimal, error) {
 	var resp []V3CurrencyInfo
 	header := ok.buildHeader("GET", SPOT_V3_ACCOUNTS, "")
-	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL + SPOT_V3_ACCOUNTS, header, &resp)
+	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL+SPOT_V3_ACCOUNTS, header, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func (ok *OKExV3Spot) GetCurrencyAccount(currency Currency) (*SubAccountDecimal,
 	var resp *V3CurrencyInfo
 	reqUrl := fmt.Sprintf(SPOT_V3_CURRENCY_ACCOUNTS, currency)
 	header := ok.buildHeader("GET", reqUrl, "")
-	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL + reqUrl, header, &resp)
+	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL+reqUrl, header, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -247,15 +248,15 @@ func (ok *OKExV3Spot) GetCurrencyAccount(currency Currency) (*SubAccountDecimal,
 }
 
 type OrderReq struct {
-	ClientOid string 		`json:"client_oid"`
-	Type string 			`json:"type"`
-	Side string 			`json:"side"`
-	InstrumentId string 	`json:"instrument_id"`
-	OrderType string 		`json:"order_type"`
-	MarginTrading int 		`json:"margin_trading"`
-	Price decimal.Decimal	`json:"price"`
-	Size decimal.Decimal	`json:"size"`
-	Notional decimal.Decimal`json:"notional"`
+	ClientOid     string          `json:"client_oid"`
+	Type          string          `json:"type"`
+	Side          string          `json:"side"`
+	InstrumentId  string          `json:"instrument_id"`
+	OrderType     string          `json:"order_type"`
+	MarginTrading int             `json:"margin_trading"`
+	Price         decimal.Decimal `json:"price"`
+	Size          decimal.Decimal `json:"size"`
+	Notional      decimal.Decimal `json:"notional"`
 }
 
 func (this OrderReq) ToParam() map[string]interface{} {
@@ -301,11 +302,11 @@ func (ok *OKExV3Spot) PlaceOrder(req OrderReq) (string, error) {
 	}
 	println(string(body))
 	var ret *struct {
-		OrderId string `json:"order_id"`
-		ClientOid string `json:"client_oid"`
-		ErrorCode string 	`json:"error_code"`
+		OrderId      string `json:"order_id"`
+		ClientOid    string `json:"client_oid"`
+		ErrorCode    string `json:"error_code"`
 		ErrorMessage string `json:"error_message"`
-		Result bool `json:"result"`
+		Result       bool   `json:"result"`
 	}
 	err = json.Unmarshal(body, &ret)
 	if err != nil {
@@ -359,11 +360,11 @@ func (ok *OKExV3Spot) CancelOrder(instrumentId, orderId, clientOid string) error
 }
 
 type BatchPlaceOrderRespItem struct {
-	ClientOid string 			`json:"client_oid"`
-	OrderId string 				`json:"order_id"`
-	Result bool 				`json:"result"`
-	ErrorCode string			`json:"error_code"`
-	ErrorMessage string 		`json:"error_message"`
+	ClientOid    string `json:"client_oid"`
+	OrderId      string `json:"order_id"`
+	Result       bool   `json:"result"`
+	ErrorCode    string `json:"error_code"`
+	ErrorMessage string `json:"error_message"`
 }
 
 func (ok *OKExV3Spot) PlaceOrders(req []OrderReq) ([]BatchPlaceOrderRespItem, error) {
@@ -434,9 +435,9 @@ func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clien
 	}
 	println(string(body))
 	var resp map[string][]struct {
-		Result bool 		`json:"result"`
-		OrderId string 	`json:"order_id"`
-		ClientOid string 	`json:"client_oid"`
+		Result    bool   `json:"result"`
+		OrderId   string `json:"order_id"`
+		ClientOid string `json:"client_oid"`
 	}
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
@@ -447,19 +448,19 @@ func (ok *OKExV3Spot) CancelOrders(instrumentId string, orderIds []string, clien
 }
 
 type V3OrderInfo struct {
-	OrderId string 			`json:"order_id"`
-	ClientOid string 		`json:"client_oid"`
-	Price string			`json:"price"`
-	Size string				`json:"size"`
-	Notional string			`json:"notional"`
-	InstrumentId string 	`json:"instrument_id"`
-	Type string
-	Side string
-	Timestamp string
-	FilledSize string 		`json:"filled_size"`
-	FilledNotional string 	`json:"filled_notional"`
-	Status string
-	OrderType string 		`json:"order_type"`
+	OrderId        string `json:"order_id"`
+	ClientOid      string `json:"client_oid"`
+	Price          string `json:"price"`
+	Size           string `json:"size"`
+	Notional       string `json:"notional"`
+	InstrumentId   string `json:"instrument_id"`
+	Type           string
+	Side           string
+	Timestamp      string
+	FilledSize     string `json:"filled_size"`
+	FilledNotional string `json:"filled_notional"`
+	Status         string
+	OrderType      string `json:"order_type"`
 }
 
 func (this *V3OrderInfo) ToOrder() *OrderDecimal {
@@ -470,7 +471,7 @@ func (this *V3OrderInfo) ToOrder() *OrderDecimal {
 	o.OrderID2 = this.OrderId
 	o.ClientOid = this.ClientOid
 	if this.Price != "" {
-		o.Price,_ = decimal.NewFromString(this.Price)
+		o.Price, _ = decimal.NewFromString(this.Price)
 	}
 	if this.Side != "" {
 		o.Amount, _ = decimal.NewFromString(this.Size)
@@ -517,30 +518,30 @@ func (this *V3OrderInfo) ToOrder() *OrderDecimal {
 }
 
 const (
-	ORDER_STATUS_ALL = "all"
-	ORDER_STATUS_OPEN = "open"
+	ORDER_STATUS_ALL         = "all"
+	ORDER_STATUS_OPEN        = "open"
 	ORDER_STATUS_PART_FILLED = "part_filled"
-	ORDER_STATUS_CANCELING = "canceling"
-	ORDER_STATUS_FILLED = "filled"
-	ORDER_STATUS_CANCELLED = "cancelled"
-	ORDER_STATUS_ORDERING = "ordering"
-	ORDER_STATUS_FAILURE = "failure"
+	ORDER_STATUS_CANCELING   = "canceling"
+	ORDER_STATUS_FILLED      = "filled"
+	ORDER_STATUS_CANCELLED   = "cancelled"
+	ORDER_STATUS_ORDERING    = "ordering"
+	ORDER_STATUS_FAILURE     = "failure"
 )
 
 func (ok *OKExV3Spot) GetInstrumentOrders(instrumentId string, status, from, to, limit string) ([]OrderDecimal, error) {
 	reqUrl := fmt.Sprintf(SPOT_V3_INSTRUMENT_ORDERS, instrumentId)
 	var params []string
 	if status != "" {
-		params = append(params, "state=" + status)
+		params = append(params, "state="+status)
 	}
 	if from != "" {
-		params = append(params, "from=" + from)
+		params = append(params, "from="+from)
 	}
 	if to != "" {
-		params = append(params, "to=" + to)
+		params = append(params, "to="+to)
 	}
 	if limit != "" {
-		params = append(params, "limit=" + limit)
+		params = append(params, "limit="+limit)
 	}
 	if len(params) > 0 {
 		reqUrl += "&" + strings.Join(params, "&")
@@ -550,7 +551,7 @@ func (ok *OKExV3Spot) GetInstrumentOrders(instrumentId string, status, from, to,
 
 	var resp []V3OrderInfo
 
-	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL + reqUrl, header, &resp)
+	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL+reqUrl, header, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -567,13 +568,13 @@ func (ok *OKExV3Spot) GetInstrumentPendingOrders(instrumentId string, from, to, 
 	reqUrl := fmt.Sprintf(SPOT_V3_INSTRUMENT_ORDERS_PENDING, instrumentId)
 	var params []string
 	if from != "" {
-		params = append(params, "from=" + from)
+		params = append(params, "from="+from)
 	}
 	if to != "" {
-		params = append(params, "to=" + to)
+		params = append(params, "to="+to)
 	}
 	if limit != "" {
-		params = append(params, "limit=" + limit)
+		params = append(params, "limit="+limit)
 	}
 	if len(params) > 0 {
 		reqUrl += "&" + strings.Join(params, "&")
@@ -583,7 +584,7 @@ func (ok *OKExV3Spot) GetInstrumentPendingOrders(instrumentId string, from, to, 
 
 	var resp []V3OrderInfo
 
-	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL + reqUrl, header, &resp)
+	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL+reqUrl, header, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +603,7 @@ func (ok *OKExV3Spot) GetInstrumentOrder(instrumentId string, orderId string) (*
 
 	var resp *V3OrderInfo
 
-	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL + reqUrl, header, &resp)
+	err := HttpGet4(ok.client, SPOT_V3_API_BASE_URL+reqUrl, header, &resp)
 	if err != nil {
 		return nil, err
 	}
