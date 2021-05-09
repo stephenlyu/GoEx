@@ -1,27 +1,28 @@
 package deerdex
 
-import
-(
-	"github.com/stephenlyu/GoEx"
+import (
 	"github.com/shopspring/decimal"
+	goex "github.com/stephenlyu/GoEx"
 )
 
 type Symbol struct {
-	Symbol string
-	BaseAsset string
-	QuoteAsset string
+	Symbol             string
+	BaseAsset          string
+	QuoteAsset         string
 	BaseAssetPrecision decimal.Decimal
-	QuotePrecision decimal.Decimal
-	AmountMin decimal.Decimal
-	Filters []struct {
+	QuotePrecision     decimal.Decimal
+	AmountMin          decimal.Decimal
+	Filters            []struct {
 		FilterType string
-		MinQty decimal.Decimal
+		MinQty     decimal.Decimal
+		TickSize   decimal.Decimal
+		StepSize   decimal.Decimal
 	}
 }
 
 type OrderInfo struct {
-	Msg         string
-	Code        decimal.Decimal
+	Msg  string
+	Code decimal.Decimal
 
 	Symbol      string
 	OrderId     decimal.Decimal
@@ -52,7 +53,7 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	}
 
 	var side goex.TradeSide
-	switch this.Side{
+	switch this.Side {
 	case ORDER_BUY:
 		switch this.Type {
 		case ORDER_TYPE_LIMIT:
@@ -70,29 +71,29 @@ func (this *OrderInfo) ToOrderDecimal(symbol string) *goex.OrderDecimal {
 	}
 
 	return &goex.OrderDecimal{
-		Price: this.Price,
-		Amount: this.OrigQty,
-		DealAmount: this.ExecutedQty,
-		Notinal: this.Price.Mul(this.OrigQty),
+		Price:        this.Price,
+		Amount:       this.OrigQty,
+		DealAmount:   this.ExecutedQty,
+		Notinal:      this.Price.Mul(this.OrigQty),
 		DealNotional: this.Price.Mul(this.ExecutedQty),
-		AvgPrice: this.Price,
-		OrderID2: this.OrderId.String(),
-		Timestamp: this.Time.IntPart(),
-		Status: status,
-		Currency: goex.NewCurrencyPair2(symbol),
-		Side: side,
+		AvgPrice:     this.Price,
+		OrderID2:     this.OrderId.String(),
+		Timestamp:    this.Time.IntPart(),
+		Status:       status,
+		Currency:     goex.NewCurrencyPair2(symbol),
+		Side:         side,
 	}
 }
 
 type Fill struct {
-	Symbol string
-	Id decimal.Decimal
-	OrderId decimal.Decimal
-	Price decimal.Decimal
-	Qty decimal.Decimal
-	Commission decimal.Decimal
+	Symbol          string
+	Id              decimal.Decimal
+	OrderId         decimal.Decimal
+	Price           decimal.Decimal
+	Qty             decimal.Decimal
+	Commission      decimal.Decimal
 	CommissionAsset string
-	Time decimal.Decimal
-	IsBuyer bool
-	IsMaker bool
+	Time            decimal.Decimal
+	IsBuyer         bool
+	IsMaker         bool
 }
