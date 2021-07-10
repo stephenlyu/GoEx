@@ -18,7 +18,7 @@ func (this *EAEX) createTradeWsConn() {
 		if this.tradeWs == nil {
 			this.wsTradeHandleMap = make(map[string]func(string, []TradeDecimal))
 
-			this.tradeWs = NewWsConn("ws://47.105.211.130:8081/openapi/quote/ws/v1")
+			this.tradeWs = NewWsConn(WsHost + "/openapi/quote/ws/v1")
 			this.tradeWs.SetErrorHandler(this.errorHandle)
 			this.tradeWs.ReConnect()
 			this.tradeWs.ReceiveMessageEx(func(isBin bool, msg []byte) {
@@ -66,7 +66,7 @@ func (this *EAEX) createDepthWsConn() {
 		if this.depthWs == nil {
 			this.wsDepthHandleMap = make(map[string]func(*DepthDecimal))
 
-			this.depthWs = NewWsConn("ws://47.105.211.130:8081/openapi/quote/ws/v1")
+			this.depthWs = NewWsConn(WsHost + "/openapi/quote/ws/v1")
 			this.depthWs.SetErrorHandler(this.errorHandle)
 			this.depthWs.ReConnect()
 			this.depthWs.ReceiveMessageEx(func(isBin bool, msg []byte) {

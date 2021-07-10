@@ -23,9 +23,13 @@ const (
 	ORDER_TYPE_MARKET = "MARKET"
 )
 
+var (
+	Host     = "http://47.105.211.130:8081"
+	WsHost   = "ws://47.105.211.130:8081"
+	API_BASE = Host
+)
+
 const (
-	Host            = "47.105.211.130:8081"
-	API_BASE        = "http://" + Host
 	COMMON_SYMBOLS  = "/openapi/v1/brokerInfo"
 	GET_TICKER      = "/openapi/quote/v1/ticker/24hr?symbol=%s"
 	GET_MARKET_DEPH = "/openapi/quote/v1/depth?symbol=%s&limit=20"
@@ -53,12 +57,31 @@ type EAEX struct {
 	errorHandle       func(error)
 }
 
+func init() {
+	var conf struct {
+		Host   string
+		WsHost string
+	}
+	bytes, err := ioutil.ReadFile("eaex.config")
+	if err != nil {
+		goto exit
+	}
+	err = json.Unmarshal(bytes, &conf)
+	if err != nil {
+		goto exit
+	}
+	Host = conf.Host
+	WsHost = conf.WsHost
+exit:
+	fmt.Printf("Eaex Host: %s\n", Host)
+	fmt.Printf("Eaex WsHost: %s\n", Host)
+}
+
 func NewEAEX(ApiKey string, SecretKey string) *EAEX {
 	this := new(EAEX)
 	this.ApiKey = ApiKey
 	this.SecretKey = SecretKey
 	this.client = http.DefaultClient
-
 	this.symbolNameMap = make(map[string]string)
 	return this
 }
@@ -394,7 +417,7 @@ func (this *EAEX) PlaceOrder(volume decimal.Decimal, side string, _type string, 
 	postData := this.sign(signParams)
 	url := API_BASE + CREATE_ORDER
 
-	fmt.Println(this.authHeader())
+	// fmt.Println(this.authHeader())
 	body, err := HttpPostForm3(this.client, url+"?"+postData, "", this.authHeader())
 
 	if err != nil {
