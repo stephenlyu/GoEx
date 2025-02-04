@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 	"fmt"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func TestHuobi_GetDepthWithWs(t *testing.T) {

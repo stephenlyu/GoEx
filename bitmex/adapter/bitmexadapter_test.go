@@ -3,7 +3,7 @@ package bitmexadapter
 import (
 	"testing"
 	"github.com/stephenlyu/tds/entity"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"time"
 	"fmt"
 )

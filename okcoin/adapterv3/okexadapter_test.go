@@ -3,7 +3,7 @@ package okexadapterv3
 import (
 	"testing"
 	"github.com/stephenlyu/tds/entity"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"time"
 	"github.com/stephenlyu/tds/util"
 )

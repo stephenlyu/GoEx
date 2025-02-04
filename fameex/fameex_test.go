@@ -1,17 +1,18 @@
 package fameex
 
 import (
-	"testing"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"os"
 	"io/ioutil"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"time"
 	"net/http"
-	"crypto/tls"
-	"github.com/nntaoli-project/GoEx"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/shopspring/decimal"
+	goex "github.com/stephenlyu/GoEx"
+	"github.com/stretchr/testify/assert"
 )
 
 var fameex *Fameex
@@ -24,9 +25,9 @@ func chk(err error) {
 
 func init() {
 	type Key struct {
-		ApiKey string 	`json:"api-key"`
+		ApiKey    string `json:"api-key"`
 		SecretKey string `json:"secret-key"`
-		UserId string 	`json:"user-id"`
+		UserId    string `json:"user-id"`
 	}
 
 	var configFile = os.Getenv("CONFIG")
@@ -39,8 +40,8 @@ func init() {
 	var key Key
 	err = json.Unmarshal(bytes, &key)
 	chk(err)
-	fameex = NewFameex(&http.Client{Transport:&http.Transport{
-		TLSClientConfig:    &tls.Config{InsecureSkipVerify: true},
+	fameex = NewFameex(&http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}},
 		key.ApiKey, key.SecretKey, key.UserId)
 }
@@ -90,15 +91,15 @@ func TestFameex_PlaceOrder(t *testing.T) {
 func TestFameex_PlaceOrders(t *testing.T) {
 	code := "BTC_USDT"
 
-	var reqList []OrderReq = []OrderReq {
+	var reqList []OrderReq = []OrderReq{
 		{
-			Side: SIDE_BUY,
-			Price: decimal.NewFromFloat(98.5),
+			Side:   SIDE_BUY,
+			Price:  decimal.NewFromFloat(98.5),
 			Amount: decimal.NewFromFloat(0.01),
 		},
 		{
-			Side: SIDE_SELL,
-			Price: decimal.NewFromFloat(98.5),
+			Side:   SIDE_SELL,
+			Price:  decimal.NewFromFloat(98.5),
 			Amount: decimal.NewFromFloat(0.01),
 		},
 	}
